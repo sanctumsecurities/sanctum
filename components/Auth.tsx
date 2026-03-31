@@ -38,15 +38,6 @@ export default function Auth() {
     <div className="relative min-h-screen bg-[#09090b] overflow-hidden flex items-center justify-center">
       {/* ── Animated Background ── */}
       <div className="fixed inset-0 pointer-events-none">
-        {/* Grid overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }}
-        />
         {/* Floating orbs */}
         {orbs.map((orb, i) => (
           <motion.div
@@ -80,12 +71,9 @@ export default function Auth() {
       >
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-zinc-100 font-serif tracking-tight mb-2">
+          <h1 className="text-7xl font-bold text-zinc-100 font-serif tracking-tight text-center">
             Sanctum
           </h1>
-          <p className="text-sm text-zinc-500 font-sans">
-            AI Research Terminal
-          </p>
         </div>
 
         {/* Form */}
@@ -99,7 +87,6 @@ export default function Auth() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              placeholder="you@email.com"
               className="w-full px-4 py-3 text-sm bg-zinc-900/60 border border-zinc-800 rounded-lg text-zinc-200 placeholder-zinc-600 font-mono tracking-wide outline-none transition-colors duration-200 focus:border-zinc-600"
             />
           </div>
@@ -114,7 +101,6 @@ export default function Auth() {
               onChange={e => setPassword(e.target.value)}
               required
               minLength={6}
-              placeholder="Min 6 characters"
               className="w-full px-4 py-3 text-sm bg-zinc-900/60 border border-zinc-800 rounded-lg text-zinc-200 placeholder-zinc-600 font-mono tracking-wide outline-none transition-colors duration-200 focus:border-zinc-600"
             />
           </div>
@@ -137,16 +123,12 @@ export default function Auth() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 text-sm font-bold uppercase tracking-[0.1em] bg-zinc-100 text-zinc-900 rounded-lg transition-colors duration-200 hover:bg-white disabled:opacity-50 disabled:cursor-default cursor-pointer"
+            className="w-full py-3 mt-3 text-sm font-bold uppercase tracking-[0.1em] bg-zinc-100 text-zinc-900 rounded-lg transition-colors duration-200 hover:bg-white disabled:opacity-50 disabled:cursor-default cursor-pointer"
           >
             {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-zinc-600 uppercase tracking-[0.2em] mt-10">
-          Authorized Personnel Only
-        </p>
       </motion.div>
     </div>
   )
