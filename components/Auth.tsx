@@ -1,7 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
+
+const orbs = [
+  { size: 300, top: '10%', left: '15%', duration: 18 },
+  { size: 250, top: '60%', left: '75%', duration: 22 },
+  { size: 200, top: '30%', left: '60%', duration: 25 },
+  { size: 350, top: '70%', left: '20%', duration: 20 },
+  { size: 180, top: '15%', left: '80%', duration: 28 },
+  { size: 280, top: '80%', left: '50%', duration: 16 },
+]
 
 export default function Auth() {
   const [email, setEmail] = useState('')
@@ -25,38 +35,63 @@ export default function Auth() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#000000',
-    }}>
-      <div style={{
-        width: '100%', maxWidth: 400, padding: 40,
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 16,
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <h1 style={{
-            fontSize: 36, fontWeight: 700, color: '#e8ecf1',
-            fontFamily: "'Instrument Serif', serif", margin: 0, letterSpacing: -0.5,
-          }}>
+    <div className="relative min-h-screen bg-[#09090b] overflow-hidden flex items-center justify-center">
+      {/* ── Animated Background ── */}
+      <div className="fixed inset-0 pointer-events-none">
+        {/* Grid overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }}
+        />
+        {/* Floating orbs */}
+        {orbs.map((orb, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full blur-3xl"
+            style={{
+              width: orb.size,
+              height: orb.size,
+              top: orb.top,
+              left: orb.left,
+              background: 'rgba(255, 255, 255, 0.03)',
+            }}
+            animate={{
+              y: [0, i % 2 === 0 ? -30 : 30, 0],
+            }}
+            transition={{
+              duration: orb.duration,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ── Login Content ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="relative z-10 w-full max-w-[384px] px-6"
+      >
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-zinc-100 font-serif tracking-tight mb-2">
             Sanctum
           </h1>
-          <p style={{
-            fontSize: 13, color: '#555', marginTop: 8,
-            fontFamily: "'DM Sans', sans-serif",
-          }}>
+          <p className="text-sm text-zinc-500 font-sans">
             AI Research Terminal
           </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{
-              display: 'block', fontSize: 11, color: '#8b95a5',
-              textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 6,
-              fontFamily: "'DM Sans', sans-serif",
-            }}>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-[11px] text-zinc-500 uppercase tracking-[0.15em] mb-2 font-mono">
               Email
             </label>
             <input
@@ -64,27 +99,13 @@ export default function Auth() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              style={{
-                width: '100%', padding: '12px 14px', fontSize: 14,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 8, color: '#e8ecf1', outline: 'none',
-                fontFamily: "'DM Sans', sans-serif",
-                boxSizing: 'border-box',
-                transition: 'border-color 0.2s ease',
-              }}
-              onFocus={e => e.target.style.borderColor = 'rgba(59,130,246,0.4)'}
-              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
               placeholder="you@email.com"
+              className="w-full px-4 py-3 text-sm bg-zinc-900/60 border border-zinc-800 rounded-lg text-zinc-200 placeholder-zinc-600 font-mono tracking-wide outline-none transition-colors duration-200 focus:border-zinc-600"
             />
           </div>
 
-          <div style={{ marginBottom: 24 }}>
-            <label style={{
-              display: 'block', fontSize: 11, color: '#8b95a5',
-              textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 6,
-              fontFamily: "'DM Sans', sans-serif",
-            }}>
+          <div>
+            <label className="block text-[11px] text-zinc-500 uppercase tracking-[0.15em] mb-2 font-mono">
               Password
             </label>
             <input
@@ -93,53 +114,40 @@ export default function Auth() {
               onChange={e => setPassword(e.target.value)}
               required
               minLength={6}
-              style={{
-                width: '100%', padding: '12px 14px', fontSize: 14,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 8, color: '#e8ecf1', outline: 'none',
-                fontFamily: "'DM Sans', sans-serif",
-                boxSizing: 'border-box',
-                transition: 'border-color 0.2s ease',
-              }}
-              onFocus={e => e.target.style.borderColor = 'rgba(59,130,246,0.4)'}
-              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
               placeholder="Min 6 characters"
+              className="w-full px-4 py-3 text-sm bg-zinc-900/60 border border-zinc-800 rounded-lg text-zinc-200 placeholder-zinc-600 font-mono tracking-wide outline-none transition-colors duration-200 focus:border-zinc-600"
             />
           </div>
 
-          {error && (
-            <div style={{
-              padding: '10px 14px', marginBottom: 16,
-              background: 'rgba(248,113,113,0.1)',
-              border: '1px solid rgba(248,113,113,0.2)',
-              borderRadius: 8, fontSize: 13, color: '#f87171',
-              fontFamily: "'DM Sans', sans-serif",
-            }}>
-              {error}
-            </div>
-          )}
+          {/* Error message */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.2 }}
+                className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-lg text-[13px] text-[#ef4444] font-mono"
+              >
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: '100%', padding: '13px 0', fontSize: 14, fontWeight: 600,
-              background: loading ? 'rgba(59,130,246,0.3)' : '#3b82f6',
-              color: '#fff', border: 'none', borderRadius: 8, cursor: loading ? 'default' : 'pointer',
-              fontFamily: "'DM Sans', sans-serif",
-              transition: 'all 0.2s ease',
-              transform: 'scale(1)',
-            }}
-            onMouseDown={e => { if (!loading) (e.target as HTMLElement).style.transform = 'scale(0.98)' }}
-            onMouseUp={e => (e.target as HTMLElement).style.transform = 'scale(1)'}
-            onMouseLeave={e => (e.target as HTMLElement).style.transform = 'scale(1)'}
+            className="w-full py-3 text-sm font-bold uppercase tracking-[0.1em] bg-zinc-100 text-zinc-900 rounded-lg transition-colors duration-200 hover:bg-white disabled:opacity-50 disabled:cursor-default cursor-pointer"
           >
-            {loading ? 'Please wait...' : 'Sign In'}
+            {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
 
-      </div>
+        {/* Footer */}
+        <p className="text-center text-xs text-zinc-600 uppercase tracking-[0.2em] mt-10">
+          Authorized Personnel Only
+        </p>
+      </motion.div>
     </div>
   )
 }
