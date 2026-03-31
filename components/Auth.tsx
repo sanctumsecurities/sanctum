@@ -71,8 +71,13 @@ export default function Auth() {
       >
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-7xl font-bold text-zinc-100 font-serif tracking-tight text-center">
-            Sanctum
+          <h1 style={{
+            fontSize: 48, fontWeight: 700, color: '#fff',
+            letterSpacing: '0.08em',
+            fontFamily: "'Instrument Serif', serif",
+            margin: 0, lineHeight: 1,
+          }}>
+            SANCTUM
           </h1>
         </div>
 
