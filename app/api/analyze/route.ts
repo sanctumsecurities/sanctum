@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
       exchange: price.exchangeName || price.exchange || '',
       sector: profile.sector || '',
       industry: profile.industry || '',
+      website: profile.website || '',
       price: safeNum(price.regularMarketPrice),
       previousClose: safeNum(summary.previousClose),
       fiftyTwoWeekHigh: safeNum(summary.fiftyTwoWeekHigh),
