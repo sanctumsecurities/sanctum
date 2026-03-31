@@ -60,7 +60,15 @@ export default function Home() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(50)
-    if (data) setSavedReports(data)
+    if (data) {
+      const deleted = (() => {
+        try {
+          const stored = localStorage.getItem('sanctum-deleted-reports')
+          return stored ? JSON.parse(stored) : []
+        } catch { return [] }
+      })()
+      setSavedReports(data.filter((r: SavedReport) => !deleted.includes(r.id)))
+    }
   }, [])
 
   useEffect(() => {
@@ -87,8 +95,17 @@ export default function Home() {
     saveWatchlist(watchlist.filter(t => t !== ticker))
   }
 
+  const getDeletedIds = (): string[] => {
+    try {
+      const stored = localStorage.getItem('sanctum-deleted-reports')
+      return stored ? JSON.parse(stored) : []
+    } catch { return [] }
+  }
+
   const deleteReport = async (id: string) => {
     await supabase.from('reports').delete().eq('id', id)
+    const deleted = getDeletedIds()
+    localStorage.setItem('sanctum-deleted-reports', JSON.stringify([...deleted, id]))
     setSavedReports(prev => prev.filter(r => r.id !== id))
   }
 
@@ -559,15 +576,15 @@ export default function Home() {
                         <button
                           onClick={() => deleteReport(report.id)}
                           style={{
-                            background: 'none', border: '1px solid #2a2a2a',
-                            borderRadius: 4, color: '#555', fontSize: 12,
+                            background: 'none', border: '1px solid #3a3a3a',
+                            borderRadius: 4, color: '#888', fontSize: 12,
                             padding: '6px 12px', cursor: 'pointer',
                             fontFamily: "'JetBrains Mono', monospace",
                             letterSpacing: '0.05em',
                             transition: 'all 0.2s ease',
                           }}
                           onMouseEnter={e => { (e.currentTarget).style.color = '#f87171'; (e.currentTarget).style.borderColor = 'rgba(248,113,113,0.3)' }}
-                          onMouseLeave={e => { (e.currentTarget).style.color = '#555'; (e.currentTarget).style.borderColor = '#2a2a2a' }}
+                          onMouseLeave={e => { (e.currentTarget).style.color = '#888'; (e.currentTarget).style.borderColor = '#3a3a3a' }}
                         >
                           REMOVE
                         </button>
