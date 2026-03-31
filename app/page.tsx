@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import Auth from '@/components/Auth'
 import ReportView from '@/components/ReportView'
-import type { Session, User } from '@supabase/supabase-js'
+import type { Session } from '@supabase/supabase-js'
 
 interface SavedReport {
   id: string
@@ -20,26 +20,33 @@ export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // App state
-  const [mainTab, setMainTab] = useState<'Reports' | 'Watchlist'>('Reports')
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Watchlist'>('Dashboard')
   const [searchTicker, setSearchTicker] = useState('')
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
 
-  // Report state
   const [currentReport, setCurrentReport] = useState<SavedReport | null>(null)
   const [savedReports, setSavedReports] = useState<SavedReport[]>([])
   const [showReport, setShowReport] = useState(false)
 
-  // Watchlist
   const [watchlist, setWatchlist] = useState<string[]>([])
+
+  const [currentTime, setCurrentTime] = useState(new Date())
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
+
+  // ── Live Clock ──
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // ── Auth ──
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
     })
@@ -73,9 +80,7 @@ export default function Home() {
 
   const addToWatchlist = (ticker: string) => {
     const upper = ticker.toUpperCase()
-    if (!watchlist.includes(upper)) {
-      saveWatchlist([...watchlist, upper])
-    }
+    if (!watchlist.includes(upper)) saveWatchlist([...watchlist, upper])
   }
 
   const removeFromWatchlist = (ticker: string) => {
@@ -104,7 +109,6 @@ export default function Home() {
       const { data, ai } = await res.json()
       const ticker = searchTicker.trim().toUpperCase()
 
-      // Save to Supabase
       const { data: inserted, error: insertError } = await supabase
         .from('reports')
         .insert({
@@ -117,9 +121,7 @@ export default function Home() {
         .select()
         .single()
 
-      if (insertError) {
-        console.error('Save error:', insertError)
-      }
+      if (insertError) console.error('Save error:', insertError)
 
       const report: SavedReport = inserted || {
         id: crypto.randomUUID(),
@@ -133,6 +135,7 @@ export default function Home() {
 
       setCurrentReport(report)
       setShowReport(true)
+      setShowGenerateModal(false)
       setSearchTicker('')
       loadReports()
     } catch (err: any) {
@@ -142,11 +145,19 @@ export default function Home() {
     }
   }
 
-  // ── Loading / Auth gate ──
+  // ── Loading ──
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: 28, fontWeight: 700, color: '#e8ecf1', fontFamily: "'Instrument Serif', serif" }}>Sanctum</div>
+      <div style={{
+        minHeight: '100vh', background: '#0a0a0a',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{
+          fontSize: 14, fontWeight: 500, color: '#fff',
+          letterSpacing: '0.3em', fontFamily: "'DM Sans', sans-serif",
+        }}>
+          SANCTUM
+        </span>
       </div>
     )
   }
@@ -157,40 +168,45 @@ export default function Home() {
   if (showReport && currentReport) {
     return (
       <div>
-        {/* Back bar */}
         <div style={{
           position: 'sticky', top: 0, zIndex: 50,
-          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          padding: '10px 28px',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid #1a1a1a',
+          padding: '0 40px',
         }}>
-          <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{
+            maxWidth: 1400, margin: '0 auto', width: '100%',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            height: 56,
+          }}>
             <button
               onClick={() => setShowReport(false)}
               style={{
-                background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
-                color: '#8b95a5', fontSize: 13, padding: '8px 16px', cursor: 'pointer',
-                fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s ease',
+                background: 'none', border: '1px solid #2a2a2a', borderRadius: 4,
+                color: '#888', fontSize: 12, padding: '8px 16px', cursor: 'pointer',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.05em',
+                transition: 'all 0.2s ease',
               }}
-              onMouseEnter={e => { (e.target as HTMLElement).style.borderColor = 'rgba(59,130,246,0.4)'; (e.target as HTMLElement).style.color = '#e8ecf1' }}
-              onMouseLeave={e => { (e.target as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.target as HTMLElement).style.color = '#8b95a5' }}
+              onMouseEnter={e => { (e.currentTarget).style.borderColor = '#444'; (e.currentTarget).style.color = '#fff' }}
+              onMouseLeave={e => { (e.currentTarget).style.borderColor = '#2a2a2a'; (e.currentTarget).style.color = '#888' }}
             >
-              &larr; Back
+              &larr; BACK
             </button>
             <button
               onClick={() => addToWatchlist(currentReport.ticker)}
               style={{
-                background: watchlist.includes(currentReport.ticker) ? 'rgba(74,222,128,0.12)' : 'rgba(59,130,246,0.12)',
-                border: `1px solid ${watchlist.includes(currentReport.ticker) ? 'rgba(74,222,128,0.3)' : 'rgba(59,130,246,0.3)'}`,
-                borderRadius: 8,
-                color: watchlist.includes(currentReport.ticker) ? '#4ade80' : '#60a5fa',
-                fontSize: 13, padding: '8px 16px', cursor: 'pointer',
-                fontFamily: "'DM Sans', sans-serif", fontWeight: 600,
+                background: watchlist.includes(currentReport.ticker) ? 'rgba(34,197,94,0.08)' : 'transparent',
+                border: `1px solid ${watchlist.includes(currentReport.ticker) ? 'rgba(34,197,94,0.4)' : '#2a2a2a'}`,
+                borderRadius: 4,
+                color: watchlist.includes(currentReport.ticker) ? '#22c55e' : '#888',
+                fontSize: 12, padding: '8px 16px', cursor: 'pointer',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.05em',
                 transition: 'all 0.2s ease',
               }}
             >
-              {watchlist.includes(currentReport.ticker) ? 'On Watchlist' : '+ Add to Watchlist'}
+              {watchlist.includes(currentReport.ticker) ? 'ON WATCHLIST' : '+ WATCHLIST'}
             </button>
           </div>
         </div>
@@ -199,343 +215,593 @@ export default function Home() {
     )
   }
 
-  // ── Main App Shell ──
+  // ── Format time ──
+  const formattedTime = currentTime.toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+  }) + ', ' + currentTime.toLocaleTimeString('en-US', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+
+  // ── Main Shell ──
   return (
-    <div style={{ minHeight: '100vh', background: '#000000' }}>
-      {/* Top Navigation */}
+    <div style={{ minHeight: '100vh', background: '#0a0a0a' }}>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+          .nav-links-desktop { display: none !important; }
+          .hamburger-btn { display: flex !important; }
+          .hero-title { font-size: 28px !important; letter-spacing: 0.2em !important; }
+          .main-content { padding-left: 20px !important; padding-right: 20px !important; }
+          .nav-inner { padding-left: 20px !important; padding-right: 20px !important; }
+        }
+        @media (min-width: 769px) {
+          .nav-links-desktop { display: flex !important; }
+          .hamburger-btn { display: none !important; }
+          .mobile-menu { display: none !important; }
+        }
+      `}</style>
+
+      {/* ── Fixed Navigation ── */}
       <nav style={{
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        background: 'rgba(255,255,255,0.02)',
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+        background: '#0a0a0a',
+        borderBottom: '1px solid #1a1a1a',
+        height: 56,
       }}>
-        <div style={{
-          maxWidth: 1200, margin: '0 auto', padding: '0 28px',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        <div className="nav-inner" style={{
+          maxWidth: 1400, margin: '0 auto', padding: '0 40px',
+          display: 'flex', alignItems: 'center',
+          height: '100%', position: 'relative',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-            <h1 style={{
-              fontSize: 22, fontWeight: 700, color: '#e8ecf1',
-              fontFamily: "'Instrument Serif', serif", margin: 0, padding: '16px 0',
+          {/* Left: Name */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{
+              fontSize: 14, fontWeight: 500, color: '#fff',
+              letterSpacing: '0.3em', fontFamily: "'DM Sans', sans-serif",
             }}>
-              Sanctum
-            </h1>
-            <div style={{ display: 'flex', gap: 0 }}>
-              {(['Reports', 'Watchlist'] as const).map(tab => (
+              SANCTUM SECURITIES
+            </span>
+          </div>
+
+          {/* Center: Nav links (desktop) */}
+          <div className="nav-links-desktop" style={{
+            position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', gap: 32,
+          }}>
+            {(['Dashboard', 'Watchlist'] as const).map(tab => {
+              const isActive = tab === activeTab
+              return (
                 <button
                   key={tab}
-                  onClick={() => setMainTab(tab)}
+                  onClick={() => setActiveTab(tab)}
                   style={{
-                    padding: '18px 16px 16px', fontSize: 13,
-                    fontWeight: mainTab === tab ? 700 : 500,
-                    color: mainTab === tab ? '#60a5fa' : '#555',
                     background: 'none', border: 'none', cursor: 'pointer',
-                    borderBottom: mainTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
+                    fontSize: 13, fontWeight: 400,
+                    color: isActive ? '#fff' : '#888',
                     fontFamily: "'DM Sans', sans-serif",
-                    transition: 'all 0.25s ease',
+                    padding: '4px 0',
+                    borderBottom: isActive ? '1px solid #fff' : '1px solid transparent',
+                    paddingBottom: 2,
+                    transition: 'color 0.2s ease',
                   }}
+                  onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#bbb' }}
+                  onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#888' }}
                 >
                   {tab}
                 </button>
-              ))}
-            </div>
+              )
+            })}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: 12, color: '#555' }}>{session.user.email}</span>
+
+          {/* Right: Icons */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
+            <button
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#888', padding: 4, display: 'flex', alignItems: 'center',
+                transition: 'color 0.2s ease',
+              }}
+              onMouseEnter={e => (e.currentTarget).style.color = '#fff'}
+              onMouseLeave={e => (e.currentTarget).style.color = '#888'}
+              aria-label="Settings"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+              </svg>
+            </button>
             <button
               onClick={() => supabase.auth.signOut()}
               style={{
-                background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6,
-                color: '#555', fontSize: 12, padding: '6px 12px', cursor: 'pointer',
-                fontFamily: "'DM Sans', sans-serif",
-                transition: 'all 0.2s ease',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#888', padding: 4, display: 'flex', alignItems: 'center',
+                transition: 'color 0.2s ease',
               }}
-              onMouseEnter={e => (e.target as HTMLElement).style.color = '#f87171'}
-              onMouseLeave={e => (e.target as HTMLElement).style.color = '#555'}
+              onMouseEnter={e => (e.currentTarget).style.color = '#fff'}
+              onMouseLeave={e => (e.currentTarget).style.color = '#888'}
+              aria-label="Sign out"
             >
-              Sign Out
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
+
+            {/* Hamburger (mobile only) */}
+            <button
+              className="hamburger-btn"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#888', padding: 4, display: 'none', alignItems: 'center',
+              }}
+              aria-label="Menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                {mobileMenuOpen ? (
+                  <>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </>
+                ) : (
+                  <>
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                  </>
+                )}
+              </svg>
             </button>
           </div>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div className="mobile-menu" style={{
+            position: 'absolute', top: 56, left: 0, right: 0,
+            background: '#0a0a0a', borderBottom: '1px solid #1a1a1a',
+            padding: '8px 20px 16px',
+            display: 'flex', flexDirection: 'column', gap: 0,
+          }}>
+            {(['Dashboard', 'Watchlist'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => { setActiveTab(tab); setMobileMenuOpen(false) }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 14, color: tab === activeTab ? '#fff' : '#888',
+                  fontFamily: "'DM Sans', sans-serif",
+                  padding: '12px 0', textAlign: 'left',
+                  borderBottom: '1px solid #1a1a1a',
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        )}
       </nav>
 
-      {/* Content */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 28px' }}>
+      {/* ── Main Content ── */}
+      <main style={{ paddingTop: 56 }}>
 
-        {/* ── REPORTS TAB ── */}
-        {mainTab === 'Reports' && (
-          <div style={{
-            opacity: 1,
+        {/* ══ DASHBOARD ══ */}
+        {activeTab === 'Dashboard' && (
+          <div className="main-content" style={{
+            padding: '60px 48px 0',
+            maxWidth: 1400, margin: '0 auto',
             animation: 'fadeIn 0.3s ease',
           }}>
-            <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-
-            {/* Search Bar */}
-            <div style={{
-              display: 'flex', justifyContent: 'center',
-              padding: '48px 0 40px',
+            {/* Hero heading */}
+            <h1 className="hero-title" style={{
+              fontSize: 48, fontWeight: 700, color: '#fff',
+              letterSpacing: '0.08em',
+              fontFamily: "'Instrument Serif', serif",
+              margin: 0, lineHeight: 1,
             }}>
-              <div style={{
-                width: '100%', maxWidth: 560,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+              SANCTUM
+            </h1>
+
+            {/* Date/time + terminal status */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 20,
+              marginTop: 16, flexWrap: 'wrap',
+            }}>
+              <span style={{
+                fontSize: 13, color: '#666',
+                fontFamily: "'JetBrains Mono', monospace",
               }}>
-                <h2 style={{
-                  fontSize: 28, fontWeight: 700, color: '#e8ecf1',
-                  fontFamily: "'Instrument Serif', serif", margin: 0, textAlign: 'center',
+                {formattedTime}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: '#22c55e',
+                  animation: 'pulse 2s ease-in-out infinite',
+                }} />
+                <span style={{
+                  fontSize: 11, color: '#22c55e',
+                  letterSpacing: '0.15em',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 500,
                 }}>
-                  Research Terminal
-                </h2>
-                <p style={{ fontSize: 13, color: '#555', margin: 0, textAlign: 'center' }}>
-                  Generate AI-powered equity research reports
-                </p>
-                <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 8 }}>
-                  <input
-                    type="text"
-                    value={searchTicker}
-                    onChange={e => setSearchTicker(e.target.value.toUpperCase())}
-                    onKeyDown={e => e.key === 'Enter' && !generating && generateReport()}
-                    placeholder="Enter ticker (AAPL)"
-                    disabled={generating}
-                    style={{
-                      flex: 1, padding: '14px 18px', fontSize: 15,
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: 10, color: '#e8ecf1', outline: 'none',
-                      fontFamily: "'DM Sans', sans-serif", fontWeight: 600,
-                      letterSpacing: 1,
-                      transition: 'border-color 0.2s ease',
-                    }}
-                    onFocus={e => e.target.style.borderColor = 'rgba(59,130,246,0.4)'}
-                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
-                  />
-                  <button
-                    onClick={generateReport}
-                    disabled={generating || !searchTicker.trim()}
-                    style={{
-                      padding: '14px 28px', fontSize: 14, fontWeight: 600,
-                      background: generating || !searchTicker.trim() ? 'rgba(59,130,246,0.3)' : '#3b82f6',
-                      color: '#fff', border: 'none', borderRadius: 10,
-                      cursor: generating || !searchTicker.trim() ? 'default' : 'pointer',
-                      fontFamily: "'DM Sans', sans-serif",
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.2s ease',
-                      transform: 'scale(1)',
-                    }}
-                    onMouseDown={e => { if (!generating) (e.target as HTMLElement).style.transform = 'scale(0.97)' }}
-                    onMouseUp={e => (e.target as HTMLElement).style.transform = 'scale(1)'}
-                    onMouseLeave={e => (e.target as HTMLElement).style.transform = 'scale(1)'}
-                  >
-                    {generating ? 'Generating report...' : 'Generate Report'}
-                  </button>
-                </div>
-                {error && (
-                  <div style={{
-                    width: '100%', padding: '10px 14px',
-                    background: 'rgba(248,113,113,0.1)',
-                    border: '1px solid rgba(248,113,113,0.2)',
-                    borderRadius: 8, fontSize: 13, color: '#f87171',
-                  }}>
-                    {error}
-                  </div>
-                )}
+                  TERMINAL ACTIVE
+                </span>
               </div>
             </div>
 
-            {/* Generating animation */}
-            {generating && (
-              <div style={{
-                display: 'flex', justifyContent: 'center', padding: '20px 0 40px',
-              }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '16px 24px', background: 'rgba(59,130,246,0.06)',
-                  border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12,
-                }}>
-                  <div style={{
-                    width: 16, height: 16, borderRadius: '50%',
-                    border: '2px solid rgba(59,130,246,0.3)',
-                    borderTopColor: '#3b82f6',
-                    animation: 'spin 0.8s linear infinite',
-                  }} />
-                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                  <span style={{ fontSize: 13, color: '#60a5fa' }}>
-                    Analyzing {searchTicker}... Fetching data & generating AI report
-                  </span>
-                </div>
-              </div>
-            )}
+            {/* Generate button */}
+            <button
+              onClick={() => { setShowGenerateModal(true); setError(''); setSearchTicker('') }}
+              style={{
+                marginTop: 32,
+                background: 'transparent',
+                border: '1px solid #2a2a2a',
+                borderRadius: 4,
+                color: '#fff',
+                fontSize: 13,
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.05em',
+                padding: '12px 24px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget).style.borderColor = '#444'
+                ;(e.currentTarget).style.background = 'rgba(255,255,255,0.03)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget).style.borderColor = '#2a2a2a'
+                ;(e.currentTarget).style.background = 'transparent'
+              }}
+            >
+              + GENERATE NEW REPORT
+            </button>
 
-            {/* Saved Reports Feed */}
-            <div style={{ paddingBottom: 60 }}>
-              <h3 style={{
-                fontSize: 16, fontWeight: 700, color: '#e8ecf1',
-                fontFamily: "'Instrument Serif', serif",
-                marginBottom: 16, paddingBottom: 10,
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
+            {/* Content: empty state or reports list */}
+            {savedReports.length === 0 ? (
+              <div style={{
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                minHeight: 'calc(100vh - 340px)',
               }}>
-                Saved Reports
-              </h3>
-              {savedReports.length === 0 && !generating && (
-                <div style={{
-                  textAlign: 'center', padding: '40px 0',
-                  color: '#555', fontSize: 13,
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+                <p style={{
+                  fontSize: 14, color: '#666', margin: '16px 0 4px',
+                  fontFamily: "'DM Sans', sans-serif",
                 }}>
-                  No reports yet. Generate your first report above.
+                  No reports generated yet.
+                </p>
+                <p style={{
+                  fontSize: 12, color: '#555', margin: 0,
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>
+                  Click &quot;Generate New Report&quot; to analyze a stock.
+                </p>
+              </div>
+            ) : (
+              <div style={{ marginTop: 48, paddingBottom: 60 }}>
+                <div style={{
+                  fontSize: 11, color: '#555',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.1em',
+                  marginBottom: 16, paddingBottom: 12,
+                  borderBottom: '1px solid #1a1a1a',
+                }}>
+                  RECENT REPORTS
                 </div>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {savedReports.map(report => (
-                  <button
-                    key={report.id}
-                    onClick={() => { setCurrentReport(report); setShowReport(true) }}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      width: '100%', padding: '14px 18px',
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(255,255,255,0.05)',
-                      borderRadius: 10, cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left',
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
-                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(59,130,246,0.2)';
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)';
-                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.05)';
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <div style={{
-                        width: 38, height: 38, borderRadius: 8,
-                        background: 'rgba(59,130,246,0.1)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 14, fontWeight: 700, color: '#60a5fa',
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {savedReports.map(report => (
+                    <button
+                      key={report.id}
+                      onClick={() => { setCurrentReport(report); setShowReport(true) }}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        width: '100%', padding: '14px 16px',
+                        background: 'transparent',
+                        border: 'none', borderBottom: '1px solid #111',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease',
+                        textAlign: 'left',
                         fontFamily: "'DM Sans', sans-serif",
-                      }}>
-                        {report.ticker.slice(0, 3)}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#e8ecf1', letterSpacing: 0.5 }}>
+                      }}
+                      onMouseEnter={e => (e.currentTarget).style.background = 'rgba(255,255,255,0.02)'}
+                      onMouseLeave={e => (e.currentTarget).style.background = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <span style={{
+                          fontSize: 14, fontWeight: 600, color: '#fff',
+                          letterSpacing: '0.05em',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          minWidth: 60,
+                        }}>
                           {report.ticker}
-                          <span style={{ fontWeight: 400, color: '#555', marginLeft: 8, fontSize: 12 }}>
-                            {report.data?.name || ''}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
-                          by {report.created_by_email || report.created_by.slice(0, 8)}
-                        </div>
+                        </span>
+                        <span style={{ fontSize: 13, color: '#555' }}>
+                          {report.data?.name || ''}
+                        </span>
                       </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 12, color: '#555' }}>
+                      <div style={{
+                        fontSize: 12, color: '#444',
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}>
                         {new Date(report.created_at).toLocaleDateString('en-US', {
                           month: 'short', day: 'numeric', year: 'numeric',
                         })}
                       </div>
-                      <div style={{ fontSize: 11, color: '#444', marginTop: 2 }}>
-                        {new Date(report.created_at).toLocaleTimeString('en-US', {
-                          hour: 'numeric', minute: '2-digit',
-                        })}
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
-        {/* ── WATCHLIST TAB ── */}
-        {mainTab === 'Watchlist' && (
-          <div style={{
-            paddingTop: 40, paddingBottom: 60,
+        {/* ══ WATCHLIST ══ */}
+        {activeTab === 'Watchlist' && (
+          <div className="main-content" style={{
+            padding: '60px 48px 0',
+            maxWidth: 1400, margin: '0 auto',
             animation: 'fadeIn 0.3s ease',
           }}>
-            <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-
-            <h2 style={{
-              fontSize: 24, fontWeight: 700, color: '#e8ecf1',
-              fontFamily: "'Instrument Serif', serif", margin: 0, marginBottom: 8,
+            <h2 className="hero-title" style={{
+              fontSize: 48, fontWeight: 700, color: '#fff',
+              letterSpacing: '-0.02em',
+              fontFamily: "'Instrument Serif', serif",
+              margin: 0, lineHeight: 1,
             }}>
-              Watchlist
+              WATCHLIST
             </h2>
-            <p style={{ fontSize: 13, color: '#555', margin: '0 0 28px' }}>
+            <p style={{
+              fontSize: 13, color: '#555', margin: '16px 0 40px',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>
               Tickers you&apos;re tracking. Click to generate a fresh report.
             </p>
 
-            {watchlist.length === 0 && (
+            {watchlist.length === 0 ? (
               <div style={{
-                textAlign: 'center', padding: '60px 0',
-                color: '#555', fontSize: 13,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                minHeight: 'calc(100vh - 340px)',
               }}>
-                Your watchlist is empty. Add tickers from a report page.
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <p style={{
+                  fontSize: 14, color: '#666', margin: '16px 0 4px',
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>
+                  Your watchlist is empty.
+                </p>
+                <p style={{
+                  fontSize: 12, color: '#555', margin: 0,
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>
+                  Add tickers from a report page.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {watchlist.map(ticker => (
+                  <div
+                    key={ticker}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '14px 16px',
+                      borderBottom: '1px solid #111',
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 14, fontWeight: 600, color: '#fff',
+                      letterSpacing: '0.05em',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>
+                      {ticker}
+                    </span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => {
+                          setSearchTicker(ticker)
+                          setActiveTab('Dashboard')
+                          setShowGenerateModal(true)
+                          setError('')
+                        }}
+                        style={{
+                          background: 'transparent', border: '1px solid #2a2a2a',
+                          borderRadius: 4, color: '#888', fontSize: 12,
+                          padding: '6px 14px', cursor: 'pointer',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          letterSpacing: '0.05em',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget).style.color = '#fff'; (e.currentTarget).style.borderColor = '#444' }}
+                        onMouseLeave={e => { (e.currentTarget).style.color = '#888'; (e.currentTarget).style.borderColor = '#2a2a2a' }}
+                      >
+                        GENERATE
+                      </button>
+                      <button
+                        onClick={() => removeFromWatchlist(ticker)}
+                        style={{
+                          background: 'none', border: '1px solid #2a2a2a',
+                          borderRadius: 4, color: '#555', fontSize: 12,
+                          padding: '6px 12px', cursor: 'pointer',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          letterSpacing: '0.05em',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget).style.color = '#f87171'; (e.currentTarget).style.borderColor = 'rgba(248,113,113,0.3)' }}
+                        onMouseLeave={e => { (e.currentTarget).style.color = '#555'; (e.currentTarget).style.borderColor = '#2a2a2a' }}
+                      >
+                        REMOVE
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* ── Generate Report Modal ── */}
+      {showGenerateModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.15s ease',
+          }}
+          onClick={e => {
+            if (e.target === e.currentTarget && !generating) {
+              setShowGenerateModal(false)
+              setError('')
+              setSearchTicker('')
+            }
+          }}
+        >
+          <div style={{
+            background: '#0a0a0a',
+            border: '1px solid #1a1a1a',
+            borderRadius: 4,
+            padding: 32,
+            width: '100%', maxWidth: 420,
+            margin: '0 20px',
+          }}>
+            <div style={{
+              fontSize: 11, color: '#555',
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.15em',
+              marginBottom: 24,
+            }}>
+              GENERATE REPORT
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{
+                fontSize: 14, color: '#22c55e',
+                fontFamily: "'JetBrains Mono', monospace",
+              }}>
+                &gt;
+              </span>
+              <input
+                type="text"
+                value={searchTicker}
+                onChange={e => setSearchTicker(e.target.value.toUpperCase())}
+                onKeyDown={e => e.key === 'Enter' && !generating && searchTicker.trim() && generateReport()}
+                placeholder="ENTER TICKER"
+                disabled={generating}
+                autoFocus
+                style={{
+                  flex: 1, padding: '10px 0',
+                  fontSize: 14, background: 'transparent',
+                  border: 'none', borderBottom: '1px solid #1a1a1a',
+                  color: '#fff', outline: 'none',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.05em',
+                }}
+              />
+            </div>
+
+            {error && (
+              <div style={{
+                fontSize: 12, color: '#f87171',
+                fontFamily: "'JetBrains Mono', monospace",
+                marginTop: 16, padding: '8px 0',
+              }}>
+                ERROR: {error}
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {watchlist.map(ticker => (
-                <div
-                  key={ticker}
-                  style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '14px 18px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    borderRadius: 10,
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: 8,
-                      background: 'rgba(59,130,246,0.1)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14, fontWeight: 700, color: '#60a5fa',
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}>
-                      {ticker.slice(0, 3)}
-                    </div>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: '#e8ecf1', letterSpacing: 1 }}>{ticker}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={() => {
-                        setSearchTicker(ticker)
-                        setMainTab('Reports')
-                        setTimeout(() => generateReport(), 100)
-                      }}
-                      style={{
-                        background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)',
-                        borderRadius: 6, color: '#60a5fa', fontSize: 12, padding: '6px 14px',
-                        cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontWeight: 600,
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={e => (e.target as HTMLElement).style.background = 'rgba(59,130,246,0.2)'}
-                      onMouseLeave={e => (e.target as HTMLElement).style.background = 'rgba(59,130,246,0.1)'}
-                    >
-                      Generate Report
-                    </button>
-                    <button
-                      onClick={() => removeFromWatchlist(ticker)}
-                      style={{
-                        background: 'none', border: '1px solid rgba(255,255,255,0.06)',
-                        borderRadius: 6, color: '#555', fontSize: 12, padding: '6px 12px',
-                        cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={e => { (e.target as HTMLElement).style.color = '#f87171'; (e.target as HTMLElement).style.borderColor = 'rgba(248,113,113,0.3)' }}
-                      onMouseLeave={e => { (e.target as HTMLElement).style.color = '#555'; (e.target as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)' }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
+            {generating && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                marginTop: 16,
+              }}>
+                <div style={{
+                  width: 12, height: 12, borderRadius: '50%',
+                  border: '2px solid #1a1a1a',
+                  borderTopColor: '#22c55e',
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                <span style={{
+                  fontSize: 12, color: '#22c55e',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }}>
+                  ANALYZING {searchTicker}...
+                </span>
+              </div>
+            )}
+
+            <div style={{
+              display: 'flex', justifyContent: 'flex-end', gap: 12,
+              marginTop: 24,
+            }}>
+              <button
+                onClick={() => {
+                  if (!generating) {
+                    setShowGenerateModal(false)
+                    setError('')
+                    setSearchTicker('')
+                  }
+                }}
+                disabled={generating}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #1a1a1a',
+                  borderRadius: 4, color: '#555',
+                  fontSize: 12, padding: '8px 20px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.05em',
+                  cursor: generating ? 'default' : 'pointer',
+                  opacity: generating ? 0.4 : 1,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={generateReport}
+                disabled={generating || !searchTicker.trim()}
+                style={{
+                  background: generating || !searchTicker.trim() ? 'transparent' : 'rgba(34,197,94,0.08)',
+                  border: `1px solid ${generating || !searchTicker.trim() ? '#1a1a1a' : 'rgba(34,197,94,0.4)'}`,
+                  borderRadius: 4,
+                  color: generating || !searchTicker.trim() ? '#555' : '#22c55e',
+                  fontSize: 12, padding: '8px 20px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.05em',
+                  cursor: generating || !searchTicker.trim() ? 'default' : 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {generating ? 'GENERATING...' : 'GENERATE'}
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
