@@ -77,7 +77,7 @@ export default function Auth() {
             fontFamily: "'Instrument Serif', serif",
             margin: 0, lineHeight: 1,
           }}>
-            SANCTUM
+            SANCTUM SECURITIES
           </h1>
         </div>
 
