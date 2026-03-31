@@ -87,6 +87,11 @@ export default function Home() {
     saveWatchlist(watchlist.filter(t => t !== ticker))
   }
 
+  const deleteReport = async (id: string) => {
+    await supabase.from('reports').delete().eq('id', id)
+    setSavedReports(prev => prev.filter(r => r.id !== id))
+  }
+
   // ── Generate Report ──
   const generateReport = async () => {
     if (!searchTicker.trim()) return
@@ -509,23 +514,23 @@ export default function Home() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {savedReports.map(report => (
-                    <button
+                    <div
                       key={report.id}
-                      onClick={() => { setCurrentReport(report); setShowReport(true) }}
                       style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         width: '100%', padding: '14px 16px',
                         background: 'transparent',
-                        border: 'none', borderBottom: '1px solid #111',
-                        cursor: 'pointer',
+                        borderBottom: '1px solid #111',
                         transition: 'background 0.15s ease',
-                        textAlign: 'left',
                         fontFamily: "'DM Sans', sans-serif",
                       }}
                       onMouseEnter={e => (e.currentTarget).style.background = 'rgba(255,255,255,0.02)'}
                       onMouseLeave={e => (e.currentTarget).style.background = 'transparent'}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div
+                        onClick={() => { setCurrentReport(report); setShowReport(true) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, cursor: 'pointer' }}
+                      >
                         <span style={{
                           fontSize: 14, fontWeight: 600, color: '#fff',
                           letterSpacing: '0.05em',
@@ -538,15 +543,36 @@ export default function Home() {
                           {report.data?.name || ''}
                         </span>
                       </div>
-                      <div style={{
-                        fontSize: 12, color: '#444',
-                        fontFamily: "'JetBrains Mono', monospace",
-                      }}>
-                        {new Date(report.created_at).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric',
-                        })}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div
+                          onClick={() => { setCurrentReport(report); setShowReport(true) }}
+                          style={{
+                            fontSize: 12, color: '#444',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {new Date(report.created_at).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric',
+                          })}
+                        </div>
+                        <button
+                          onClick={() => deleteReport(report.id)}
+                          style={{
+                            background: 'none', border: '1px solid #2a2a2a',
+                            borderRadius: 4, color: '#555', fontSize: 12,
+                            padding: '6px 12px', cursor: 'pointer',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            letterSpacing: '0.05em',
+                            transition: 'all 0.2s ease',
+                          }}
+                          onMouseEnter={e => { (e.currentTarget).style.color = '#f87171'; (e.currentTarget).style.borderColor = 'rgba(248,113,113,0.3)' }}
+                          onMouseLeave={e => { (e.currentTarget).style.color = '#555'; (e.currentTarget).style.borderColor = '#2a2a2a' }}
+                        >
+                          REMOVE
+                        </button>
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
