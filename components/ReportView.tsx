@@ -75,15 +75,15 @@ const fmtPct = (n: number) => `${(n * 100).toFixed(1)}%`
 
 // ─── SHARED STYLES ───
 const glassCard: React.CSSProperties = {
-  background: 'linear-gradient(160deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.025) 100%)',
+  background: 'rgba(255,255,255,0.03)',
   borderRadius: 18,
-  border: '1px solid rgba(255,255,255,0.10)',
-  boxShadow: '0 2px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
+  border: '1px solid #1a1a1a',
+  boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
 }
 
 const chartTooltipStyle: React.CSSProperties = {
-  background: 'rgba(8,8,14,0.95)',
-  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(10,10,10,0.95)',
+  border: '1px solid #1a1a1a',
   borderRadius: 12,
   fontSize: 12,
 }
@@ -113,11 +113,11 @@ const CompanyLogo = ({ ticker, website, name }: { ticker: string; website?: stri
   return (
     <div style={{
       width: 54, height: 54, borderRadius: 15, flexShrink: 0,
-      background: 'linear-gradient(135deg, rgba(59,130,246,0.28) 0%, rgba(20,20,60,0.7) 100%)',
-      border: '1px solid rgba(96,165,250,0.22)',
+      background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(15,15,18,0.7) 100%)',
+      border: '1px solid rgba(255,255,255,0.10)',
       boxShadow: '0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 24, fontWeight: 700, color: '#93c5fd',
+      fontSize: 24, fontWeight: 700, color: '#e8ecf1',
       fontFamily: "'Instrument Serif', serif",
     }}>
       {(name.charAt(0) || ticker.charAt(0)).toUpperCase()}
@@ -157,7 +157,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
       fontSize: 17, fontWeight: 700, color: '#e8ecf1',
       fontFamily: "'Instrument Serif', serif",
       marginBottom: 14, paddingBottom: 10,
-      borderBottom: '1px solid rgba(255,255,255,0.07)',
+      borderBottom: '1px solid #1a1a1a',
     }}>{title}</h2>
     {children}
   </div>
@@ -270,15 +270,15 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
   ].filter(m => m.val > 0)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#000000', color: '#e8ecf1', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#e8ecf1', fontFamily: "'DM Sans', sans-serif" }}>
 
       {/* ── HEADER ── */}
       <div style={{
-        padding: '28px 20px 24px',
-        background: 'linear-gradient(180deg, rgba(24,48,120,0.18) 0%, transparent 100%)',
-        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        padding: '28px 64px 24px',
+        background: '#0a0a0a',
+        borderBottom: '1px solid #1a1a1a',
       }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ width: '100%' }}>
 
           {/* Company identity */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
@@ -312,46 +312,14 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
             )}
           </div>
 
-          {/* 52-week range */}
-          {data.fiftyTwoWeekHigh > 0 && (
-            <div style={{ marginTop: 18, maxWidth: 400 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
-                <span style={{ fontSize: 10, color: '#3a4050' }}>52w ${data.fiftyTwoWeekLow.toFixed(0)}</span>
-                <span style={{ fontSize: 10, color: '#3a4050' }}>52w ${data.fiftyTwoWeekHigh.toFixed(0)}</span>
-              </div>
-              <div style={{ position: 'relative', height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.06)' }}>
-                {(() => {
-                  const range = data.fiftyTwoWeekHigh - data.fiftyTwoWeekLow
-                  const pct = range > 0 ? Math.min(100, Math.max(0, ((data.price - data.fiftyTwoWeekLow) / range) * 100)) : 50
-                  return (
-                    <>
-                      <div style={{
-                        position: 'absolute', left: 0, width: `${pct}%`, top: 0, height: 4,
-                        background: 'linear-gradient(90deg, #f87171, #f59e0b, #4ade80)',
-                        borderRadius: 99, opacity: 0.65,
-                      }} />
-                      <div style={{
-                        position: 'absolute', left: `${pct}%`, top: -6,
-                        width: 16, height: 16, borderRadius: 9999,
-                        background: '#60a5fa',
-                        boxShadow: '0 0 10px rgba(96,165,250,0.55)',
-                        transform: 'translateX(-50%)',
-                        border: '2px solid rgba(255,255,255,0.18)',
-                      }} />
-                    </>
-                  )
-                })()}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* ── PILL TABS ── */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', overflowX: 'auto' }}>
+      <div style={{ borderBottom: '1px solid #1a1a1a', overflowX: 'auto' }}>
         <div style={{
-          maxWidth: 900, margin: '0 auto',
-          padding: '10px 20px', display: 'flex', gap: 6,
+          width: '100%',
+          padding: '10px 64px', display: 'flex', gap: 6,
         }}>
           {tabs.map(t => (
             <button
@@ -364,14 +332,12 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
                 fontWeight: activeTab === t ? 600 : 400,
                 color: activeTab === t ? '#ffffff' : 'rgba(255,255,255,0.35)',
                 background: activeTab === t
-                  ? 'linear-gradient(135deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.07) 100%)'
+                  ? 'rgba(255,255,255,0.06)'
                   : 'transparent',
                 border: activeTab === t
-                  ? '1px solid rgba(255,255,255,0.13)'
+                  ? '1px solid #2a2a2a'
                   : '1px solid transparent',
-                boxShadow: activeTab === t
-                  ? 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.3)'
-                  : 'none',
+                boxShadow: 'none',
                 cursor: 'pointer',
                 fontFamily: "'DM Sans', sans-serif",
                 whiteSpace: 'nowrap',
@@ -385,7 +351,7 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
 
       {/* ── CONTENT ── */}
       <div style={{
-        maxWidth: 900, margin: '0 auto', padding: '28px 20px 72px',
+        width: '100%', padding: '28px 64px 72px',
         opacity: animating ? 0 : 1,
         transform: animating ? 'translateY(6px)' : 'translateY(0)',
         transition: 'opacity 0.2s ease, transform 0.2s ease',
@@ -449,7 +415,7 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
                 </div>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 10, color: '#5a6475', marginBottom: 3 }}>Current</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#60a5fa' }}>${data.price.toFixed(2)}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#e8ecf1' }}>${data.price.toFixed(2)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 10, color: '#5a6475', marginBottom: 3 }}>52w High</div>
@@ -470,8 +436,8 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
                       <div style={{
                         position: 'absolute', left: `${pct}%`, top: -5,
                         width: 16, height: 16, borderRadius: 9999,
-                        background: '#60a5fa',
-                        boxShadow: '0 0 12px rgba(96,165,250,0.55)',
+                        background: '#a0a8b4',
+                        boxShadow: '0 0 12px rgba(160,168,180,0.45)',
                         transform: 'translateX(-50%)',
                         border: '2px solid rgba(255,255,255,0.2)',
                       }} />

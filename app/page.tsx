@@ -30,6 +30,7 @@ export default function Home() {
   const [showReport, setShowReport] = useState(false)
 
   const [watchlist, setWatchlist] = useState<string[]>([])
+  const [chartData, setChartData] = useState<Record<string, number[]>>({})
 
   const [currentTime, setCurrentTime] = useState(new Date())
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -76,6 +77,23 @@ export default function Home() {
   useEffect(() => {
     if (session) loadReports()
   }, [session, loadReports])
+
+  // ── Fetch 1-day chart data for report tickers ──
+  useEffect(() => {
+    if (savedReports.length === 0) return
+    const tickers = [...new Set(savedReports.map(r => r.ticker))]
+    tickers.forEach(ticker => {
+      if (chartData[ticker]) return
+      fetch(`/api/chart?ticker=${encodeURIComponent(ticker)}`)
+        .then(r => r.json())
+        .then(res => {
+          if (res.points?.length) {
+            setChartData(prev => ({ ...prev, [ticker]: res.points }))
+          }
+        })
+        .catch(() => {})
+    })
+  }, [savedReports]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load watchlist from localStorage ──
   useEffect(() => {
@@ -283,9 +301,13 @@ export default function Home() {
         @media (max-width: 768px) {
           .nav-links-desktop { display: none !important; }
           .hamburger-btn { display: flex !important; }
-          .hero-title { font-size: 28px !important; letter-spacing: 0.2em !important; }
-          .main-content { padding-left: 20px !important; padding-right: 20px !important; }
+          .hero-title { font-size: 36px !important; letter-spacing: 0.2em !important; }
+          .main-content { padding-left: 24px !important; padding-right: 24px !important; }
           .nav-inner { padding-left: 20px !important; padding-right: 20px !important; }
+          .reports-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media (min-width: 769px) and (max-width: 1200px) {
+          .reports-grid { grid-template-columns: repeat(3, 1fr) !important; }
         }
         @media (min-width: 769px) {
           .nav-links-desktop { display: flex !important; }
@@ -443,13 +465,13 @@ export default function Home() {
         {/* ══ DASHBOARD ══ */}
         {activeTab === 'Dashboard' && (
           <div className="main-content" style={{
-            padding: '60px 48px 0',
-            maxWidth: 1400, margin: '0 auto',
+            padding: '80px 64px 0',
+            maxWidth: '100%', margin: '0 auto',
             animation: 'fadeIn 0.3s ease',
           }}>
             {/* Hero heading */}
             <h1 className="hero-title" style={{
-              fontSize: 48, fontWeight: 700, color: '#fff',
+              fontSize: 64, fontWeight: 700, color: '#fff',
               letterSpacing: '0.08em',
               fontFamily: "'Instrument Serif', serif",
               margin: 0, lineHeight: 1,
@@ -463,7 +485,7 @@ export default function Home() {
               marginTop: 16, flexWrap: 'wrap',
             }}>
               <span style={{
-                fontSize: 13, color: '#666',
+                fontSize: 14, color: '#666',
                 fontFamily: "'JetBrains Mono', monospace",
               }}>
                 {formattedTime}
@@ -489,15 +511,15 @@ export default function Home() {
             <button
               onClick={() => { setShowGenerateModal(true); setError(''); setSearchTicker('') }}
               style={{
-                marginTop: 32,
+                marginTop: 40,
                 background: 'transparent',
                 border: '1px solid #2a2a2a',
                 borderRadius: 4,
                 color: '#fff',
-                fontSize: 13,
+                fontSize: 14,
                 fontFamily: "'JetBrains Mono', monospace",
                 letterSpacing: '0.05em',
-                padding: '12px 24px',
+                padding: '14px 28px',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
@@ -541,78 +563,257 @@ export default function Home() {
                 </p>
               </div>
             ) : (
-              <div style={{ marginTop: 48, paddingBottom: 60 }}>
+              <div style={{ marginTop: 56, paddingBottom: 60 }}>
                 <div style={{
-                  fontSize: 11, color: '#555',
+                  fontSize: 12, color: '#555',
                   fontFamily: "'JetBrains Mono', monospace",
                   letterSpacing: '0.1em',
-                  marginBottom: 16, paddingBottom: 12,
+                  marginBottom: 24, paddingBottom: 14,
                   borderBottom: '1px solid #1a1a1a',
                 }}>
                   RECENT REPORTS
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {savedReports.map(report => (
-                    <div
-                      key={report.id}
-                      style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        width: '100%', padding: '14px 16px',
-                        background: 'transparent',
-                        borderBottom: '1px solid #111',
-                        transition: 'background 0.15s ease',
-                        fontFamily: "'DM Sans', sans-serif",
-                      }}
-                      onMouseEnter={e => (e.currentTarget).style.background = 'rgba(255,255,255,0.02)'}
-                      onMouseLeave={e => (e.currentTarget).style.background = 'transparent'}
-                    >
+                <div className="reports-grid" style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: 14,
+                }}>
+                  {savedReports.map(report => {
+                    const d = report.data || {}
+                    const sentiment = report.ai?.overview?.sentiment || ''
+                    const price = d.price
+                    const prevClose = d.previousClose
+                    const priceChange = price && prevClose ? price - prevClose : null
+                    const priceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
+                    const isUp = priceChange !== null && priceChange >= 0
+
+                    const formatMktCap = (val: number) => {
+                      if (!val) return '—'
+                      if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`
+                      if (val >= 1e9) return `$${(val / 1e9).toFixed(2)}B`
+                      if (val >= 1e6) return `$${(val / 1e6).toFixed(1)}M`
+                      return `$${val.toLocaleString()}`
+                    }
+
+                    const sentimentColor = sentiment === 'Bullish' ? '#22c55e'
+                      : sentiment === 'Bearish' ? '#f87171' : '#eab308'
+                    const sentimentBg = sentiment === 'Bullish' ? 'rgba(34,197,94,0.08)'
+                      : sentiment === 'Bearish' ? 'rgba(248,113,113,0.08)' : 'rgba(234,179,8,0.08)'
+
+                    const creatorEmail = report.created_by_email || ''
+                    const creatorName = creatorEmail ? creatorEmail.split('@')[0] : 'unknown'
+
+                    return (
                       <div
+                        key={report.id}
+                        style={{
+                          background: '#0f0f0f',
+                          border: '1px solid #1a1a1a',
+                          borderRadius: 6,
+                          padding: 20,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex', flexDirection: 'column',
+                          aspectRatio: '1 / 1',
+                        }}
+                        onMouseEnter={e => {
+                          (e.currentTarget).style.borderColor = '#2a2a2a'
+                          ;(e.currentTarget).style.background = '#111'
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget).style.borderColor = '#1a1a1a'
+                          ;(e.currentTarget).style.background = '#0f0f0f'
+                        }}
                         onClick={() => { setCurrentReport(report); setShowReport(true) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, cursor: 'pointer' }}
                       >
-                        <span style={{
-                          fontSize: 14, fontWeight: 600, color: '#fff',
-                          letterSpacing: '0.05em',
-                          fontFamily: "'JetBrains Mono', monospace",
-                          minWidth: 60,
-                        }}>
-                          {report.ticker}
-                        </span>
-                        <span style={{ fontSize: 13, color: '#555' }}>
-                          {report.data?.name || ''}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div
-                          onClick={() => { setCurrentReport(report); setShowReport(true) }}
-                          style={{
-                            fontSize: 12, color: '#444',
-                            fontFamily: "'JetBrains Mono', monospace",
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {new Date(report.created_at).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', year: 'numeric',
-                          })}
+                        {/* Header: Ticker + Sentiment */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                          <div>
+                            <div style={{
+                              fontSize: 20, fontWeight: 700, color: '#fff',
+                              letterSpacing: '0.05em',
+                              fontFamily: "'JetBrains Mono', monospace",
+                            }}>
+                              {report.ticker}
+                            </div>
+                            <div style={{
+                              fontSize: 12, color: '#555', marginTop: 2,
+                              fontFamily: "'DM Sans', sans-serif",
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              maxWidth: 160,
+                            }}>
+                              {d.name || ''}
+                            </div>
+                          </div>
+                          {sentiment && (
+                            <span style={{
+                              fontSize: 10, fontWeight: 600,
+                              color: sentimentColor,
+                              background: sentimentBg,
+                              border: `1px solid ${sentimentColor}22`,
+                              borderRadius: 3,
+                              padding: '3px 8px',
+                              letterSpacing: '0.08em',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              textTransform: 'uppercase',
+                              flexShrink: 0,
+                            }}>
+                              {sentiment}
+                            </span>
+                          )}
                         </div>
-                        <button
-                          onClick={() => deleteReport(report.id)}
-                          style={{
-                            background: 'none', border: '1px solid #3a3a3a',
-                            borderRadius: 4, color: '#888', fontSize: 12,
-                            padding: '6px 12px', cursor: 'pointer',
+
+                        {/* Price */}
+                        <div style={{ marginBottom: 14 }}>
+                          <span style={{
+                            fontSize: 24, fontWeight: 600, color: '#fff',
                             fontFamily: "'JetBrains Mono', monospace",
-                            letterSpacing: '0.05em',
-                            transition: 'all 0.2s ease',
-                          }}
-                          onMouseEnter={e => { (e.currentTarget).style.color = '#f87171'; (e.currentTarget).style.borderColor = 'rgba(248,113,113,0.3)' }}
-                          onMouseLeave={e => { (e.currentTarget).style.color = '#888'; (e.currentTarget).style.borderColor = '#3a3a3a' }}
-                        >
-                          REMOVE
-                        </button>
+                          }}>
+                            {price ? `$${price.toFixed(2)}` : '—'}
+                          </span>
+                          {priceChange !== null && priceChangePct !== null && (
+                            <span style={{
+                              fontSize: 12, marginLeft: 8,
+                              color: isUp ? '#22c55e' : '#f87171',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontWeight: 500,
+                            }}>
+                              {isUp ? '+' : ''}{priceChange.toFixed(2)} ({isUp ? '+' : ''}{priceChangePct.toFixed(2)}%)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Metrics Grid */}
+                        <div style={{
+                          display: 'grid', gridTemplateColumns: '1fr 1fr',
+                          gap: '10px 16px', marginBottom: 14,
+                        }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 2 }}>
+                              MKT CAP
+                            </div>
+                            <div style={{ fontSize: 14, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
+                              {formatMktCap(d.marketCap)}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 2 }}>
+                              P/E
+                            </div>
+                            <div style={{ fontSize: 14, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
+                              {d.pe ? d.pe.toFixed(2) : '—'}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 2 }}>
+                              BETA
+                            </div>
+                            <div style={{ fontSize: 14, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
+                              {d.beta ? d.beta.toFixed(2) : '—'}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 2 }}>
+                              DIV YIELD
+                            </div>
+                            <div style={{ fontSize: 14, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
+                              {d.dividendYield ? `${(d.dividendYield * 100).toFixed(2)}%` : '—'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sector + Industry */}
+                        {(d.sector || d.industry) && (
+                          <div style={{
+                            fontSize: 11, color: '#444',
+                            fontFamily: "'DM Sans', sans-serif",
+                            marginBottom: 8,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {[d.sector, d.industry].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+
+                        {/* 1-Day Sparkline Chart */}
+                        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'flex-end' }}>
+                          {(() => {
+                            const pts = chartData[report.ticker]
+                            if (!pts || pts.length < 2) return (
+                              <div style={{
+                                width: '100%', height: '100%', minHeight: 40,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <span style={{ fontSize: 10, color: '#222', fontFamily: "'JetBrains Mono', monospace" }}>
+                                  loading chart...
+                                </span>
+                              </div>
+                            )
+                            const min = Math.min(...pts)
+                            const max = Math.max(...pts)
+                            const range = max - min || 1
+                            const w = 300
+                            const h = 80
+                            const pad = 2
+                            const linePoints = pts.map((v, i) => {
+                              const x = (i / (pts.length - 1)) * w
+                              const y = pad + (1 - (v - min) / range) * (h - pad * 2)
+                              return `${x},${y}`
+                            }).join(' ')
+                            const fillPoints = `0,${h} ${linePoints} ${w},${h}`
+                            const up = pts[pts.length - 1] >= pts[0]
+                            const strokeColor = up ? '#22c55e' : '#f87171'
+                            const fillColor = up ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)'
+                            return (
+                              <svg
+                                viewBox={`0 0 ${w} ${h}`}
+                                preserveAspectRatio="none"
+                                style={{ width: '100%', height: '100%', minHeight: 40, display: 'block' }}
+                              >
+                                <polygon points={fillPoints} fill={fillColor} />
+                                <polyline points={linePoints} fill="none" stroke={strokeColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                              </svg>
+                            )
+                          })()}
+                        </div>
+
+                        {/* Footer: Date | Created by + Remove */}
+                        <div style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          paddingTop: 12,
+                          borderTop: '1px solid #1a1a1a',
+                        }}>
+                          <span style={{
+                            fontSize: 11, color: '#333',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            minWidth: 0,
+                          }}>
+                            {new Date(report.created_at).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric',
+                            })}
+                            <span style={{ color: '#222', margin: '0 6px' }}>|</span>
+                            <span style={{ color: '#444' }}>{creatorName}</span>
+                          </span>
+                          <button
+                            onClick={e => { e.stopPropagation(); deleteReport(report.id) }}
+                            style={{
+                              background: 'none', border: '1px solid #1a1a1a',
+                              borderRadius: 3, color: '#444', fontSize: 10,
+                              padding: '4px 10px', cursor: 'pointer',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              letterSpacing: '0.05em',
+                              transition: 'all 0.2s ease',
+                              flexShrink: 0,
+                            }}
+                            onMouseEnter={e => { (e.currentTarget).style.color = '#f87171'; (e.currentTarget).style.borderColor = 'rgba(248,113,113,0.3)' }}
+                            onMouseLeave={e => { (e.currentTarget).style.color = '#444'; (e.currentTarget).style.borderColor = '#1a1a1a' }}
+                          >
+                            REMOVE
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
