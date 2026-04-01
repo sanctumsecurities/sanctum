@@ -631,6 +631,8 @@ export default function Home() {
                             highlights.style.marginTop = '10px'
                             highlights.style.marginBottom = '6px'
                           }
+                          const deleteBtn = el.querySelector('[data-delete-btn]') as HTMLElement | null
+                          if (deleteBtn) deleteBtn.style.opacity = '1'
                         }}
                         onMouseLeave={e => {
                           const el = e.currentTarget
@@ -646,8 +648,17 @@ export default function Home() {
                             highlights.style.marginTop = '0'
                             highlights.style.marginBottom = '0'
                           }
+                          const deleteBtn = el.querySelector('[data-delete-btn]') as HTMLElement | null
+                          if (deleteBtn) deleteBtn.style.opacity = '0'
                         }}
                         onClick={() => { setCurrentReport(report); setShowReport(true) }}
+                        onTouchStart={e => {
+                          const deleteBtn = e.currentTarget.querySelector('[data-delete-btn]') as HTMLElement | null
+                          if (deleteBtn) {
+                            const isVisible = deleteBtn.style.opacity === '1'
+                            deleteBtn.style.opacity = isVisible ? '0' : '1'
+                          }
+                        }}
                       >
                         {/* Header: Ticker + Sentiment */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
@@ -940,7 +951,7 @@ export default function Home() {
                           </div>
                         )}
 
-                        {/* Footer: Date | Created by + Remove */}
+                        {/* Footer: Date | Created by */}
                         <div style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                           paddingTop: 12,
@@ -958,23 +969,46 @@ export default function Home() {
                             <span style={{ color: '#222', margin: '0 6px' }}>|</span>
                             <span style={{ color: '#444' }}>{creatorName}</span>
                           </span>
-                          <button
-                            onClick={e => { e.stopPropagation(); deleteReport(report.id) }}
-                            style={{
-                              background: 'none', border: '1px solid #1a1a1a',
-                              borderRadius: 3, color: '#444', fontSize: 10,
-                              padding: '4px 10px', cursor: 'pointer',
-                              fontFamily: "'JetBrains Mono', monospace",
-                              letterSpacing: '0.05em',
-                              transition: 'all 0.2s ease',
-                              flexShrink: 0,
-                            }}
-                            onMouseEnter={e => { (e.currentTarget).style.color = '#f87171'; (e.currentTarget).style.borderColor = 'rgba(248,113,113,0.3)' }}
-                            onMouseLeave={e => { (e.currentTarget).style.color = '#444'; (e.currentTarget).style.borderColor = '#1a1a1a' }}
-                          >
-                            REMOVE
-                          </button>
                         </div>
+
+                        {/* Delete X — visible on hover/tap */}
+                        <button
+                          data-delete-btn
+                          onClick={e => { e.stopPropagation(); deleteReport(report.id) }}
+                          onTouchStart={e => { e.stopPropagation() }}
+                          style={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            background: 'rgba(0,0,0,0.6)',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 22,
+                            height: 22,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            opacity: 0,
+                            transition: 'opacity 0.2s ease, transform 0.15s ease, background 0.15s ease',
+                            zIndex: 5,
+                            padding: 0,
+                            lineHeight: 1,
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.transform = 'scale(1.15)'
+                            e.currentTarget.style.background = 'rgba(248,113,113,0.25)'
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'scale(1)'
+                            e.currentTarget.style.background = 'rgba(0,0,0,0.6)'
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round">
+                            <line x1="2" y1="2" x2="10" y2="10" />
+                            <line x1="10" y1="2" x2="2" y2="10" />
+                          </svg>
+                        </button>
                       </div>
                     )
                   })}
