@@ -63,15 +63,7 @@ export default function Home() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(50)
-    if (data) {
-      const deleted = (() => {
-        try {
-          const stored = localStorage.getItem('sanctum-deleted-reports')
-          return stored ? JSON.parse(stored) : []
-        } catch { return [] }
-      })()
-      setSavedReports(data.filter((r: SavedReport) => !deleted.includes(r.id)))
-    }
+    if (data) setSavedReports(data)
   }, [])
 
   useEffect(() => {
@@ -133,17 +125,8 @@ export default function Home() {
     saveWatchlist(watchlist.filter(t => t !== ticker))
   }
 
-  const getDeletedIds = (): string[] => {
-    try {
-      const stored = localStorage.getItem('sanctum-deleted-reports')
-      return stored ? JSON.parse(stored) : []
-    } catch { return [] }
-  }
-
   const deleteReport = async (id: string) => {
     await supabase.from('reports').delete().eq('id', id)
-    const deleted = getDeletedIds()
-    localStorage.setItem('sanctum-deleted-reports', JSON.stringify([...deleted, id]))
     setSavedReports(prev => prev.filter(r => r.id !== id))
   }
 
@@ -285,7 +268,7 @@ export default function Home() {
 
   // ── Main Shell ──
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a' }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', overflowX: 'hidden', maxWidth: '100vw' }}>
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(8px); }
@@ -308,9 +291,9 @@ export default function Home() {
           .reports-grid > div { transform-origin: center center !important; }
         }
         @media (min-width: 769px) and (max-width: 1200px) {
-          .reports-grid { grid-template-columns: repeat(3, 1fr) !important; }
-          .reports-grid > div:nth-child(3n+1) { transform-origin: left center !important; }
-          .reports-grid > div:nth-child(3n) { transform-origin: right center !important; }
+          .reports-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 10px !important; }
+          .reports-grid > div:nth-child(4n+1) { transform-origin: left center !important; }
+          .reports-grid > div:nth-child(4n) { transform-origin: right center !important; }
         }
         @media (min-width: 769px) {
           .nav-links-desktop { display: flex !important; }
@@ -468,9 +451,11 @@ export default function Home() {
         {/* ══ DASHBOARD ══ */}
         {activeTab === 'Dashboard' && (
           <div className="main-content" style={{
-            padding: '80px 64px 0',
+            padding: '80px 40px 0',
             maxWidth: '100%', margin: '0 auto',
             animation: 'fadeIn 0.3s ease',
+            boxSizing: 'border-box',
+            overflowX: 'hidden',
           }}>
             {/* Hero heading */}
             <h1 className="hero-title" style={{
@@ -566,7 +551,7 @@ export default function Home() {
                 </p>
               </div>
             ) : (
-              <div style={{ marginTop: 56, paddingBottom: 60 }}>
+              <div style={{ marginTop: 56, paddingBottom: 60, overflowX: 'clip' }}>
                 <div style={{
                   fontSize: 12, color: '#555',
                   fontFamily: "'JetBrains Mono', monospace",
@@ -578,8 +563,8 @@ export default function Home() {
                 </div>
                 <div className="reports-grid" style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: 14,
+                  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                  gap: 10,
                 }}>
                   {savedReports.map(report => {
                     const d = report.data || {}
@@ -615,11 +600,11 @@ export default function Home() {
                           background: '#0f0f0f',
                           border: '1px solid #1a1a1a',
                           borderRadius: 6,
-                          padding: 20,
+                          padding: 14,
                           cursor: 'pointer',
                           transition: 'all 250ms cubic-bezier(0.2, 0, 0, 1)',
                           display: 'flex', flexDirection: 'column',
-                          aspectRatio: '1 / 1',
+                          aspectRatio: 'auto',
                           position: 'relative',
                           transformOrigin: (() => {
                             const colCount = 4
@@ -662,20 +647,20 @@ export default function Home() {
                         onClick={() => { setCurrentReport(report); setShowReport(true) }}
                       >
                         {/* Header: Ticker + Sentiment */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                           <div>
                             <div style={{
-                              fontSize: 22, fontWeight: 700, color: '#fff',
+                              fontSize: 17, fontWeight: 700, color: '#fff',
                               letterSpacing: '0.05em',
                               fontFamily: "'JetBrains Mono', monospace",
                             }}>
                               {report.ticker}
                             </div>
                             <div style={{
-                              fontSize: 13, color: '#555', marginTop: 2,
+                              fontSize: 11, color: '#555', marginTop: 2,
                               fontFamily: "'DM Sans', sans-serif",
                               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                              maxWidth: 160,
+                              maxWidth: 140,
                             }}>
                               {d.name || ''}
                             </div>
