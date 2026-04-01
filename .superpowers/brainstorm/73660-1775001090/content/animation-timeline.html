@@ -1,0 +1,123 @@
+<h2>Animation Timeline</h2>
+<p class="subtitle">Full sequence breakdown — does this timing feel right?</p>
+
+<div style="margin: 2rem 0;">
+  <!-- Phase labels -->
+  <div style="display: flex; gap: 0; margin-bottom: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #888;">
+    <div style="flex: 0 0 25%; text-align: center;">Phase 1: Idle Blink</div>
+    <div style="flex: 0 0 40%; text-align: center;">Phase 2: Typing</div>
+    <div style="flex: 1; text-align: center;">Phase 3: Idle Blink</div>
+  </div>
+
+  <!-- Timeline bar -->
+  <div style="display: flex; height: 48px; border-radius: 8px; overflow: hidden; border: 1px solid #333;">
+    <div style="flex: 0 0 25%; background: #1a1a2e; display: flex; align-items: center; justify-content: center; border-right: 1px solid #444;">
+      <span style="font-family: 'JetBrains Mono', monospace; color: #7c3aed; font-size: 1.5rem; animation: blink 0.6s step-end infinite;">|</span>
+    </div>
+    <div style="flex: 0 0 40%; background: #1e293b; display: flex; align-items: center; justify-content: center; border-right: 1px solid #444;">
+      <span style="font-family: 'JetBrains Mono', monospace; color: #e2e8f0; font-weight: 700; letter-spacing: 0.08em; font-size: 1.1rem;">S A N C T U M<span style="color: #7c3aed;">|</span></span>
+    </div>
+    <div style="flex: 1; background: #1a1a2e; display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: 'JetBrains Mono', monospace; color: #e2e8f0; font-weight: 700; letter-spacing: 0.08em; font-size: 1.1rem;">SANCTUM<span style="color: #7c3aed; animation: blink 0.6s step-end infinite;">|</span></span>
+    </div>
+  </div>
+
+  <!-- Timing labels -->
+  <div style="display: flex; gap: 0; margin-top: 0.5rem; font-size: 0.7rem; color: #666;">
+    <div style="flex: 0 0 25%; text-align: center;">~2.5s (4-5 blinks)</div>
+    <div style="flex: 0 0 40%; text-align: center;">~1.0s (variable 80-200ms/char)</div>
+    <div style="flex: 1; text-align: center;">forever</div>
+  </div>
+</div>
+
+<!-- Detail cards -->
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;">
+  <div style="background: #111; border: 1px solid #333; border-radius: 8px; padding: 1rem;">
+    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7c3aed; margin-bottom: 0.5rem;">Phase 1</div>
+    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.95rem;">Idle Blink</h3>
+    <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.8rem; color: #aaa; line-height: 1.6;">
+      <li>Screen is blank</li>
+      <li>Caret blinks 4-5 times</li>
+      <li>Blink rate: ~530ms on/off</li>
+      <li>Builds anticipation</li>
+    </ul>
+  </div>
+  <div style="background: #111; border: 1px solid #333; border-radius: 8px; padding: 1rem;">
+    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7c3aed; margin-bottom: 0.5rem;">Phase 2</div>
+    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.95rem;">Typing</h3>
+    <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.8rem; color: #aaa; line-height: 1.6;">
+      <li>Types "SANCTUM" one char at a time</li>
+      <li>Variable delay: 80-200ms per char</li>
+      <li>JetBrains Mono, bold</li>
+      <li>Caret stays visible during typing</li>
+    </ul>
+  </div>
+  <div style="background: #111; border: 1px solid #333; border-radius: 8px; padding: 1rem;">
+    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7c3aed; margin-bottom: 0.5rem;">Phase 3</div>
+    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.95rem;">Resting Blink</h3>
+    <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.8rem; color: #aaa; line-height: 1.6;">
+      <li>"SANCTUM" fully visible</li>
+      <li>Caret blinks endlessly</li>
+      <li>Same blink rate as Phase 1</li>
+      <li>Calm, idle state</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Live preview -->
+<div style="margin-top: 2.5rem; background: #09090b; border: 1px solid #333; border-radius: 12px; padding: 3rem; text-align: center;">
+  <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #555; margin-bottom: 1.5rem;">Live Preview (loops every 6s)</div>
+  <div id="preview" style="font-family: 'JetBrains Mono', monospace; font-size: 2.5rem; font-weight: 700; color: #fff; letter-spacing: 0.08em; min-height: 3rem; display: inline-block;">
+    <span id="typed"></span><span id="caret" style="color: #7c3aed;">|</span>
+  </div>
+</div>
+
+<script>
+const text = "SANCTUM";
+const typed = document.getElementById('typed');
+const caret = document.getElementById('caret');
+let phase = 0;
+
+function randomDelay() {
+  return 80 + Math.random() * 120;
+}
+
+async function animate() {
+  while (true) {
+    // Phase 1: idle blink (4-5 blinks)
+    typed.textContent = '';
+    caret.style.visibility = 'visible';
+    const blinks = 4 + Math.round(Math.random());
+    for (let i = 0; i < blinks; i++) {
+      caret.style.visibility = 'visible';
+      await new Promise(r => setTimeout(r, 530));
+      caret.style.visibility = 'hidden';
+      await new Promise(r => setTimeout(r, 530));
+    }
+
+    // Phase 2: typing
+    caret.style.visibility = 'visible';
+    for (let i = 0; i < text.length; i++) {
+      typed.textContent = text.slice(0, i + 1);
+      await new Promise(r => setTimeout(r, randomDelay()));
+    }
+
+    // Phase 3: resting blink (a few seconds then loop)
+    for (let i = 0; i < 5; i++) {
+      caret.style.visibility = 'visible';
+      await new Promise(r => setTimeout(r, 530));
+      caret.style.visibility = 'hidden';
+      await new Promise(r => setTimeout(r, 530));
+    }
+  }
+}
+
+animate();
+</script>
+
+<style>
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+</style>
