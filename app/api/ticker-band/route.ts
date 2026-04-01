@@ -33,9 +33,12 @@ async function fetchInstrument(
   try {
     const quote = await withTimeout(yahooFinance.quote(symbol), 5000) as any
     if (quote?.regularMarketPrice == null) return null
+    const resolvedLabel = label === symbol
+      ? (quote.shortName ? `${quote.shortName} (${symbol})` : symbol)
+      : label
     return {
       symbol,
-      label,
+      label: resolvedLabel,
       price: quote.regularMarketPrice as number,
       change: (quote.regularMarketChange ?? 0) as number,
       changePct: (quote.regularMarketChangePercent ?? 0) as number,
@@ -49,10 +52,10 @@ export async function GET(request: NextRequest) {
   try {
     const tickersParam = request.nextUrl.searchParams.get('tickers')
     const instruments = tickersParam
-      ? tickersParam.split(',').filter(Boolean).map(s => s.trim().toUpperCase()).map(symbol => ({
-          symbol,
-          label: DEFAULT_LABEL_MAP[symbol] ?? symbol,
-        }))
+      ? tickersParam.split(',').filter(Boolean).slice(0, 20).map(s => {
+          const symbol = s.trim().toUpperCase()
+          return { symbol, label: DEFAULT_LABEL_MAP[symbol] ?? symbol }
+        })
       : DEFAULT_INSTRUMENTS
 
     const results = await Promise.all(
