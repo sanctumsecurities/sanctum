@@ -18,6 +18,16 @@ interface SavedReport {
   created_at: string
 }
 
+type HealthStatus = 'ok' | 'degraded' | 'down'
+interface ServiceHealth { name: string; status: 'ok' | 'error' | 'unconfigured'; latency: number; detail?: string }
+interface HealthData {
+  services: ServiceHealth[]
+  overallStatus: HealthStatus
+  checkedAt: number
+  spy?: { price: number; change: number; changePct: number }
+}
+
+
 const formatMktCap = (val: number) => {
   if (!val) return '\u2014'
   if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`
@@ -436,6 +446,203 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
   prev.colIndex === next.colIndex
 )
 
+const TICKER_LIST: { symbol: string; name: string }[] = [
+  { symbol: 'AAPL', name: 'Apple Inc.' },
+  { symbol: 'MSFT', name: 'Microsoft Corporation' },
+  { symbol: 'GOOGL', name: 'Alphabet Inc.' },
+  { symbol: 'GOOG', name: 'Alphabet Inc. Class C' },
+  { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+  { symbol: 'NVDA', name: 'NVIDIA Corporation' },
+  { symbol: 'META', name: 'Meta Platforms Inc.' },
+  { symbol: 'TSLA', name: 'Tesla Inc.' },
+  { symbol: 'AVGO', name: 'Broadcom Inc.' },
+  { symbol: 'ORCL', name: 'Oracle Corporation' },
+  { symbol: 'NFLX', name: 'Netflix Inc.' },
+  { symbol: 'ADBE', name: 'Adobe Inc.' },
+  { symbol: 'CRM', name: 'Salesforce Inc.' },
+  { symbol: 'AMD', name: 'Advanced Micro Devices Inc.' },
+  { symbol: 'INTC', name: 'Intel Corporation' },
+  { symbol: 'QCOM', name: 'Qualcomm Inc.' },
+  { symbol: 'TXN', name: 'Texas Instruments Inc.' },
+  { symbol: 'AMAT', name: 'Applied Materials Inc.' },
+  { symbol: 'MU', name: 'Micron Technology Inc.' },
+  { symbol: 'ASML', name: 'ASML Holding N.V.' },
+  { symbol: 'KLAC', name: 'KLA Corporation' },
+  { symbol: 'LRCX', name: 'Lam Research Corporation' },
+  { symbol: 'CSCO', name: 'Cisco Systems Inc.' },
+  { symbol: 'IBM', name: 'International Business Machines' },
+  { symbol: 'NOW', name: 'ServiceNow Inc.' },
+  { symbol: 'WDAY', name: 'Workday Inc.' },
+  { symbol: 'SNOW', name: 'Snowflake Inc.' },
+  { symbol: 'DDOG', name: 'Datadog Inc.' },
+  { symbol: 'NET', name: 'Cloudflare Inc.' },
+  { symbol: 'CRWD', name: 'CrowdStrike Holdings Inc.' },
+  { symbol: 'ZS', name: 'Zscaler Inc.' },
+  { symbol: 'PANW', name: 'Palo Alto Networks Inc.' },
+  { symbol: 'PLTR', name: 'Palantir Technologies Inc.' },
+  { symbol: 'COIN', name: 'Coinbase Global Inc.' },
+  { symbol: 'HOOD', name: 'Robinhood Markets Inc.' },
+  { symbol: 'SHOP', name: 'Shopify Inc.' },
+  { symbol: 'SQ', name: 'Block Inc.' },
+  { symbol: 'PYPL', name: 'PayPal Holdings Inc.' },
+  { symbol: 'UBER', name: 'Uber Technologies Inc.' },
+  { symbol: 'LYFT', name: 'Lyft Inc.' },
+  { symbol: 'ABNB', name: 'Airbnb Inc.' },
+  { symbol: 'BKNG', name: 'Booking Holdings Inc.' },
+  { symbol: 'RBLX', name: 'Roblox Corporation' },
+  { symbol: 'SNAP', name: 'Snap Inc.' },
+  { symbol: 'PINS', name: 'Pinterest Inc.' },
+  { symbol: 'SPOT', name: 'Spotify Technology S.A.' },
+  { symbol: 'TTD', name: 'The Trade Desk Inc.' },
+  { symbol: 'TWLO', name: 'Twilio Inc.' },
+  { symbol: 'HUBS', name: 'HubSpot Inc.' },
+  { symbol: 'TEAM', name: 'Atlassian Corporation' },
+  { symbol: 'MDB', name: 'MongoDB Inc.' },
+  { symbol: 'ZM', name: 'Zoom Video Communications Inc.' },
+  { symbol: 'DOCU', name: 'DocuSign Inc.' },
+  { symbol: 'SOFI', name: 'SoFi Technologies Inc.' },
+  { symbol: 'AFRM', name: 'Affirm Holdings Inc.' },
+  { symbol: 'UPST', name: 'Upstart Holdings Inc.' },
+  { symbol: 'RIVN', name: 'Rivian Automotive Inc.' },
+  { symbol: 'LCID', name: 'Lucid Group Inc.' },
+  { symbol: 'NIO', name: 'NIO Inc.' },
+  { symbol: 'XPEV', name: 'XPeng Inc.' },
+  { symbol: 'LI', name: 'Li Auto Inc.' },
+  { symbol: 'BABA', name: 'Alibaba Group Holding Ltd.' },
+  { symbol: 'JD', name: 'JD.com Inc.' },
+  { symbol: 'PDD', name: 'PDD Holdings Inc.' },
+  { symbol: 'SE', name: 'Sea Limited' },
+  { symbol: 'MELI', name: 'MercadoLibre Inc.' },
+  { symbol: 'GME', name: 'GameStop Corp.' },
+  { symbol: 'AMC', name: 'AMC Entertainment Holdings Inc.' },
+  { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
+  { symbol: 'BAC', name: 'Bank of America Corporation' },
+  { symbol: 'GS', name: 'The Goldman Sachs Group Inc.' },
+  { symbol: 'MS', name: 'Morgan Stanley' },
+  { symbol: 'C', name: 'Citigroup Inc.' },
+  { symbol: 'WFC', name: 'Wells Fargo & Company' },
+  { symbol: 'AXP', name: 'American Express Company' },
+  { symbol: 'BLK', name: 'BlackRock Inc.' },
+  { symbol: 'SCHW', name: 'The Charles Schwab Corporation' },
+  { symbol: 'COF', name: 'Capital One Financial Corporation' },
+  { symbol: 'V', name: 'Visa Inc.' },
+  { symbol: 'MA', name: 'Mastercard Inc.' },
+  { symbol: 'UNH', name: 'UnitedHealth Group Inc.' },
+  { symbol: 'JNJ', name: 'Johnson & Johnson' },
+  { symbol: 'PFE', name: 'Pfizer Inc.' },
+  { symbol: 'MRK', name: 'Merck & Co. Inc.' },
+  { symbol: 'ABBV', name: 'AbbVie Inc.' },
+  { symbol: 'LLY', name: 'Eli Lilly and Company' },
+  { symbol: 'BMY', name: 'Bristol-Myers Squibb Company' },
+  { symbol: 'AMGN', name: 'Amgen Inc.' },
+  { symbol: 'GILD', name: 'Gilead Sciences Inc.' },
+  { symbol: 'REGN', name: 'Regeneron Pharmaceuticals Inc.' },
+  { symbol: 'VRTX', name: 'Vertex Pharmaceuticals Inc.' },
+  { symbol: 'MRNA', name: 'Moderna Inc.' },
+  { symbol: 'ABT', name: 'Abbott Laboratories' },
+  { symbol: 'TMO', name: 'Thermo Fisher Scientific Inc.' },
+  { symbol: 'MDT', name: 'Medtronic plc' },
+  { symbol: 'DHR', name: 'Danaher Corporation' },
+  { symbol: 'CVS', name: 'CVS Health Corporation' },
+  { symbol: 'ISRG', name: 'Intuitive Surgical Inc.' },
+  { symbol: 'XOM', name: 'Exxon Mobil Corporation' },
+  { symbol: 'CVX', name: 'Chevron Corporation' },
+  { symbol: 'COP', name: 'ConocoPhillips' },
+  { symbol: 'SLB', name: 'SLB (Schlumberger)' },
+  { symbol: 'EOG', name: 'EOG Resources Inc.' },
+  { symbol: 'OXY', name: 'Occidental Petroleum Corporation' },
+  { symbol: 'DVN', name: 'Devon Energy Corporation' },
+  { symbol: 'WMT', name: 'Walmart Inc.' },
+  { symbol: 'COST', name: 'Costco Wholesale Corporation' },
+  { symbol: 'TGT', name: 'Target Corporation' },
+  { symbol: 'HD', name: 'The Home Depot Inc.' },
+  { symbol: 'LOW', name: "Lowe's Companies Inc." },
+  { symbol: 'MCD', name: "McDonald's Corporation" },
+  { symbol: 'SBUX', name: 'Starbucks Corporation' },
+  { symbol: 'NKE', name: 'NIKE Inc.' },
+  { symbol: 'DIS', name: 'The Walt Disney Company' },
+  { symbol: 'PG', name: 'Procter & Gamble Co.' },
+  { symbol: 'KO', name: 'The Coca-Cola Company' },
+  { symbol: 'PEP', name: 'PepsiCo Inc.' },
+  { symbol: 'PM', name: 'Philip Morris International Inc.' },
+  { symbol: 'MO', name: 'Altria Group Inc.' },
+  { symbol: 'BA', name: 'The Boeing Company' },
+  { symbol: 'CAT', name: 'Caterpillar Inc.' },
+  { symbol: 'DE', name: 'Deere & Company' },
+  { symbol: 'GE', name: 'GE Aerospace' },
+  { symbol: 'HON', name: 'Honeywell International Inc.' },
+  { symbol: 'MMM', name: '3M Company' },
+  { symbol: 'UPS', name: 'United Parcel Service Inc.' },
+  { symbol: 'FDX', name: 'FedEx Corporation' },
+  { symbol: 'RTX', name: 'RTX Corporation' },
+  { symbol: 'LMT', name: 'Lockheed Martin Corporation' },
+  { symbol: 'NOC', name: 'Northrop Grumman Corporation' },
+  { symbol: 'GD', name: 'General Dynamics Corporation' },
+  { symbol: 'VZ', name: 'Verizon Communications Inc.' },
+  { symbol: 'T', name: 'AT&T Inc.' },
+  { symbol: 'TMUS', name: 'T-Mobile US Inc.' },
+  { symbol: 'CMCSA', name: 'Comcast Corporation' },
+  { symbol: 'AMT', name: 'American Tower Corporation' },
+  { symbol: 'PLD', name: 'Prologis Inc.' },
+  { symbol: 'EQIX', name: 'Equinix Inc.' },
+  { symbol: 'O', name: 'Realty Income Corporation' },
+  { symbol: 'SPG', name: 'Simon Property Group Inc.' },
+  { symbol: 'NEE', name: 'NextEra Energy Inc.' },
+  { symbol: 'DUK', name: 'Duke Energy Corporation' },
+  { symbol: 'SO', name: 'The Southern Company' },
+  { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust' },
+  { symbol: 'QQQ', name: 'Invesco QQQ Trust' },
+  { symbol: 'IWM', name: 'iShares Russell 2000 ETF' },
+  { symbol: 'GLD', name: 'SPDR Gold Shares' },
+  { symbol: 'SLV', name: 'iShares Silver Trust' },
+  { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond ETF' },
+  { symbol: 'HYG', name: 'iShares High Yield Corporate Bond ETF' },
+  { symbol: 'XLF', name: 'Financial Select Sector SPDR Fund' },
+  { symbol: 'XLE', name: 'Energy Select Sector SPDR Fund' },
+  { symbol: 'XLK', name: 'Technology Select Sector SPDR Fund' },
+  { symbol: 'XLV', name: 'Health Care Select Sector SPDR Fund' },
+  { symbol: 'VTI', name: 'Vanguard Total Stock Market ETF' },
+  { symbol: 'VOO', name: 'Vanguard S&P 500 ETF' },
+  { symbol: 'BND', name: 'Vanguard Total Bond Market ETF' },
+  { symbol: 'ARKK', name: 'ARK Innovation ETF' },
+  { symbol: 'IAU', name: 'iShares Gold Trust' },
+  { symbol: 'SCHD', name: 'Schwab US Dividend Equity ETF' },
+  { symbol: 'VIG', name: 'Vanguard Dividend Appreciation ETF' },
+  { symbol: 'BRK.B', name: 'Berkshire Hathaway Inc. Class B' },
+  { symbol: 'BRK.A', name: 'Berkshire Hathaway Inc. Class A' },
+  { symbol: 'WBD', name: 'Warner Bros. Discovery Inc.' },
+  { symbol: 'PARA', name: 'Paramount Global' },
+  { symbol: 'NFLX', name: 'Netflix Inc.' },
+  { symbol: 'SONY', name: 'Sony Group Corporation' },
+  { symbol: 'TSM', name: 'Taiwan Semiconductor Manufacturing' },
+  { symbol: 'SAMSUNG', name: 'Samsung Electronics Co. Ltd.' },
+  { symbol: 'RACE', name: 'Ferrari N.V.' },
+  { symbol: 'LVMH', name: 'LVMH Moët Hennessy Louis Vuitton' },
+  { symbol: 'TM', name: 'Toyota Motor Corporation' },
+  { symbol: 'HMC', name: 'Honda Motor Co. Ltd.' },
+  { symbol: 'F', name: 'Ford Motor Company' },
+  { symbol: 'GM', name: 'General Motors Company' },
+  { symbol: 'STLA', name: 'Stellantis N.V.' },
+  { symbol: 'WOLF', name: 'Wolfspeed Inc.' },
+  { symbol: 'ARM', name: 'Arm Holdings plc' },
+  { symbol: 'SMCI', name: 'Super Micro Computer Inc.' },
+  { symbol: 'DELL', name: 'Dell Technologies Inc.' },
+  { symbol: 'HPQ', name: 'HP Inc.' },
+  { symbol: 'HPE', name: 'Hewlett Packard Enterprise Co.' },
+  { symbol: 'ACN', name: 'Accenture plc' },
+  { symbol: 'SAP', name: 'SAP SE' },
+  { symbol: 'INTU', name: 'Intuit Inc.' },
+  { symbol: 'MSCI', name: 'MSCI Inc.' },
+  { symbol: 'SPGI', name: 'S&P Global Inc.' },
+  { symbol: 'MCO', name: "Moody's Corporation" },
+  { symbol: 'ICE', name: 'Intercontinental Exchange Inc.' },
+  { symbol: 'CME', name: 'CME Group Inc.' },
+  { symbol: 'NDAQ', name: 'Nasdaq Inc.' },
+  { symbol: 'USB', name: 'U.S. Bancorp' },
+  { symbol: 'PNC', name: 'PNC Financial Services Group Inc.' },
+  { symbol: 'TFC', name: 'Truist Financial Corporation' },
+]
+
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -457,6 +664,25 @@ export default function Home() {
   const [showGenerateModal, setShowGenerateModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState({ defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist', clockFormat: '12h' as '12h' | '24h' })
+
+  const [tickerSuggestions, setTickerSuggestions] = useState<Array<{ symbol: string; name: string }>>([])
+  const [highlightedIdx, setHighlightedIdx] = useState(-1)
+  const [searchFocused, setSearchFocused] = useState(false)
+  const searchBarRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const [titleWidth, setTitleWidth] = useState<number | undefined>(undefined)
+
+  // ── Health popup ──
+  const [healthData, setHealthData] = useState<HealthData | null>(null)
+  const [healthLoading, setHealthLoading] = useState(false)
+  const [showHealthPopup, setShowHealthPopup] = useState(false)
+  const [healthPopupFadingOut, setHealthPopupFadingOut] = useState(false)
+  const healthHoverEnterTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const healthHoverLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const healthFadeOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sessionStartRef = useRef<number>(Date.now())
+  const [sessionUptimeDisplay, setSessionUptimeDisplay] = useState('00:00:00')
 
   // ── Auth ──
   useEffect(() => {
@@ -536,6 +762,121 @@ export default function Home() {
     localStorage.setItem('sanctum-settings', JSON.stringify(updated))
   }
 
+  // ── Measure title width for search bar ──
+  useEffect(() => {
+    const measure = () => {
+      if (titleRef.current) setTitleWidth(titleRef.current.offsetWidth)
+    }
+    measure()
+    document.fonts.ready.then(measure)
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
+
+  // ── Ticker search autocomplete ──
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchBarRef.current && !searchBarRef.current.contains(e.target as Node)) {
+        setTickerSuggestions([])
+        setHighlightedIdx(-1)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleTickerSearch = (value: string) => {
+    const upper = value.toUpperCase()
+    setSearchTicker(upper)
+    setError('')
+    if (!upper) {
+      setTickerSuggestions([])
+      setHighlightedIdx(-1)
+      return
+    }
+    const matches = TICKER_LIST.filter(t =>
+      t.symbol.startsWith(upper) ||
+      t.name.toLowerCase().includes(upper.toLowerCase())
+    ).slice(0, 5)
+    setTickerSuggestions(matches)
+    setHighlightedIdx(-1)
+  }
+
+  // ── Health checks ──
+  const fetchHealth = useCallback(async () => {
+    setHealthLoading(true)
+    try {
+      const res = await fetch('/api/health')
+      const json = await res.json()
+      setHealthData(json)
+    } catch {
+      setHealthData({ services: [], overallStatus: 'down', checkedAt: Date.now() })
+    } finally {
+      setHealthLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!session) return
+    fetchHealth()
+    const id = setInterval(fetchHealth, 120_000)
+    return () => clearInterval(id)
+  }, [session, fetchHealth])
+
+  // ── Session uptime ──
+  useEffect(() => {
+    const id = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000)
+      const h = Math.floor(elapsed / 3600).toString().padStart(2, '0')
+      const m = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0')
+      const s = (elapsed % 60).toString().padStart(2, '0')
+      setSessionUptimeDisplay(`${h}:${m}:${s}`)
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Health popup hover handlers ──
+  const startFadeOut = useCallback(() => {
+    setHealthPopupFadingOut(true)
+    healthFadeOutTimer.current = setTimeout(() => {
+      setShowHealthPopup(false)
+      setHealthPopupFadingOut(false)
+    }, 150)
+  }, [])
+
+  const cancelFadeOut = useCallback(() => {
+    if (healthFadeOutTimer.current) { clearTimeout(healthFadeOutTimer.current); healthFadeOutTimer.current = null }
+    setHealthPopupFadingOut(false)
+  }, [])
+
+  const handleStatusMouseEnter = useCallback(() => {
+    if (healthHoverLeaveTimer.current) { clearTimeout(healthHoverLeaveTimer.current); healthHoverLeaveTimer.current = null }
+    cancelFadeOut()
+    if (!showHealthPopup) healthHoverEnterTimer.current = setTimeout(() => setShowHealthPopup(true), 200)
+  }, [showHealthPopup, cancelFadeOut])
+
+  const handleStatusMouseLeave = useCallback(() => {
+    if (healthHoverEnterTimer.current) { clearTimeout(healthHoverEnterTimer.current); healthHoverEnterTimer.current = null }
+    healthHoverLeaveTimer.current = setTimeout(startFadeOut, 100)
+  }, [startFadeOut])
+
+  const handlePopupMouseEnter = useCallback(() => {
+    if (healthHoverLeaveTimer.current) { clearTimeout(healthHoverLeaveTimer.current); healthHoverLeaveTimer.current = null }
+    cancelFadeOut()
+  }, [cancelFadeOut])
+
+  const handlePopupMouseLeave = useCallback(() => {
+    startFadeOut()
+  }, [startFadeOut])
+
+  useEffect(() => {
+    return () => {
+      if (healthHoverEnterTimer.current) clearTimeout(healthHoverEnterTimer.current)
+      if (healthHoverLeaveTimer.current) clearTimeout(healthHoverLeaveTimer.current)
+      if (healthFadeOutTimer.current) clearTimeout(healthFadeOutTimer.current)
+    }
+  }, [])
+
   const saveWatchlist = (list: string[]) => {
     setWatchlist(list)
     localStorage.setItem('sanctum-watchlist', JSON.stringify(list))
@@ -561,17 +902,19 @@ export default function Home() {
   }, [])
 
   // ── Generate Report ──
-  const generateReport = async () => {
-    if (!searchTicker.trim()) return
+  const generateReport = async (tickerOverride?: string) => {
+    const resolvedTicker = (tickerOverride || searchTicker).trim().toUpperCase()
+    if (!resolvedTicker) return
     setGenerating(true)
     setError('')
     setShowReport(false)
+    setTickerSuggestions([])
 
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker: searchTicker.trim() }),
+        body: JSON.stringify({ ticker: resolvedTicker }),
       })
 
       if (!res.ok) {
@@ -580,7 +923,7 @@ export default function Home() {
       }
 
       const { data, ai } = await res.json()
-      const ticker = searchTicker.trim().toUpperCase()
+      const ticker = resolvedTicker
 
       // Delete any existing reports for this ticker globally
       await supabase.from('reports').delete().eq('ticker', ticker)
@@ -692,12 +1035,23 @@ export default function Home() {
   }
 
   // ── Main Shell ──
+  const statusColor = healthData?.overallStatus === 'down' ? '#ef4444'
+    : healthData?.overallStatus === 'degraded' ? '#eab308'
+    : '#22c55e'
+  const statusLabel = healthData?.overallStatus === 'down' ? 'TERMINAL DOWN'
+    : healthData?.overallStatus === 'degraded' ? 'TERMINAL DEGRADED'
+    : 'TERMINAL ACTIVE'
+
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', overflowX: 'hidden', maxWidth: '100vw' }}>
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(8px); }
         }
         @keyframes pulse {
           0%, 100% { opacity: 1; }
@@ -714,6 +1068,7 @@ export default function Home() {
           .nav-inner { padding-left: 20px !important; padding-right: 20px !important; }
           .reports-grid { grid-template-columns: 1fr 1fr !important; }
           .reports-grid > div { transform-origin: center center !important; }
+          .nav-status { display: none !important; }
         }
         @media (min-width: 769px) and (max-width: 1200px) {
           .reports-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 10px !important; }
@@ -734,21 +1089,133 @@ export default function Home() {
         borderBottom: '1px solid #1a1a1a',
         height: 56,
       }}>
+        {/* Left: Terminal status + clock — flush to viewport edge */}
+        <div className="nav-status" style={{
+          position: 'absolute', left: 0, top: 0, height: 56,
+          display: 'flex', alignItems: 'center', gap: 0,
+          paddingLeft: 40,
+        }}>
+          {/* Hoverable status indicator with popup */}
+          <div
+            style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, cursor: 'default' }}
+            onMouseEnter={handleStatusMouseEnter}
+            onMouseLeave={handleStatusMouseLeave}
+          >
+            <div style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: statusColor,
+              animation: 'pulse 2s ease-in-out infinite',
+              flexShrink: 0,
+              transition: 'background 0.4s ease',
+            }} />
+            <span style={{
+              fontSize: 11, color: statusColor,
+              letterSpacing: '0.15em',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 500,
+              transition: 'color 0.4s ease',
+            }}>
+              {statusLabel}
+            </span>
+
+            {/* ── Health Popup Panel ── */}
+            {showHealthPopup && (
+              <div
+                onMouseEnter={handlePopupMouseEnter}
+                onMouseLeave={handlePopupMouseLeave}
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 22px)',
+                  left: 0,
+                  width: 268,
+                  background: '#0f0f0f',
+                  border: '1px solid #1a1a1a',
+                  borderRadius: 4,
+                  padding: '14px 16px',
+                  zIndex: 200,
+                  animation: healthPopupFadingOut ? 'fadeOut 0.15s ease forwards' : 'fadeIn 0.15s ease',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+                }}
+              >
+                {/* Header */}
+                {(() => {
+                  const total = healthData?.services.length ?? 0
+                  const active = healthData?.services.filter(s => s.status === 'ok').length ?? 0
+                  const activeColor = active === total && total > 0 ? '#22c55e' : active <= 1 ? '#ef4444' : '#f59e0b'
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <span style={{ fontSize: 9, color: '#444', letterSpacing: '0.2em', fontFamily: "'JetBrains Mono', monospace" }}>
+                        SYSTEM HEALTH
+                      </span>
+                      <span style={{ fontSize: 9, color: activeColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                        {active}/{total} ACTIVE
+                      </span>
+                    </div>
+                  )
+                })()}
+
+                {/* Service rows */}
+                {(healthData?.services ?? []).map(svc => {
+                  const isOnline = svc.status === 'ok'
+                  return (
+                    <div key={svc.name} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '6px 0', borderBottom: '1px solid #111',
+                    }}>
+                      <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+                        {svc.name.toUpperCase()}
+                      </span>
+                      <span style={{ fontSize: 9, color: isOnline ? '#22c55e' : '#ef4444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                        {isOnline ? 'ONLINE' : 'OFFLINE'}
+                      </span>
+                    </div>
+                  )
+                })}
+
+                {/* Footer */}
+                <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button
+                    onClick={e => { e.stopPropagation(); fetchHealth() }}
+                    disabled={healthLoading}
+                    style={{
+                      background: 'none', border: 'none', cursor: healthLoading ? 'default' : 'pointer',
+                      color: healthLoading ? '#2a2a2a' : '#333',
+                      fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
+                      letterSpacing: '0.1em', padding: 0,
+                      transition: 'color 0.15s ease',
+                    }}
+                    onMouseEnter={e => { if (!healthLoading) (e.currentTarget as HTMLButtonElement).style.color = '#fff' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = healthLoading ? '#2a2a2a' : '#333' }}
+                  >
+                    {healthLoading ? 'CHECKING...' : '↺ REFRESH'}
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 9, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                      UPTIME
+                    </span>
+                    <span style={{ fontSize: 9, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
+                      {sessionUptimeDisplay}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <span style={{
+            color: '#333', fontSize: 14,
+            margin: '0 18px',
+            userSelect: 'none',
+            lineHeight: 1,
+          }}>|</span>
+          <Clock format={settings.clockFormat} />
+        </div>
+
         <div className="nav-inner" style={{
           maxWidth: 1400, margin: '0 auto', padding: '0 40px',
           display: 'flex', alignItems: 'center',
           height: '100%', position: 'relative',
         }}>
-          {/* Left: Name */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{
-              fontSize: 14, fontWeight: 500, color: '#fff',
-              letterSpacing: '0.3em', fontFamily: "'DM Sans', sans-serif",
-            }}>
-              SANCTUM SECURITIES
-            </span>
-          </div>
-
           {/* Center: Nav links (desktop) */}
           <div className="nav-links-desktop" style={{
             position: 'absolute', left: '50%', transform: 'translateX(-50%)',
@@ -764,7 +1231,7 @@ export default function Home() {
                     background: 'none', border: 'none', cursor: 'pointer',
                     fontSize: 13, fontWeight: 400,
                     color: isActive ? '#fff' : '#888',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "'JetBrains Mono', monospace",
                     padding: '4px 0',
                     borderBottom: isActive ? '1px solid #fff' : '1px solid transparent',
                     paddingBottom: 2,
@@ -858,7 +1325,7 @@ export default function Home() {
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   fontSize: 14, color: tab === activeTab ? '#fff' : '#888',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "'JetBrains Mono', monospace",
                   padding: '12px 0', textAlign: 'left',
                   borderBottom: '1px solid #1a1a1a',
                 }}
@@ -876,72 +1343,173 @@ export default function Home() {
         {/* ══ DASHBOARD ══ */}
         {activeTab === 'Dashboard' && (
           <div className="main-content" style={{
-            padding: '80px 40px 0',
+            padding: '40px 40px 0',
             maxWidth: '100%', margin: '0 auto',
             animation: 'fadeIn 0.3s ease',
             boxSizing: 'border-box',
             overflowX: 'hidden',
           }}>
             {/* Hero heading */}
-            <h1 className="hero-title" style={{
+            <h1 ref={titleRef} className="hero-title" style={{
               fontSize: 64, fontWeight: 700, color: '#fff',
               letterSpacing: '0.08em',
-              fontFamily: "'Instrument Serif', serif",
+              fontFamily: "'JetBrains Mono', monospace",
               margin: 0, lineHeight: 1,
+              width: 'fit-content',
             }}>
-              SANCTUM
+              sanctum
             </h1>
 
-            {/* Date/time + terminal status */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 20,
-              marginTop: 16, flexWrap: 'wrap',
-            }}>
-              <Clock format={settings.clockFormat} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: '#22c55e',
-                  animation: 'pulse 2s ease-in-out infinite',
-                }} />
-                <span style={{
-                  fontSize: 11, color: '#22c55e',
-                  letterSpacing: '0.15em',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontWeight: 500,
-                }}>
-                  TERMINAL ACTIVE
-                </span>
-              </div>
-            </div>
-
-            {/* Generate button */}
-            <button
-              onClick={() => { setShowGenerateModal(true); setError(''); setSearchTicker('') }}
-              style={{
-                marginTop: 40,
-                background: 'transparent',
-                border: '1px solid #2a2a2a',
-                borderRadius: 4,
-                color: '#fff',
-                fontSize: 14,
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.05em',
-                padding: '14px 28px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget).style.borderColor = '#444'
-                ;(e.currentTarget).style.background = 'rgba(255,255,255,0.03)'
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget).style.borderColor = '#2a2a2a'
-                ;(e.currentTarget).style.background = 'transparent'
-              }}
+            {/* Ticker search bar */}
+            <div
+              ref={searchBarRef}
+              style={{ marginTop: 40, position: 'relative', width: titleWidth ?? 420 }}
             >
-              + GENERATE NEW REPORT
-            </button>
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  border: `1px solid ${searchFocused ? '#444' : '#2a2a2a'}`,
+                  borderRadius: tickerSuggestions.length > 0 && !generating ? '4px 4px 0 0' : '4px',
+                  padding: '12px 16px',
+                  background: searchFocused ? 'rgba(255,255,255,0.02)' : 'transparent',
+                  transition: 'border-color 0.2s ease, background 0.2s ease',
+                }}
+              >
+                {generating ? (
+                  <div style={{
+                    width: 10, height: 10, borderRadius: '50%',
+                    border: '1.5px solid #333',
+                    borderTopColor: '#fff',
+                    animation: 'spin 0.8s linear infinite',
+                    flexShrink: 0,
+                  }} />
+                ) : (
+                  <span style={{
+                    fontSize: 12, color: searchFocused ? '#fff' : '#444',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    flexShrink: 0, userSelect: 'none',
+                    transition: 'color 0.2s ease',
+                  }}>
+                    &gt;
+                  </span>
+                )}
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={generating ? `ANALYZING ${searchTicker}...` : searchTicker}
+                  onChange={e => !generating && handleTickerSearch(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setSearchFocused(false)}
+                  onKeyDown={e => {
+                    if (generating) return
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      setHighlightedIdx(prev => Math.min(prev + 1, tickerSuggestions.length - 1))
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault()
+                      setHighlightedIdx(prev => Math.max(prev - 1, -1))
+                    } else if (e.key === 'Enter') {
+                      if (highlightedIdx >= 0 && tickerSuggestions[highlightedIdx]) {
+                        const t = tickerSuggestions[highlightedIdx]
+                        setSearchTicker(t.symbol)
+                        setTickerSuggestions([])
+                        setHighlightedIdx(-1)
+                        generateReport(t.symbol)
+                      } else if (searchTicker.trim()) {
+                        setTickerSuggestions([])
+                        generateReport()
+                      }
+                    } else if (e.key === 'Escape') {
+                      setTickerSuggestions([])
+                      setHighlightedIdx(-1)
+                    }
+                  }}
+                  placeholder="ENTER TICKER TO GENERATE REPORT"
+                  disabled={generating}
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    color: generating ? '#555' : '#fff',
+                    fontSize: 12,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    letterSpacing: '0.05em',
+                    outline: 'none',
+                    cursor: generating ? 'default' : 'text',
+                  }}
+                />
+              </div>
+
+              {/* Autocomplete suggestions */}
+              {!generating && tickerSuggestions.length > 0 && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0,
+                  background: '#0a0a0a',
+                  border: '1px solid #444',
+                  borderTop: 'none',
+                  borderRadius: '0 0 4px 4px',
+                  zIndex: 50,
+                  overflow: 'hidden',
+                }}>
+                  {tickerSuggestions.map((t, i) => (
+                    <div
+                      key={t.symbol}
+                      onMouseDown={e => {
+                        e.preventDefault()
+                        setSearchTicker(t.symbol)
+                        setTickerSuggestions([])
+                        setHighlightedIdx(-1)
+                        generateReport(t.symbol)
+                      }}
+                      onMouseEnter={() => setHighlightedIdx(i)}
+                      onMouseLeave={() => setHighlightedIdx(-1)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        padding: '10px 16px',
+                        background: highlightedIdx === i ? 'rgba(255,255,255,0.05)' : 'transparent',
+                        cursor: 'pointer',
+                        borderTop: i > 0 ? '1px solid #1a1a1a' : 'none',
+                        transition: 'background 0.1s ease',
+                      }}
+                    >
+                      <span style={{
+                        fontSize: 13,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: highlightedIdx === i ? '#fff' : '#ccc',
+                        letterSpacing: '0.05em',
+                        minWidth: 56,
+                        flexShrink: 0,
+                        transition: 'color 0.1s ease',
+                      }}>
+                        {t.symbol}
+                      </span>
+                      <span style={{
+                        fontSize: 11,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: '#444',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {t.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Inline error */}
+              {error && !generating && (
+                <div style={{
+                  marginTop: 8,
+                  fontSize: 12, color: '#f87171',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.03em',
+                }}>
+                  ERROR: {error}
+                </div>
+              )}
+            </div>
 
             {/* Content: empty state or reports list */}
             {savedReports.length === 0 ? (
@@ -967,7 +1535,7 @@ export default function Home() {
                   fontSize: 12, color: '#555', margin: 0,
                   fontFamily: "'DM Sans', sans-serif",
                 }}>
-                  Click &quot;Generate New Report&quot; to analyze a stock.
+                  Type a ticker above to analyze a stock.
                 </p>
               </div>
             ) : (
@@ -1232,7 +1800,7 @@ export default function Home() {
                 CANCEL
               </button>
               <button
-                onClick={generateReport}
+                onClick={() => generateReport()}
                 disabled={generating || !searchTicker.trim()}
                 style={{
                   background: generating || !searchTicker.trim() ? 'transparent' : 'rgba(255,255,255,0.06)',
