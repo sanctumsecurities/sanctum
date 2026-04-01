@@ -73,13 +73,38 @@ const TICKER_BAND_INSTRUMENTS = [
   { symbol: 'CL=F', label: 'OIL (CL=F)' },
 ]
 
-function TickerBanner() {
+const DEFAULT_BANNER_TICKERS = TICKER_BAND_INSTRUMENTS.map(i => i.symbol)
+
+const BANNER_LABEL_MAP: Record<string, string> = Object.fromEntries(
+  TICKER_BAND_INSTRUMENTS.map(({ symbol, label }) => [symbol, label])
+)
+
+const BANNER_SPEED_SECS = { fast: 45, regular: 60, slow: 75 } as const
+
+const DEFAULT_SETTINGS = {
+  defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist',
+  clockFormat: '12h' as '12h' | '24h',
+  bannerSpeed: 'regular' as 'fast' | 'regular' | 'slow',
+  bannerUpdateFreq: 60_000,
+  bannerTickers: DEFAULT_BANNER_TICKERS,
+}
+
+export type AppSettings = typeof DEFAULT_SETTINGS
+
+interface TickerBannerProps {
+  speed: number
+  updateFreq: number
+  tickers: string[]
+}
+
+function TickerBanner({ speed, updateFreq, tickers }: TickerBannerProps) {
   const [items, setItems] = useState<TickerItem[]>([])
   const [loaded, setLoaded] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/ticker-band')
+      const params = new URLSearchParams({ tickers: tickers.join(',') })
+      const res = await fetch(`/api/ticker-band?${params}`)
       if (!res.ok) return
       const data: TickerItem[] = await res.json()
       if (Array.isArray(data) && data.length > 0) {
@@ -89,17 +114,17 @@ function TickerBanner() {
     } catch (err) {
       if (process.env.NODE_ENV === 'development') console.warn('[TickerBanner] fetch failed:', err)
     }
-  }, [])
+  }, [tickers])
 
   useEffect(() => {
     fetchData()
-    const id = setInterval(fetchData, 60_000)
+    const id = setInterval(fetchData, updateFreq)
     return () => clearInterval(id)
-  }, [fetchData])
+  }, [fetchData, updateFreq])
 
   const displayItems: TickerItem[] = loaded
     ? items
-    : TICKER_BAND_INSTRUMENTS.map(i => ({ ...i, price: 0, change: 0, changePct: 0 }))
+    : tickers.map(symbol => ({ symbol, label: BANNER_LABEL_MAP[symbol] ?? symbol, price: 0, change: 0, changePct: 0 }))
 
   const renderStrip = (keyPrefix: string) =>
     displayItems.flatMap((item) => {
@@ -117,11 +142,7 @@ function TickerBanner() {
           key={`${keyPrefix}-${item.symbol}`}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <span style={{
-            color: '#444', fontSize: 10,
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: '0.12em',
-          }}>
+          <span style={{ color: '#444', fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.12em' }}>
             {item.label}
           </span>
           <span style={{ color: '#888', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
@@ -133,12 +154,7 @@ function TickerBanner() {
         </span>,
         <span
           key={`${keyPrefix}-${item.symbol}-sep`}
-          style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 32,
-            color: '#2a2a2a', fontSize: 10,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, color: '#2a2a2a', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
         >
           ·
         </span>,
@@ -156,7 +172,7 @@ function TickerBanner() {
     }}>
       <div
         className="ticker-scroll"
-        style={{ display: 'inline-flex', whiteSpace: 'nowrap', alignItems: 'center' }}
+        style={{ display: 'inline-flex', whiteSpace: 'nowrap', alignItems: 'center', animationDuration: `${speed}s` }}
       >
         <span style={{ display: 'inline-flex', alignItems: 'center' }}>
           {renderStrip('a')}
@@ -777,7 +793,7 @@ export default function Home() {
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null)
   const [showGenerateModal, setShowGenerateModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [settings, setSettings] = useState({ defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist', clockFormat: '12h' as '12h' | '24h' })
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
 
   const [tickerSuggestions, setTickerSuggestions] = useState<Array<{ symbol: string; name: string }>>([])
   const [highlightedIdx, setHighlightedIdx] = useState(-1)
@@ -864,17 +880,20 @@ export default function Home() {
       const stored = localStorage.getItem('sanctum-settings')
       if (stored) {
         const parsed = JSON.parse(stored)
-        setSettings(prev => ({ ...prev, ...parsed }))
-        if (parsed.defaultTab) setActiveTab(parsed.defaultTab)
+        const merged = { ...DEFAULT_SETTINGS, ...parsed }
+        setSettings(merged)
+        if (merged.defaultTab) setActiveTab(merged.defaultTab)
       }
     } catch {}
   }, [])
 
-  const updateSettings = (patch: Partial<typeof settings>) => {
-    const updated = { ...settings, ...patch }
-    setSettings(updated)
-    localStorage.setItem('sanctum-settings', JSON.stringify(updated))
-  }
+  const updateSettings = useCallback((patch: Partial<AppSettings>) => {
+    setSettings(prev => {
+      const updated = { ...prev, ...patch }
+      localStorage.setItem('sanctum-settings', JSON.stringify(updated))
+      return updated
+    })
+  }, [])
 
   // ── Measure title width for search bar ──
   useEffect(() => {
@@ -1467,7 +1486,11 @@ export default function Home() {
         )}
       </nav>
 
-      <TickerBanner />
+      <TickerBanner
+        speed={BANNER_SPEED_SECS[settings.bannerSpeed]}
+        updateFreq={settings.bannerUpdateFreq}
+        tickers={settings.bannerTickers}
+      />
 
       {/* ── Main Content ── */}
       <main style={{ paddingTop: 84 }}>
