@@ -980,7 +980,7 @@ export default function Home() {
                           onTouchStart={e => { e.stopPropagation() }}
                           style={{
                             position: 'absolute',
-                            top: 8,
+                            bottom: 8,
                             right: 8,
                             background: 'rgba(0,0,0,0.6)',
                             border: 'none',
