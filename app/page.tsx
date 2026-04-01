@@ -305,9 +305,12 @@ export default function Home() {
           .main-content { padding-left: 24px !important; padding-right: 24px !important; }
           .nav-inner { padding-left: 20px !important; padding-right: 20px !important; }
           .reports-grid { grid-template-columns: 1fr 1fr !important; }
+          .reports-grid > div { transform-origin: center center !important; }
         }
         @media (min-width: 769px) and (max-width: 1200px) {
           .reports-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .reports-grid > div:nth-child(3n+1) { transform-origin: left center !important; }
+          .reports-grid > div:nth-child(3n) { transform-origin: right center !important; }
         }
         @media (min-width: 769px) {
           .nav-links-desktop { display: flex !important; }
@@ -614,17 +617,37 @@ export default function Home() {
                           borderRadius: 6,
                           padding: 20,
                           cursor: 'pointer',
-                          transition: 'all 0.2s ease',
+                          transition: 'all 250ms cubic-bezier(0.2, 0, 0, 1)',
                           display: 'flex', flexDirection: 'column',
                           aspectRatio: '1 / 1',
+                          position: 'relative',
+                          transformOrigin: (() => {
+                            const colCount = 4
+                            const col = savedReports.indexOf(report) % colCount
+                            if (col === 0) return 'left center'
+                            if (col === colCount - 1) return 'right center'
+                            return 'center center'
+                          })(),
                         }}
                         onMouseEnter={e => {
-                          (e.currentTarget).style.borderColor = '#2a2a2a'
-                          ;(e.currentTarget).style.background = '#111'
+                          const el = e.currentTarget
+                          el.style.transform = 'scale(1.15)'
+                          el.style.zIndex = '10'
+                          el.style.boxShadow = '0 12px 40px rgba(0,0,0,0.6)'
+                          el.style.borderColor = '#3a3a3a'
+                          el.style.background = '#111'
+                          const highlights = el.querySelector('[data-highlights]') as HTMLElement | null
+                          if (highlights) highlights.style.opacity = '1'
                         }}
                         onMouseLeave={e => {
-                          (e.currentTarget).style.borderColor = '#1a1a1a'
-                          ;(e.currentTarget).style.background = '#0f0f0f'
+                          const el = e.currentTarget
+                          el.style.transform = 'scale(1)'
+                          el.style.zIndex = '0'
+                          el.style.boxShadow = 'none'
+                          el.style.borderColor = '#1a1a1a'
+                          el.style.background = '#0f0f0f'
+                          const highlights = el.querySelector('[data-highlights]') as HTMLElement | null
+                          if (highlights) highlights.style.opacity = '0'
                         }}
                         onClick={() => { setCurrentReport(report); setShowReport(true) }}
                       >
@@ -804,6 +827,41 @@ export default function Home() {
                             )
                           })()}
                         </div>
+
+                        {/* AI Highlights (visible on hover) */}
+                        {report.ai?.overview?.highlights?.length > 0 && (
+                          <div
+                            data-highlights
+                            style={{
+                              opacity: 0,
+                              transition: 'opacity 250ms ease',
+                              marginTop: 10,
+                              marginBottom: 6,
+                            }}
+                          >
+                            <div style={{
+                              fontSize: 10, color: '#444',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              letterSpacing: '0.08em',
+                              marginBottom: 6,
+                            }}>
+                              HIGHLIGHTS
+                            </div>
+                            {(report.ai.overview.highlights as { icon: string; text: string }[]).slice(0, 3).map((h, i) => (
+                              <div key={i} style={{
+                                display: 'flex', gap: 6, alignItems: 'center',
+                                fontSize: 11, color: '#777',
+                                fontFamily: "'DM Sans', sans-serif",
+                                lineHeight: 1.3,
+                                marginBottom: 3,
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              }}>
+                                <span style={{ flexShrink: 0, fontSize: 12 }}>{h.icon}</span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
                         {/* Footer: Date | Created by + Remove */}
                         <div style={{
