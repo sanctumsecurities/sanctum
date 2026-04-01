@@ -30,6 +30,7 @@ export default function Home() {
   const [showReport, setShowReport] = useState(false)
 
   const [watchlist, setWatchlist] = useState<string[]>([])
+  const [chartData, setChartData] = useState<Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null }>>({})
 
   const [currentTime, setCurrentTime] = useState(new Date())
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -76,6 +77,23 @@ export default function Home() {
   useEffect(() => {
     if (session) loadReports()
   }, [session, loadReports])
+
+  // ── Fetch 1-day chart data for report tickers ──
+  useEffect(() => {
+    if (savedReports.length === 0) return
+    const tickers = [...new Set(savedReports.map(r => r.ticker))]
+    tickers.forEach(ticker => {
+      if (chartData[ticker]) return
+      fetch(`/api/chart?ticker=${encodeURIComponent(ticker)}`)
+        .then(r => r.json())
+        .then(res => {
+          if (res.points?.length) {
+            setChartData(prev => ({ ...prev, [ticker]: { points: res.points, afterHours: res.afterHours || null } }))
+          }
+        })
+        .catch(() => {})
+    })
+  }, [savedReports]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load watchlist from localStorage ──
   useEffect(() => {
@@ -283,9 +301,16 @@ export default function Home() {
         @media (max-width: 768px) {
           .nav-links-desktop { display: none !important; }
           .hamburger-btn { display: flex !important; }
-          .hero-title { font-size: 28px !important; letter-spacing: 0.2em !important; }
-          .main-content { padding-left: 20px !important; padding-right: 20px !important; }
+          .hero-title { font-size: 36px !important; letter-spacing: 0.2em !important; }
+          .main-content { padding-left: 24px !important; padding-right: 24px !important; }
           .nav-inner { padding-left: 20px !important; padding-right: 20px !important; }
+          .reports-grid { grid-template-columns: 1fr 1fr !important; }
+          .reports-grid > div { transform-origin: center center !important; }
+        }
+        @media (min-width: 769px) and (max-width: 1200px) {
+          .reports-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .reports-grid > div:nth-child(3n+1) { transform-origin: left center !important; }
+          .reports-grid > div:nth-child(3n) { transform-origin: right center !important; }
         }
         @media (min-width: 769px) {
           .nav-links-desktop { display: flex !important; }
@@ -443,13 +468,13 @@ export default function Home() {
         {/* ══ DASHBOARD ══ */}
         {activeTab === 'Dashboard' && (
           <div className="main-content" style={{
-            padding: '60px 48px 0',
-            maxWidth: 1400, margin: '0 auto',
+            padding: '80px 64px 0',
+            maxWidth: '100%', margin: '0 auto',
             animation: 'fadeIn 0.3s ease',
           }}>
             {/* Hero heading */}
             <h1 className="hero-title" style={{
-              fontSize: 48, fontWeight: 700, color: '#fff',
+              fontSize: 64, fontWeight: 700, color: '#fff',
               letterSpacing: '0.08em',
               fontFamily: "'Instrument Serif', serif",
               margin: 0, lineHeight: 1,
@@ -463,7 +488,7 @@ export default function Home() {
               marginTop: 16, flexWrap: 'wrap',
             }}>
               <span style={{
-                fontSize: 13, color: '#666',
+                fontSize: 14, color: '#666',
                 fontFamily: "'JetBrains Mono', monospace",
               }}>
                 {formattedTime}
@@ -489,15 +514,15 @@ export default function Home() {
             <button
               onClick={() => { setShowGenerateModal(true); setError(''); setSearchTicker('') }}
               style={{
-                marginTop: 32,
+                marginTop: 40,
                 background: 'transparent',
                 border: '1px solid #2a2a2a',
                 borderRadius: 4,
                 color: '#fff',
-                fontSize: 13,
+                fontSize: 14,
                 fontFamily: "'JetBrains Mono', monospace",
                 letterSpacing: '0.05em',
-                padding: '12px 24px',
+                padding: '14px 28px',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
@@ -541,78 +566,430 @@ export default function Home() {
                 </p>
               </div>
             ) : (
-              <div style={{ marginTop: 48, paddingBottom: 60 }}>
+              <div style={{ marginTop: 56, paddingBottom: 60 }}>
                 <div style={{
-                  fontSize: 11, color: '#555',
+                  fontSize: 12, color: '#555',
                   fontFamily: "'JetBrains Mono', monospace",
                   letterSpacing: '0.1em',
-                  marginBottom: 16, paddingBottom: 12,
+                  marginBottom: 24, paddingBottom: 14,
                   borderBottom: '1px solid #1a1a1a',
                 }}>
                   RECENT REPORTS
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {savedReports.map(report => (
-                    <div
-                      key={report.id}
-                      style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        width: '100%', padding: '14px 16px',
-                        background: 'transparent',
-                        borderBottom: '1px solid #111',
-                        transition: 'background 0.15s ease',
-                        fontFamily: "'DM Sans', sans-serif",
-                      }}
-                      onMouseEnter={e => (e.currentTarget).style.background = 'rgba(255,255,255,0.02)'}
-                      onMouseLeave={e => (e.currentTarget).style.background = 'transparent'}
-                    >
+                <div className="reports-grid" style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: 14,
+                }}>
+                  {savedReports.map(report => {
+                    const d = report.data || {}
+                    const sentiment = report.ai?.overview?.sentiment || ''
+                    const price = d.price
+                    const prevClose = d.previousClose
+                    const priceChange = price && prevClose ? price - prevClose : null
+                    const priceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
+                    const isUp = priceChange !== null && priceChange >= 0
+                    const tickerChart = chartData[report.ticker]
+                    const ah = tickerChart?.afterHours || null
+
+                    const formatMktCap = (val: number) => {
+                      if (!val) return '—'
+                      if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`
+                      if (val >= 1e9) return `$${(val / 1e9).toFixed(2)}B`
+                      if (val >= 1e6) return `$${(val / 1e6).toFixed(1)}M`
+                      return `$${val.toLocaleString()}`
+                    }
+
+                    const sentimentColor = sentiment === 'Bullish' ? '#22c55e'
+                      : sentiment === 'Bearish' ? '#f87171' : '#eab308'
+                    const sentimentBg = sentiment === 'Bullish' ? 'rgba(34,197,94,0.08)'
+                      : sentiment === 'Bearish' ? 'rgba(248,113,113,0.08)' : 'rgba(234,179,8,0.08)'
+
+                    const creatorEmail = report.created_by_email || ''
+                    const creatorName = creatorEmail ? creatorEmail.split('@')[0] : 'unknown'
+
+                    return (
                       <div
+                        key={report.id}
+                        style={{
+                          background: '#0f0f0f',
+                          border: '1px solid #1a1a1a',
+                          borderRadius: 6,
+                          padding: 20,
+                          cursor: 'pointer',
+                          transition: 'all 250ms cubic-bezier(0.2, 0, 0, 1)',
+                          display: 'flex', flexDirection: 'column',
+                          aspectRatio: '1 / 1',
+                          position: 'relative',
+                          transformOrigin: (() => {
+                            const colCount = 4
+                            const col = savedReports.indexOf(report) % colCount
+                            if (col === 0) return 'left center'
+                            if (col === colCount - 1) return 'right center'
+                            return 'center center'
+                          })(),
+                        }}
+                        onMouseEnter={e => {
+                          const el = e.currentTarget
+                          el.style.transform = 'scale(1.15)'
+                          el.style.zIndex = '10'
+                          el.style.boxShadow = '0 12px 40px rgba(0,0,0,0.6)'
+                          el.style.borderColor = '#3a3a3a'
+                          el.style.background = '#111'
+                          const highlights = el.querySelector('[data-highlights]') as HTMLElement | null
+                          if (highlights) {
+                            highlights.style.opacity = '1'
+                            highlights.style.maxHeight = '120px'
+                            highlights.style.marginTop = '10px'
+                            highlights.style.marginBottom = '6px'
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          const el = e.currentTarget
+                          el.style.transform = 'scale(1)'
+                          el.style.zIndex = '0'
+                          el.style.boxShadow = 'none'
+                          el.style.borderColor = '#1a1a1a'
+                          el.style.background = '#0f0f0f'
+                          const highlights = el.querySelector('[data-highlights]') as HTMLElement | null
+                          if (highlights) {
+                            highlights.style.opacity = '0'
+                            highlights.style.maxHeight = '0'
+                            highlights.style.marginTop = '0'
+                            highlights.style.marginBottom = '0'
+                          }
+                        }}
                         onClick={() => { setCurrentReport(report); setShowReport(true) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, cursor: 'pointer' }}
                       >
-                        <span style={{
-                          fontSize: 14, fontWeight: 600, color: '#fff',
-                          letterSpacing: '0.05em',
-                          fontFamily: "'JetBrains Mono', monospace",
-                          minWidth: 60,
-                        }}>
-                          {report.ticker}
-                        </span>
-                        <span style={{ fontSize: 13, color: '#555' }}>
-                          {report.data?.name || ''}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div
-                          onClick={() => { setCurrentReport(report); setShowReport(true) }}
-                          style={{
-                            fontSize: 12, color: '#444',
-                            fontFamily: "'JetBrains Mono', monospace",
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {new Date(report.created_at).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', year: 'numeric',
-                          })}
+                        {/* Header: Ticker + Sentiment */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                          <div>
+                            <div style={{
+                              fontSize: 22, fontWeight: 700, color: '#fff',
+                              letterSpacing: '0.05em',
+                              fontFamily: "'JetBrains Mono', monospace",
+                            }}>
+                              {report.ticker}
+                            </div>
+                            <div style={{
+                              fontSize: 13, color: '#555', marginTop: 2,
+                              fontFamily: "'DM Sans', sans-serif",
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              maxWidth: 160,
+                            }}>
+                              {d.name || ''}
+                            </div>
+                          </div>
+                          {sentiment && (() => {
+                            const low = d.fiftyTwoWeekLow
+                            const high = d.fiftyTwoWeekHigh
+                            const buyLow = low && high ? low + (high - low) * 0.05 : null
+                            const buyHigh = low && high ? low + (high - low) * 0.35 : null
+                            return (
+                              <div style={{
+                                flexShrink: 0,
+                                textAlign: 'right',
+                              }}>
+                                <div style={{
+                                  fontSize: 13, fontWeight: 700,
+                                  color: sentimentColor,
+                                  letterSpacing: '0.08em',
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  textTransform: 'uppercase',
+                                }}>
+                                  {sentiment}
+                                </div>
+                                {buyLow != null && buyHigh != null && (
+                                  <div style={{
+                                    fontSize: 9, color: '#666',
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    marginTop: 3,
+                                    letterSpacing: '0.03em',
+                                  }}>
+                                    BUY ${buyLow.toFixed(0)}–${buyHigh.toFixed(0)}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </div>
-                        <button
-                          onClick={() => deleteReport(report.id)}
-                          style={{
-                            background: 'none', border: '1px solid #3a3a3a',
-                            borderRadius: 4, color: '#888', fontSize: 12,
-                            padding: '6px 12px', cursor: 'pointer',
+
+                        {/* Price */}
+                        <div style={{ marginBottom: 14 }}>
+                          <span style={{
+                            fontSize: 26, fontWeight: 600, color: '#fff',
                             fontFamily: "'JetBrains Mono', monospace",
-                            letterSpacing: '0.05em',
-                            transition: 'all 0.2s ease',
+                          }}>
+                            {price ? `$${price.toFixed(2)}` : '—'}
+                          </span>
+                          {priceChange !== null && priceChangePct !== null && (
+                            <span style={{
+                              fontSize: 12, marginLeft: 8,
+                              color: isUp ? '#22c55e' : '#f87171',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontWeight: 500,
+                            }}>
+                              {isUp ? '+' : ''}{priceChange.toFixed(2)} ({isUp ? '+' : ''}{priceChangePct.toFixed(2)}%)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* After Hours / Pre-Market */}
+                        {ah && (
+                          <div style={{ marginBottom: 10, marginTop: -8 }}>
+                            <span style={{
+                              fontSize: 11, color: '#555',
+                              fontFamily: "'JetBrains Mono', monospace",
+                            }}>
+                              {ah.label}:
+                            </span>
+                            <span style={{
+                              fontSize: 11, color: '#999',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              marginLeft: 6,
+                            }}>
+                              ${ah.price.toFixed(2)}
+                            </span>
+                            <span style={{
+                              fontSize: 11,
+                              fontFamily: "'JetBrains Mono', monospace",
+                              marginLeft: 6,
+                              color: ah.change >= 0 ? '#22c55e' : '#f87171',
+                            }}>
+                              {ah.change >= 0 ? '+' : ''}{ah.changePct.toFixed(2)}%
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Metrics Grid */}
+                        <div style={{
+                          display: 'grid', gridTemplateColumns: '1fr 1fr',
+                          gap: '8px', marginBottom: 14,
+                        }}>
+                          {[
+                            { label: 'MKT CAP', value: formatMktCap(d.marketCap) },
+                            { label: 'P/E', value: d.pe ? d.pe.toFixed(2) : '—' },
+                            { label: 'BETA', value: d.beta ? d.beta.toFixed(2) : '—' },
+                            { label: 'DIV YIELD', value: d.dividendYield ? `${(d.dividendYield * 100).toFixed(2)}%` : '—' },
+                          ].map((m, i) => (
+                            <div key={i}>
+                              <div style={{ fontSize: 11, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 4 }}>
+                                {m.label}
+                              </div>
+                              <div style={{ fontSize: 16, color: '#ddd', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>
+                                {m.value}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Sector + Industry */}
+                        {(d.sector || d.industry) && (
+                          <div style={{
+                            fontSize: 11, color: '#444',
+                            fontFamily: "'DM Sans', sans-serif",
+                            marginBottom: 8,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {[d.sector, d.industry].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+
+                        {/* 1-Day Sparkline Chart */}
+                        <div
+                          style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'flex-end', position: 'relative' }}
+                          onMouseMove={e => {
+                            const container = e.currentTarget
+                            const rect = container.getBoundingClientRect()
+                            const crosshair = container.querySelector('[data-crosshair]') as HTMLElement | null
+                            const dot = container.querySelector('[data-dot]') as HTMLElement | null
+                            const tip = container.querySelector('[data-tip]') as HTMLElement | null
+                            const pts = tickerChart?.points
+                            if (!crosshair || !dot || !tip || !pts || pts.length < 2) return
+
+                            const scale = 1.15
+                            const localW = rect.width / scale
+                            const localH = rect.height / scale
+                            const x = (e.clientX - rect.left) / scale
+                            const pct = Math.max(0, Math.min(1, x / localW))
+                            const idx = Math.round(pct * (pts.length - 1))
+                            const pt = pts[idx]
+                            const openPrice = pts[0].price
+                            const changeFromOpen = openPrice > 0 ? ((pt.price - openPrice) / openPrice) * 100 : 0
+                            const isChartUp = pt.price >= openPrice
+
+                            const min = Math.min(...pts.map(p => p.price))
+                            const max = Math.max(...pts.map(p => p.price))
+                            const range = max - min || 1
+                            const padRatio = 2 / 80
+                            const rangeRatio = 76 / 80
+                            const yPct = padRatio + (1 - (pt.price - min) / range) * rangeRatio
+                            const dotY = yPct * localH
+
+                            crosshair.style.left = `${x}px`
+                            crosshair.style.display = 'block'
+                            dot.style.left = `${x}px`
+                            dot.style.top = `${dotY}px`
+                            dot.style.display = 'block'
+                            dot.style.background = isChartUp ? '#22c55e' : '#f87171'
+
+                            const timeStr = new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                            const changeStr = `${changeFromOpen >= 0 ? '+' : ''}${changeFromOpen.toFixed(2)}%`
+                            const changeColor = changeFromOpen >= 0 ? '#22c55e' : '#f87171'
+
+                            tip.innerHTML = `<div style="font-size:10px;color:#555;margin-bottom:2px">${timeStr}</div><div><span style="color:#fff;font-weight:600">$${pt.price.toFixed(2)}</span> <span style="color:${changeColor}">${changeStr}</span></div>`
+                            tip.style.display = 'block'
+                            const tipLeft = Math.max(0, Math.min(x - 50, localW - 110))
+                            tip.style.left = `${tipLeft}px`
                           }}
-                          onMouseEnter={e => { (e.currentTarget).style.color = '#f87171'; (e.currentTarget).style.borderColor = 'rgba(248,113,113,0.3)' }}
-                          onMouseLeave={e => { (e.currentTarget).style.color = '#888'; (e.currentTarget).style.borderColor = '#3a3a3a' }}
+                          onMouseLeave={e => {
+                            const container = e.currentTarget
+                            const crosshair = container.querySelector('[data-crosshair]') as HTMLElement | null
+                            const dot = container.querySelector('[data-dot]') as HTMLElement | null
+                            const tip = container.querySelector('[data-tip]') as HTMLElement | null
+                            if (crosshair) crosshair.style.display = 'none'
+                            if (dot) dot.style.display = 'none'
+                            if (tip) tip.style.display = 'none'
+                          }}
                         >
-                          REMOVE
-                        </button>
+                          {(() => {
+                            const pts = tickerChart?.points
+                            if (!pts || pts.length < 2) return (
+                              <div style={{
+                                width: '100%', height: '100%', minHeight: 40,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <span style={{ fontSize: 10, color: '#222', fontFamily: "'JetBrains Mono', monospace" }}>
+                                  loading chart...
+                                </span>
+                              </div>
+                            )
+                            const prices = pts.map(p => p.price)
+                            const min = Math.min(...prices)
+                            const max = Math.max(...prices)
+                            const range = max - min || 1
+                            const w = 300
+                            const h = 80
+                            const pad = 2
+                            const linePoints = prices.map((v, i) => {
+                              const x = (i / (prices.length - 1)) * w
+                              const y = pad + (1 - (v - min) / range) * (h - pad * 2)
+                              return `${x},${y}`
+                            }).join(' ')
+                            const fillPoints = `0,${h} ${linePoints} ${w},${h}`
+                            const up = prices[prices.length - 1] >= prices[0]
+                            const strokeColor = up ? '#22c55e' : '#f87171'
+                            const fillColor = up ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)'
+                            return (
+                              <svg
+                                viewBox={`0 0 ${w} ${h}`}
+                                preserveAspectRatio="none"
+                                style={{ width: '100%', height: '100%', minHeight: 40, display: 'block' }}
+                              >
+                                <polygon points={fillPoints} fill={fillColor} />
+                                <polyline points={linePoints} fill="none" stroke={strokeColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                              </svg>
+                            )
+                          })()}
+
+                          {/* Crosshair line */}
+                          <div data-crosshair style={{
+                            display: 'none', position: 'absolute', top: 0, bottom: 0, width: 1,
+                            background: 'rgba(255,255,255,0.3)', pointerEvents: 'none',
+                          }} />
+
+                          {/* Snap dot */}
+                          <div data-dot style={{
+                            display: 'none', position: 'absolute', width: 8, height: 8, borderRadius: '50%',
+                            transform: 'translate(-50%, -50%)', pointerEvents: 'none',
+                            boxShadow: '0 0 6px rgba(255,255,255,0.3)',
+                          }} />
+
+                          {/* Tooltip */}
+                          <div data-tip style={{
+                            display: 'none', position: 'absolute', top: -42, width: 110,
+                            background: 'rgba(10,10,10,0.95)', border: '1px solid #1a1a1a',
+                            borderRadius: 8, padding: '6px 8px',
+                            fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
+                            pointerEvents: 'none', zIndex: 5,
+                          }} />
+                        </div>
+
+                        {/* AI Highlights (visible on hover) */}
+                        {report.ai?.overview?.highlights?.length > 0 && (
+                          <div
+                            data-highlights
+                            style={{
+                              opacity: 0,
+                              maxHeight: 0,
+                              overflow: 'hidden',
+                              transition: 'opacity 250ms ease, max-height 250ms ease',
+                              marginTop: 0,
+                              marginBottom: 0,
+                            }}
+                          >
+                            <div style={{
+                              fontSize: 10, color: '#444',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              letterSpacing: '0.08em',
+                              marginBottom: 6,
+                            }}>
+                              HIGHLIGHTS
+                            </div>
+                            {(report.ai.overview.highlights as { icon: string; text: string }[]).slice(0, 3).map((h, i) => (
+                              <div key={i} style={{
+                                display: 'flex', gap: 6, alignItems: 'center',
+                                fontSize: 11, color: '#777',
+                                fontFamily: "'DM Sans', sans-serif",
+                                lineHeight: 1.3,
+                                marginBottom: 3,
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              }}>
+                                <span style={{ flexShrink: 0, fontSize: 12 }}>{h.icon}</span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Footer: Date | Created by + Remove */}
+                        <div style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          paddingTop: 12,
+                          borderTop: '1px solid #1a1a1a',
+                        }}>
+                          <span style={{
+                            fontSize: 11, color: '#333',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            minWidth: 0,
+                          }}>
+                            {new Date(report.created_at).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric',
+                            })}
+                            <span style={{ color: '#222', margin: '0 6px' }}>|</span>
+                            <span style={{ color: '#444' }}>{creatorName}</span>
+                          </span>
+                          <button
+                            onClick={e => { e.stopPropagation(); deleteReport(report.id) }}
+                            style={{
+                              background: 'none', border: '1px solid #1a1a1a',
+                              borderRadius: 3, color: '#444', fontSize: 10,
+                              padding: '4px 10px', cursor: 'pointer',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              letterSpacing: '0.05em',
+                              transition: 'all 0.2s ease',
+                              flexShrink: 0,
+                            }}
+                            onMouseEnter={e => { (e.currentTarget).style.color = '#f87171'; (e.currentTarget).style.borderColor = 'rgba(248,113,113,0.3)' }}
+                            onMouseLeave={e => { (e.currentTarget).style.color = '#444'; (e.currentTarget).style.borderColor = '#1a1a1a' }}
+                          >
+                            REMOVE
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
