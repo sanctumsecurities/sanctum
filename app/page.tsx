@@ -739,16 +739,6 @@ export default function Home() {
           display: 'flex', alignItems: 'center',
           height: '100%', position: 'relative',
         }}>
-          {/* Left: Name */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{
-              fontSize: 14, fontWeight: 500, color: '#fff',
-              letterSpacing: '0.3em', fontFamily: "'DM Sans', sans-serif",
-            }}>
-              SANCTUM SECURITIES
-            </span>
-          </div>
-
           {/* Center: Nav links (desktop) */}
           <div className="nav-links-desktop" style={{
             position: 'absolute', left: '50%', transform: 'translateX(-50%)',
@@ -764,7 +754,7 @@ export default function Home() {
                     background: 'none', border: 'none', cursor: 'pointer',
                     fontSize: 13, fontWeight: 400,
                     color: isActive ? '#fff' : '#888',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "'JetBrains Mono', monospace",
                     padding: '4px 0',
                     borderBottom: isActive ? '1px solid #fff' : '1px solid transparent',
                     paddingBottom: 2,
@@ -858,7 +848,7 @@ export default function Home() {
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   fontSize: 14, color: tab === activeTab ? '#fff' : '#888',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "'JetBrains Mono', monospace",
                   padding: '12px 0', textAlign: 'left',
                   borderBottom: '1px solid #1a1a1a',
                 }}
@@ -876,7 +866,7 @@ export default function Home() {
         {/* ══ DASHBOARD ══ */}
         {activeTab === 'Dashboard' && (
           <div className="main-content" style={{
-            padding: '80px 40px 0',
+            padding: '40px 40px 0',
             maxWidth: '100%', margin: '0 auto',
             animation: 'fadeIn 0.3s ease',
             boxSizing: 'border-box',
@@ -886,10 +876,10 @@ export default function Home() {
             <h1 className="hero-title" style={{
               fontSize: 64, fontWeight: 700, color: '#fff',
               letterSpacing: '0.08em',
-              fontFamily: "'Instrument Serif', serif",
+              fontFamily: "'JetBrains Mono', monospace",
               margin: 0, lineHeight: 1,
             }}>
-              SANCTUM
+              sanctum
             </h1>
 
             {/* Date/time + terminal status */}
