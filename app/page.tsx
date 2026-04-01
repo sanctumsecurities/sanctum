@@ -102,9 +102,11 @@ function TickerBanner({ speed, updateFreq, tickers }: TickerBannerProps) {
   const [items, setItems] = useState<TickerItem[]>([])
   const [loaded, setLoaded] = useState(false)
 
+  const tickersKey = tickers.join(',')
+
   const fetchData = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ tickers: tickers.join(',') })
+      const params = new URLSearchParams({ tickers: tickersKey })
       const res = await fetch(`/api/ticker-band?${params}`)
       if (!res.ok) return
       const data: TickerItem[] = await res.json()
@@ -115,7 +117,7 @@ function TickerBanner({ speed, updateFreq, tickers }: TickerBannerProps) {
     } catch (err) {
       if (process.env.NODE_ENV === 'development') console.warn('[TickerBanner] fetch failed:', err)
     }
-  }, [tickers])
+  }, [tickersKey])
 
   useEffect(() => {
     fetchData()
@@ -915,9 +917,11 @@ export default function Home() {
     setSettings(prev => {
       const updated = { ...prev, ...patch }
       localStorage.setItem('sanctum-settings', JSON.stringify(updated))
-      supabase.from('user_settings')
-        .upsert({ user_id: session?.user?.id, settings: updated, updated_at: new Date().toISOString() })
-        .then(() => {})
+      if (session?.user?.id) {
+        supabase.from('user_settings')
+          .upsert({ user_id: session.user.id, settings: updated, updated_at: new Date().toISOString() })
+          .then(() => {})
+      }
       return updated
     })
   }, [session?.user?.id])
