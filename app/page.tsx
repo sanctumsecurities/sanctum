@@ -102,7 +102,7 @@ function TickerBanner() {
     : TICKER_BAND_INSTRUMENTS.map(i => ({ ...i, price: 0, change: 0, changePct: 0 }))
 
   const renderStrip = (keyPrefix: string) =>
-    displayItems.map((item) => {
+    displayItems.flatMap((item) => {
       const isUp = item.change >= 0
       const color = loaded ? (isUp ? '#22c55e' : '#f87171') : '#333'
       const sign = item.change > 0 ? '+' : ''
@@ -112,10 +112,10 @@ function TickerBanner() {
         : '\u2014'
       const arrow = loaded ? (isUp ? '\u25b2' : '\u25bc') : ''
 
-      return (
+      return [
         <span
           key={`${keyPrefix}-${item.symbol}`}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, paddingRight: 28 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
           <span style={{
             color: '#444', fontSize: 10,
@@ -130,11 +130,19 @@ function TickerBanner() {
           <span style={{ color, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
             {arrow ? `${arrow} ` : ''}{pctStr}
           </span>
-          <span style={{ color: '#2a2a2a', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
-            ·
-          </span>
-        </span>
-      )
+        </span>,
+        <span
+          key={`${keyPrefix}-${item.symbol}-sep`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 32,
+            color: '#2a2a2a', fontSize: 10,
+            fontFamily: "'JetBrains Mono', monospace",
+          }}
+        >
+          ·
+        </span>,
+      ]
     })
 
   return (
@@ -1172,7 +1180,7 @@ export default function Home() {
           to { transform: translateX(-50%); }
         }
         .ticker-scroll {
-          animation: tickerScroll 40s linear infinite;
+          animation: tickerScroll 60s linear infinite;
         }
         .ticker-scroll:hover {
           animation-play-state: paused;
