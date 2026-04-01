@@ -152,6 +152,9 @@ export default function Home() {
       const { data, ai } = await res.json()
       const ticker = searchTicker.trim().toUpperCase()
 
+      // Delete any existing reports for this ticker globally
+      await supabase.from('reports').delete().eq('ticker', ticker)
+
       const { data: inserted, error: insertError } = await supabase
         .from('reports')
         .insert({
