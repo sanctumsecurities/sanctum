@@ -764,6 +764,7 @@ export default function Home() {
 
   // ── Measure title width for search bar ──
   useEffect(() => {
+    if (loading) return
     const measure = () => {
       if (titleRef.current) setTitleWidth(titleRef.current.offsetWidth)
     }
@@ -771,7 +772,7 @@ export default function Home() {
     document.fonts.ready.then(measure)
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [])
+  }, [loading])
 
   // ── Ticker search autocomplete ──
   useEffect(() => {
