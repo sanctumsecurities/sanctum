@@ -1430,7 +1430,7 @@ export default function Home() {
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
           <div className="mobile-menu" style={{
-            position: 'absolute', top: 56, left: 0, right: 0,
+            position: 'absolute', top: 84, left: 0, right: 0,
             background: '#0a0a0a', borderBottom: '1px solid #1a1a1a',
             padding: '8px 20px 16px',
             display: 'flex', flexDirection: 'column', gap: 0,
@@ -1454,8 +1454,10 @@ export default function Home() {
         )}
       </nav>
 
+      <TickerBanner />
+
       {/* ── Main Content ── */}
-      <main style={{ paddingTop: 56 }}>
+      <main style={{ paddingTop: 84 }}>
 
         {/* ══ DASHBOARD ══ */}
         {activeTab === 'Dashboard' && (
