@@ -34,6 +34,8 @@ export default function Home() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [settings, setSettings] = useState({ defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist', clockFormat: '12h' as '12h' | '24h' })
 
   // ── Live Clock ──
   useEffect(() => {
@@ -80,6 +82,24 @@ export default function Home() {
     const stored = localStorage.getItem('sanctum-watchlist')
     if (stored) setWatchlist(JSON.parse(stored))
   }, [])
+
+  // ── Load settings from localStorage ──
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('sanctum-settings')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        setSettings(prev => ({ ...prev, ...parsed }))
+        if (parsed.defaultTab) setActiveTab(parsed.defaultTab)
+      }
+    } catch {}
+  }, [])
+
+  const updateSettings = (patch: Partial<typeof settings>) => {
+    const updated = { ...settings, ...patch }
+    setSettings(updated)
+    localStorage.setItem('sanctum-settings', JSON.stringify(updated))
+  }
 
   const saveWatchlist = (list: string[]) => {
     setWatchlist(list)
@@ -242,6 +262,7 @@ export default function Home() {
     weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
   }) + ', ' + currentTime.toLocaleTimeString('en-US', {
     hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: settings.clockFormat === '12h',
   })
 
   // ── Main Shell ──
@@ -333,6 +354,7 @@ export default function Home() {
                 color: '#888', padding: 4, display: 'flex', alignItems: 'center',
                 transition: 'color 0.2s ease',
               }}
+              onClick={() => setShowSettings(true)}
               onMouseEnter={e => (e.currentTarget).style.color = '#fff'}
               onMouseLeave={e => (e.currentTarget).style.color = '#888'}
               aria-label="Settings"
@@ -742,7 +764,7 @@ export default function Home() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{
-                fontSize: 14, color: '#22c55e',
+                fontSize: 14, color: '#fff',
                 fontFamily: "'JetBrains Mono', monospace",
               }}>
                 &gt;
@@ -784,11 +806,11 @@ export default function Home() {
                 <div style={{
                   width: 12, height: 12, borderRadius: '50%',
                   border: '2px solid #1a1a1a',
-                  borderTopColor: '#22c55e',
+                  borderTopColor: '#fff',
                   animation: 'spin 0.8s linear infinite',
                 }} />
                 <span style={{
-                  fontSize: 12, color: '#22c55e',
+                  fontSize: 12, color: '#fff',
                   fontFamily: "'JetBrains Mono', monospace",
                   animation: 'pulse 1.5s ease-in-out infinite',
                 }}>
@@ -828,10 +850,10 @@ export default function Home() {
                 onClick={generateReport}
                 disabled={generating || !searchTicker.trim()}
                 style={{
-                  background: generating || !searchTicker.trim() ? 'transparent' : 'rgba(34,197,94,0.08)',
-                  border: `1px solid ${generating || !searchTicker.trim() ? '#1a1a1a' : 'rgba(34,197,94,0.4)'}`,
+                  background: generating || !searchTicker.trim() ? 'transparent' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${generating || !searchTicker.trim() ? '#1a1a1a' : 'rgba(255,255,255,0.3)'}`,
                   borderRadius: 4,
-                  color: generating || !searchTicker.trim() ? '#555' : '#22c55e',
+                  color: generating || !searchTicker.trim() ? '#555' : '#fff',
                   fontSize: 12, padding: '8px 20px',
                   fontFamily: "'JetBrains Mono', monospace",
                   letterSpacing: '0.05em',
@@ -840,6 +862,235 @@ export default function Home() {
                 }}
               >
                 {generating ? 'GENERATING...' : 'GENERATE'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Settings Modal ── */}
+      {showSettings && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.15s ease',
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setShowSettings(false) }}
+        >
+          <div style={{
+            background: '#0a0a0a',
+            border: '1px solid #1a1a1a',
+            borderRadius: 4,
+            padding: 32,
+            width: '100%', maxWidth: 420,
+            margin: '0 20px',
+          }}>
+            <div style={{
+              fontSize: 11, color: '#555',
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.15em',
+              marginBottom: 24,
+            }}>
+              SETTINGS
+            </div>
+
+            {/* ── Preferences ── */}
+            <div style={{
+              fontSize: 10, color: '#444',
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.15em',
+              marginBottom: 16,
+            }}>
+              PREFERENCES
+            </div>
+
+            {/* Default Tab */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{
+                fontSize: 12, color: '#888',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.05em',
+                marginBottom: 8,
+              }}>
+                DEFAULT TAB
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['Dashboard', 'Watchlist'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => updateSettings({ defaultTab: tab })}
+                    style={{
+                      background: settings.defaultTab === tab ? 'rgba(255,255,255,0.06)' : 'transparent',
+                      border: `1px solid ${settings.defaultTab === tab ? 'rgba(255,255,255,0.3)' : '#1a1a1a'}`,
+                      borderRadius: 4,
+                      color: settings.defaultTab === tab ? '#fff' : '#555',
+                      fontSize: 12, padding: '6px 14px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      letterSpacing: '0.05em',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {tab.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Clock Format */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{
+                fontSize: 12, color: '#888',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.05em',
+                marginBottom: 8,
+              }}>
+                CLOCK FORMAT
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['12h', '24h'] as const).map(fmt => (
+                  <button
+                    key={fmt}
+                    onClick={() => updateSettings({ clockFormat: fmt })}
+                    style={{
+                      background: settings.clockFormat === fmt ? 'rgba(255,255,255,0.06)' : 'transparent',
+                      border: `1px solid ${settings.clockFormat === fmt ? 'rgba(255,255,255,0.3)' : '#1a1a1a'}`,
+                      borderRadius: 4,
+                      color: settings.clockFormat === fmt ? '#fff' : '#555',
+                      fontSize: 12, padding: '6px 14px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      letterSpacing: '0.05em',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {fmt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ borderBottom: '1px solid #1a1a1a', margin: '0 0 24px' }} />
+
+            {/* ── Data ── */}
+            <div style={{
+              fontSize: 10, color: '#444',
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.15em',
+              marginBottom: 16,
+            }}>
+              DATA
+            </div>
+
+            {/* Clear Watchlist */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginBottom: 24,
+            }}>
+              <div>
+                <div style={{
+                  fontSize: 12, color: '#888',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.05em',
+                }}>
+                  CLEAR WATCHLIST
+                </div>
+                <div style={{
+                  fontSize: 11, color: '#444',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  marginTop: 2,
+                }}>
+                  {watchlist.length} item{watchlist.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+              <button
+                onClick={() => { saveWatchlist([]); }}
+                disabled={watchlist.length === 0}
+                style={{
+                  background: watchlist.length > 0 ? 'rgba(248,113,113,0.08)' : 'transparent',
+                  border: `1px solid ${watchlist.length > 0 ? 'rgba(248,113,113,0.3)' : '#1a1a1a'}`,
+                  borderRadius: 4,
+                  color: watchlist.length > 0 ? '#f87171' : '#333',
+                  fontSize: 12, padding: '6px 14px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.05em',
+                  cursor: watchlist.length > 0 ? 'pointer' : 'default',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                CLEAR
+              </button>
+            </div>
+
+            <div style={{ borderBottom: '1px solid #1a1a1a', margin: '0 0 24px' }} />
+
+            {/* ── Account ── */}
+            <div style={{
+              fontSize: 10, color: '#444',
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.15em',
+              marginBottom: 16,
+            }}>
+              ACCOUNT
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{
+                fontSize: 11, color: '#555',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.05em',
+                marginBottom: 4,
+              }}>
+                SIGNED IN AS
+              </div>
+              <div style={{
+                fontSize: 13, color: '#888',
+                fontFamily: "'JetBrains Mono', monospace",
+              }}>
+                {session?.user?.email || '—'}
+              </div>
+            </div>
+
+            <button
+              onClick={() => supabase.auth.signOut()}
+              style={{
+                background: 'transparent',
+                border: '1px solid #2a2a2a',
+                borderRadius: 4,
+                color: '#888',
+                fontSize: 12, padding: '8px 20px',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.05em',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                width: '100%',
+              }}
+              onMouseEnter={e => { (e.currentTarget).style.color = '#f87171'; (e.currentTarget).style.borderColor = 'rgba(248,113,113,0.3)' }}
+              onMouseLeave={e => { (e.currentTarget).style.color = '#888'; (e.currentTarget).style.borderColor = '#2a2a2a' }}
+            >
+              SIGN OUT
+            </button>
+
+            <div style={{ borderBottom: '1px solid #1a1a1a', margin: '24px 0' }} />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowSettings(false)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #1a1a1a',
+                  borderRadius: 4, color: '#555',
+                  fontSize: 12, padding: '8px 20px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.05em',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                CLOSE
               </button>
             </div>
           </div>
