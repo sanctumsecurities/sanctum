@@ -714,6 +714,7 @@ export default function Home() {
           .nav-inner { padding-left: 20px !important; padding-right: 20px !important; }
           .reports-grid { grid-template-columns: 1fr 1fr !important; }
           .reports-grid > div { transform-origin: center center !important; }
+          .nav-status { display: none !important; }
         }
         @media (min-width: 769px) and (max-width: 1200px) {
           .reports-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 10px !important; }
@@ -734,6 +735,37 @@ export default function Home() {
         borderBottom: '1px solid #1a1a1a',
         height: 56,
       }}>
+        {/* Left: Terminal status + clock — flush to viewport edge */}
+        <div className="nav-status" style={{
+          position: 'absolute', left: 0, top: 0, height: 56,
+          display: 'flex', alignItems: 'center', gap: 0,
+          paddingLeft: 40,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: '#22c55e',
+              animation: 'pulse 2s ease-in-out infinite',
+              flexShrink: 0,
+            }} />
+            <span style={{
+              fontSize: 11, color: '#22c55e',
+              letterSpacing: '0.15em',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 500,
+            }}>
+              TERMINAL ACTIVE
+            </span>
+          </div>
+          <span style={{
+            color: '#333', fontSize: 14,
+            margin: '0 10px',
+            userSelect: 'none',
+            lineHeight: 1,
+          }}>|</span>
+          <Clock format={settings.clockFormat} />
+        </div>
+
         <div className="nav-inner" style={{
           maxWidth: 1400, margin: '0 auto', padding: '0 40px',
           display: 'flex', alignItems: 'center',
@@ -881,29 +913,6 @@ export default function Home() {
             }}>
               sanctum
             </h1>
-
-            {/* Date/time + terminal status */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 20,
-              marginTop: 16, flexWrap: 'wrap',
-            }}>
-              <Clock format={settings.clockFormat} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: '#22c55e',
-                  animation: 'pulse 2s ease-in-out infinite',
-                }} />
-                <span style={{
-                  fontSize: 11, color: '#22c55e',
-                  letterSpacing: '0.15em',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontWeight: 500,
-                }}>
-                  TERMINAL ACTIVE
-                </span>
-              </div>
-            </div>
 
             {/* Generate button */}
             <button
