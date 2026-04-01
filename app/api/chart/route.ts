@@ -32,14 +32,14 @@ export async function GET(req: NextRequest) {
     let afterHours: { price: number; change: number; changePct: number; label: string } | null = null
     const marketState = (quoteResult as any).marketState as string | undefined
 
-    if (marketState === 'POST' || marketState === 'CLOSED') {
+    if (marketState && (marketState.includes('POST') || marketState === 'CLOSED')) {
       const postPrice = (quoteResult as any).postMarketPrice as number | undefined
       const postChange = (quoteResult as any).postMarketChange as number | undefined
       const postChangePct = (quoteResult as any).postMarketChangePercent as number | undefined
       if (postPrice != null && postChange != null && postChangePct != null) {
         afterHours = { price: postPrice, change: postChange, changePct: postChangePct, label: 'After Hours' }
       }
-    } else if (marketState === 'PRE') {
+    } else if (marketState && marketState.includes('PRE')) {
       const prePrice = (quoteResult as any).preMarketPrice as number | undefined
       const preChange = (quoteResult as any).preMarketChange as number | undefined
       const preChangePct = (quoteResult as any).preMarketChangePercent as number | undefined
