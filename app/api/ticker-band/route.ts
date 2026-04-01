@@ -47,9 +47,16 @@ async function fetchInstrument(
 }
 
 export async function GET() {
-  const results = await Promise.all(
-    INSTRUMENTS.map(({ symbol, label }) => fetchInstrument(symbol, label))
-  )
-  const items = results.filter(Boolean)
-  return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } })
+  try {
+    const results = await Promise.all(
+      INSTRUMENTS.map(({ symbol, label }) => fetchInstrument(symbol, label))
+    )
+    const items = results.filter((r): r is NonNullable<typeof r> => r !== null)
+    return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } })
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || 'Failed to fetch ticker data' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } }
+    )
+  }
 }
