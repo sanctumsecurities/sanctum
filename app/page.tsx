@@ -787,9 +787,59 @@ export default function Home() {
                         )}
 
                         {/* 1-Day Sparkline Chart */}
-                        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'flex-end' }}>
+                        <div
+                          style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'flex-end', position: 'relative' }}
+                          onMouseMove={e => {
+                            const container = e.currentTarget
+                            const rect = container.getBoundingClientRect()
+                            const crosshair = container.querySelector('[data-crosshair]') as HTMLElement | null
+                            const dot = container.querySelector('[data-dot]') as HTMLElement | null
+                            const tip = container.querySelector('[data-tip]') as HTMLElement | null
+                            const pts = tickerChart?.points
+                            if (!crosshair || !dot || !tip || !pts || pts.length < 2) return
+
+                            const x = e.clientX - rect.left
+                            const pct = Math.max(0, Math.min(1, x / rect.width))
+                            const idx = Math.round(pct * (pts.length - 1))
+                            const pt = pts[idx]
+                            const openPrice = pts[0].price
+                            const changeFromOpen = openPrice > 0 ? ((pt.price - openPrice) / openPrice) * 100 : 0
+                            const isChartUp = pt.price >= openPrice
+
+                            const min = Math.min(...pts.map(p => p.price))
+                            const max = Math.max(...pts.map(p => p.price))
+                            const range = max - min || 1
+                            const yPct = 1 - (pt.price - min) / range
+                            const dotY = yPct * rect.height
+
+                            crosshair.style.left = `${x}px`
+                            crosshair.style.display = 'block'
+                            dot.style.left = `${x}px`
+                            dot.style.top = `${dotY}px`
+                            dot.style.display = 'block'
+                            dot.style.background = isChartUp ? '#22c55e' : '#f87171'
+
+                            const timeStr = new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                            const changeStr = `${changeFromOpen >= 0 ? '+' : ''}${changeFromOpen.toFixed(2)}%`
+                            const changeColor = changeFromOpen >= 0 ? '#22c55e' : '#f87171'
+
+                            tip.innerHTML = `<div style="font-size:10px;color:#555;margin-bottom:2px">${timeStr}</div><div><span style="color:#fff;font-weight:600">$${pt.price.toFixed(2)}</span> <span style="color:${changeColor}">${changeStr}</span></div>`
+                            tip.style.display = 'block'
+                            const tipLeft = Math.max(0, Math.min(x - 50, rect.width - 110))
+                            tip.style.left = `${tipLeft}px`
+                          }}
+                          onMouseLeave={e => {
+                            const container = e.currentTarget
+                            const crosshair = container.querySelector('[data-crosshair]') as HTMLElement | null
+                            const dot = container.querySelector('[data-dot]') as HTMLElement | null
+                            const tip = container.querySelector('[data-tip]') as HTMLElement | null
+                            if (crosshair) crosshair.style.display = 'none'
+                            if (dot) dot.style.display = 'none'
+                            if (tip) tip.style.display = 'none'
+                          }}
+                        >
                           {(() => {
-                            const pts = chartData[report.ticker]?.points?.map(p => p.price)
+                            const pts = tickerChart?.points
                             if (!pts || pts.length < 2) return (
                               <div style={{
                                 width: '100%', height: '100%', minHeight: 40,
@@ -800,19 +850,20 @@ export default function Home() {
                                 </span>
                               </div>
                             )
-                            const min = Math.min(...pts)
-                            const max = Math.max(...pts)
+                            const prices = pts.map(p => p.price)
+                            const min = Math.min(...prices)
+                            const max = Math.max(...prices)
                             const range = max - min || 1
                             const w = 300
                             const h = 80
                             const pad = 2
-                            const linePoints = pts.map((v, i) => {
-                              const x = (i / (pts.length - 1)) * w
+                            const linePoints = prices.map((v, i) => {
+                              const x = (i / (prices.length - 1)) * w
                               const y = pad + (1 - (v - min) / range) * (h - pad * 2)
                               return `${x},${y}`
                             }).join(' ')
                             const fillPoints = `0,${h} ${linePoints} ${w},${h}`
-                            const up = pts[pts.length - 1] >= pts[0]
+                            const up = prices[prices.length - 1] >= prices[0]
                             const strokeColor = up ? '#22c55e' : '#f87171'
                             const fillColor = up ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)'
                             return (
@@ -826,6 +877,28 @@ export default function Home() {
                               </svg>
                             )
                           })()}
+
+                          {/* Crosshair line */}
+                          <div data-crosshair style={{
+                            display: 'none', position: 'absolute', top: 0, bottom: 0, width: 1,
+                            background: 'rgba(255,255,255,0.3)', pointerEvents: 'none',
+                          }} />
+
+                          {/* Snap dot */}
+                          <div data-dot style={{
+                            display: 'none', position: 'absolute', width: 8, height: 8, borderRadius: '50%',
+                            transform: 'translate(-50%, -50%)', pointerEvents: 'none',
+                            boxShadow: '0 0 6px rgba(255,255,255,0.3)',
+                          }} />
+
+                          {/* Tooltip */}
+                          <div data-tip style={{
+                            display: 'none', position: 'absolute', top: -42, width: 110,
+                            background: 'rgba(10,10,10,0.95)', border: '1px solid #1a1a1a',
+                            borderRadius: 8, padding: '6px 8px',
+                            fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
+                            pointerEvents: 'none', zIndex: 5,
+                          }} />
                         </div>
 
                         {/* AI Highlights (visible on hover) */}
