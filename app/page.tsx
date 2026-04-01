@@ -1371,8 +1371,14 @@ export default function Home() {
             })}
           </div>
 
-          {/* Right: Icons */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
+        </div>
+
+        {/* Right: Icons — flush to viewport edge */}
+        <div style={{
+          position: 'absolute', right: 0, top: 0, height: 56,
+          display: 'flex', alignItems: 'center',
+          paddingRight: 40, gap: 12,
+        }}>
             <button
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
@@ -1433,7 +1439,6 @@ export default function Home() {
               </svg>
             </button>
           </div>
-        </div>
 
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
