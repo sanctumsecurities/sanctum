@@ -150,10 +150,10 @@ function TickerBanner() {
         className="ticker-scroll"
         style={{ display: 'inline-flex', whiteSpace: 'nowrap', alignItems: 'center' }}
       >
-        <span style={{ display: 'inline-flex', alignItems: 'center', paddingLeft: 20 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
           {renderStrip('a')}
         </span>
-        <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', paddingLeft: 20 }}>
+        <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center' }}>
           {renderStrip('b')}
         </span>
       </div>

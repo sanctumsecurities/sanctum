@@ -28,9 +28,7 @@ async function fetchInstrument(
 ): Promise<{ symbol: string; label: string; price: number; change: number; changePct: number } | null> {
   try {
     const quote = await withTimeout(
-      yahooFinance.quote(symbol, {
-        fields: ['regularMarketPrice', 'regularMarketChange', 'regularMarketChangePercent'] as any,
-      }),
+      yahooFinance.quote(symbol),
       5000
     ) as any
     if (quote?.regularMarketPrice == null) return null
