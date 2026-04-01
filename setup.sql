@@ -13,6 +13,12 @@ create table if not exists reports (
 -- Allow authenticated users to insert and read all reports
 alter table reports enable row level security;
 
+-- Drop existing policies if they exist (prevents error 42710)
+drop policy if exists "Anyone can read reports" on reports;
+drop policy if exists "Authenticated users can insert reports" on reports;
+drop policy if exists "Authenticated users can delete reports" on reports;
+
+-- Recreate policies
 create policy "Anyone can read reports"
   on reports for select
   using (true);
