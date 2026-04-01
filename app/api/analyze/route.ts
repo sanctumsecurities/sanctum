@@ -3,6 +3,7 @@ import YahooFinance from 'yahoo-finance2'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] })
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
 function safeNum(val: any, fallback = 0): number {
   if (val === undefined || val === null || isNaN(val)) return fallback
@@ -46,19 +47,20 @@ export async function POST(req: NextRequest) {
 
     const sharesOutstanding = safeNum(keyStats.sharesOutstanding) || safeNum(price.sharesOutstanding) || 1
 
+    // Sort income history once (ascending by date)
+    const sortedIncome = [...incomeHistory].sort(
+      (a: any, b: any) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime()
+    )
+
     // Build revenue + net income history (annual)
-    const revenue = incomeHistory
-      .sort((a: any, b: any) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
-      .map((stmt: any) => ({
-        year: new Date(stmt.endDate).getFullYear().toString(),
-        revenue: parseFloat((safeNum(stmt.totalRevenue) / 1e9).toFixed(1)),
-        netIncome: parseFloat((safeNum(stmt.netIncome) / 1e9).toFixed(1)),
-      }))
+    const revenue = sortedIncome.map((stmt: any) => ({
+      year: new Date(stmt.endDate).getFullYear().toString(),
+      revenue: parseFloat((safeNum(stmt.totalRevenue) / 1e9).toFixed(1)),
+      netIncome: parseFloat((safeNum(stmt.netIncome) / 1e9).toFixed(1)),
+    }))
 
     // Build EPS history from income / shares
-    const eps = incomeHistory
-      .sort((a: any, b: any) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
-      .map((stmt: any) => ({
+    const eps = sortedIncome.map((stmt: any) => ({
         year: new Date(stmt.endDate).getFullYear().toString(),
         eps: parseFloat((safeNum(stmt.netIncome) / sharesOutstanding).toFixed(2)),
       }))
@@ -106,7 +108,6 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 2: AI Generation ──
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const financialContext = JSON.stringify({

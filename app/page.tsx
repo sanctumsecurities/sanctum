@@ -16,6 +16,14 @@ interface SavedReport {
   created_at: string
 }
 
+const formatMktCap = (val: number) => {
+  if (!val) return '\u2014'
+  if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`
+  if (val >= 1e9) return `$${(val / 1e9).toFixed(2)}B`
+  if (val >= 1e6) return `$${(val / 1e6).toFixed(1)}M`
+  return `$${val.toLocaleString()}`
+}
+
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -581,18 +589,8 @@ export default function Home() {
                     const tickerChart = chartData[report.ticker]
                     const ah = tickerChart?.afterHours || null
 
-                    const formatMktCap = (val: number) => {
-                      if (!val) return '—'
-                      if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`
-                      if (val >= 1e9) return `$${(val / 1e9).toFixed(2)}B`
-                      if (val >= 1e6) return `$${(val / 1e6).toFixed(1)}M`
-                      return `$${val.toLocaleString()}`
-                    }
-
                     const sentimentColor = sentiment === 'Bullish' ? '#22c55e'
                       : sentiment === 'Bearish' ? '#f87171' : '#eab308'
-                    const sentimentBg = sentiment === 'Bullish' ? 'rgba(34,197,94,0.08)'
-                      : sentiment === 'Bearish' ? 'rgba(248,113,113,0.08)' : 'rgba(234,179,8,0.08)'
 
                     const creatorEmail = report.created_by_email || ''
                     const creatorName = creatorEmail ? creatorEmail.split('@')[0] : 'unknown'

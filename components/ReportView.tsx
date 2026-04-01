@@ -57,13 +57,6 @@ interface ReportViewProps {
 }
 
 // ─── HELPERS ───
-const fmtCap = (n: number) => {
-  if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T`
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M`
-  return `$${n.toLocaleString()}`
-}
-
 const fmtB = (n: number) => {
   if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(1)}T`
   if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(1)}B`
@@ -394,7 +387,7 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
         {/* ── OVERVIEW ── */}
         {activeTab === 'Overview' && <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-7">
-            <KPI label="Market Cap" value={fmtCap(data.marketCap)} sub={data.sector} />
+            <KPI label="Market Cap" value={fmtB(data.marketCap)} sub={data.sector} />
             <KPI
               label="P/E Ratio"
               value={data.pe > 0 ? `${data.pe.toFixed(1)}x` : 'N/A'}
@@ -640,7 +633,7 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
 
           <Section title="Key Metrics">
             <div style={{ ...glassCard, padding: '4px 16px' }}>
-              <MetricRow label="Market Cap" value={fmtCap(data.marketCap)} />
+              <MetricRow label="Market Cap" value={fmtB(data.marketCap)} />
               <MetricRow label="P/E Ratio" value={data.pe > 0 ? `${data.pe.toFixed(1)}x` : 'N/A'} />
               <MetricRow label="Operating Margin" value={fmtPct(data.operatingMargins)} highlight={data.operatingMargins > 0.2 ? 'green' : undefined} />
               <MetricRow label="Free Cash Flow" value={fmtB(data.freeCashflow)} />
