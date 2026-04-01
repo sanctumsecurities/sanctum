@@ -120,10 +120,10 @@ export default function SettingsModal({ settings, updateSettings, watchlist, sav
         borderRadius: 4,
         width: '100%',
         maxWidth: 560,
+        height: 420,
         margin: '0 20px',
         display: 'flex',
         flexDirection: 'column',
-        maxHeight: 'calc(100vh - 80px)',
         overflow: 'hidden',
       }}>
         {/* Header */}
