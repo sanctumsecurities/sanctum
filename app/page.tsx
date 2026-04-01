@@ -34,6 +34,7 @@ export default function Home() {
 
   const [currentTime, setCurrentTime] = useState(new Date())
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [focusedCardId, setFocusedCardId] = useState<string | null>(null)
   const [showGenerateModal, setShowGenerateModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState({ defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist', clockFormat: '12h' as '12h' | '24h' })
@@ -651,13 +652,14 @@ export default function Home() {
                           const deleteBtn = el.querySelector('[data-delete-btn]') as HTMLElement | null
                           if (deleteBtn) deleteBtn.style.opacity = '0'
                         }}
-                        onClick={() => { setCurrentReport(report); setShowReport(true) }}
-                        onTouchStart={e => {
-                          const deleteBtn = e.currentTarget.querySelector('[data-delete-btn]') as HTMLElement | null
-                          if (deleteBtn) {
-                            const isVisible = deleteBtn.style.opacity === '1'
-                            deleteBtn.style.opacity = isVisible ? '0' : '1'
+                        onClick={() => {
+                          if (focusedCardId === report.id) {
+                            setCurrentReport(report)
+                            setShowReport(true)
                           }
+                        }}
+                        onTouchStart={() => {
+                          setFocusedCardId(prev => prev === report.id ? null : report.id)
                         }}
                       >
                         {/* Header: Ticker + Sentiment */}
@@ -989,7 +991,7 @@ export default function Home() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            opacity: 0,
+                            opacity: focusedCardId === report.id ? 1 : 0,
                             transition: 'opacity 0.2s ease, transform 0.15s ease, background 0.15s ease',
                             zIndex: 5,
                             padding: 0,
