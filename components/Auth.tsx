@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 
@@ -20,10 +20,8 @@ export default function Auth() {
   const [error, setError] = useState('')
   const [displayedText, setDisplayedText] = useState('')
   const [caretVisible, setCaretVisible] = useState(false)
-  const timersRef = useRef<(ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>)[]>([])
-
   useEffect(() => {
-    const timers = timersRef.current
+    const timers: (ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>)[] = []
 
     // Helper to track timers for cleanup
     const addTimeout = (fn: () => void, ms: number) => {
