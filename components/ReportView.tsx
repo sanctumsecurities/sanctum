@@ -238,8 +238,8 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
     setAnimating(true)
     setTimeout(() => {
       setActiveTab(t)
-      setTimeout(() => setAnimating(false), 30)
-    }, 150)
+      setAnimating(false)
+    }, 200)
   }
 
   const dailyChange = data.previousClose > 0

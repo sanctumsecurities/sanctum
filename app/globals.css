@@ -13,7 +13,48 @@ html {
 }
 
 body {
+  margin: 0;
+  padding: 0;
+  background: #0a0a0a;
+  color: #e8ecf1;
+  font-family: 'DM Sans', sans-serif;
   overflow-x: hidden;
+}
+
+/* ── Report Card Hover States ── */
+.report-card {
+  transition: all 250ms cubic-bezier(0.2, 0, 0, 1);
+}
+.report-card:hover {
+  transform: scale(1.15);
+  z-index: 10;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  border-color: #3a3a3a !important;
+  background: #111 !important;
+}
+.report-card [data-highlights] {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity 250ms ease, max-height 250ms ease;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.report-card:hover [data-highlights] {
+  opacity: 1;
+  max-height: 120px;
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+.report-card [data-delete-btn] {
+  transition: opacity 0.2s ease, transform 0.15s ease, background 0.15s ease;
+}
+.report-card:hover [data-delete-btn] {
+  opacity: 1 !important;
+}
+.delete-btn:hover {
+  transform: scale(1.15);
+  background: rgba(248,113,113,0.25) !important;
 }
 
 ::-webkit-scrollbar {
