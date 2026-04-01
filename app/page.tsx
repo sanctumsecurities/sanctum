@@ -62,6 +62,17 @@ function Clock({ format }: { format: '12h' | '24h' }) {
   )
 }
 
+// Instrument list — keep in sync with INSTRUMENTS in app/api/ticker-band/route.ts
+const TICKER_BAND_INSTRUMENTS = [
+  { symbol: '^GSPC', label: 'S&P 500 (^GSPC)' },
+  { symbol: '^IXIC', label: 'NASDAQ (^IXIC)' },
+  { symbol: '^DJI', label: 'DOW (^DJI)' },
+  { symbol: '^RUT', label: 'RUSSELL (^RUT)' },
+  { symbol: '^VIX', label: 'VIX (^VIX)' },
+  { symbol: 'GC=F', label: 'GOLD (GC=F)' },
+  { symbol: 'CL=F', label: 'OIL (CL=F)' },
+]
+
 function TickerBanner() {
   const [items, setItems] = useState<TickerItem[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -75,7 +86,9 @@ function TickerBanner() {
         setItems(data)
         setLoaded(true)
       }
-    } catch {}
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.warn('[TickerBanner] fetch failed:', err)
+    }
   }, [])
 
   useEffect(() => {
@@ -92,7 +105,7 @@ function TickerBanner() {
     displayItems.map((item, idx) => {
       const isUp = item.change >= 0
       const color = loaded ? (isUp ? '#22c55e' : '#f87171') : '#333'
-      const sign = item.change >= 0 ? '+' : ''
+      const sign = item.change > 0 ? '+' : ''
       const pctStr = loaded ? `${sign}${item.changePct.toFixed(2)}%` : '\u2014'
       const priceStr = loaded
         ? item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -101,7 +114,7 @@ function TickerBanner() {
 
       return (
         <span
-          key={`${keyPrefix}-${item.symbol}-${idx}`}
+          key={`${keyPrefix}-${item.symbol}`}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, paddingRight: 28 }}
         >
           <span style={{
@@ -117,7 +130,7 @@ function TickerBanner() {
           <span style={{ color, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
             {arrow ? `${arrow} ` : ''}{pctStr}
           </span>
-          <span style={{ color: '#1e1e1e', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
+          <span style={{ color: '#2a2a2a', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
             ·
           </span>
         </span>
@@ -140,7 +153,7 @@ function TickerBanner() {
         <span style={{ display: 'inline-flex', alignItems: 'center', paddingLeft: 20 }}>
           {renderStrip('a')}
         </span>
-        <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', paddingLeft: 20 }}>
+        <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', paddingLeft: 20 }}>
           {renderStrip('b')}
         </span>
       </div>
@@ -538,16 +551,6 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
   prev.focusedCardId === next.focusedCardId &&
   prev.colIndex === next.colIndex
 )
-
-const TICKER_BAND_INSTRUMENTS = [
-  { symbol: '^GSPC', label: 'S&P 500 (^GSPC)' },
-  { symbol: '^IXIC', label: 'NASDAQ (^IXIC)' },
-  { symbol: '^DJI', label: 'DOW (^DJI)' },
-  { symbol: '^RUT', label: 'RUSSELL (^RUT)' },
-  { symbol: '^VIX', label: 'VIX (^VIX)' },
-  { symbol: 'GC=F', label: 'GOLD (GC=F)' },
-  { symbol: 'CL=F', label: 'OIL (CL=F)' },
-]
 
 const TICKER_LIST: { symbol: string; name: string }[] = [
   { symbol: 'AAPL', name: 'Apple Inc.' },
