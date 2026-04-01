@@ -102,7 +102,7 @@ function TickerBanner() {
     : TICKER_BAND_INSTRUMENTS.map(i => ({ ...i, price: 0, change: 0, changePct: 0 }))
 
   const renderStrip = (keyPrefix: string) =>
-    displayItems.map((item, idx) => {
+    displayItems.map((item) => {
       const isUp = item.change >= 0
       const color = loaded ? (isUp ? '#22c55e' : '#f87171') : '#333'
       const sign = item.change > 0 ? '+' : ''
