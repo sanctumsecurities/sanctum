@@ -1,0 +1,132 @@
+<h2>Settings — Vertical Tab Layout</h2>
+<p class="subtitle">Here's how the modal looks with a left-side nav. The active tab is GENERAL. Click the nav items to preview other tabs.</p>
+
+<div class="mockup" style="max-width: 580px; margin: 0 auto;">
+  <div class="mockup-header">Settings Modal — 580px wide</div>
+  <div class="mockup-body" style="padding: 0; background: #0a0a0a; border-radius: 0 0 6px 6px; overflow: hidden;">
+
+    <!-- Modal header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 18px 20px 14px; border-bottom: 1px solid #1a1a1a;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #fff; text-transform: uppercase;">Settings</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #555; cursor: pointer;">✕</span>
+    </div>
+
+    <!-- Body: left nav + right content -->
+    <div style="display: flex; min-height: 320px;">
+
+      <!-- Left nav -->
+      <div style="width: 130px; border-right: 1px solid #1a1a1a; padding: 12px 0; flex-shrink: 0;">
+        <div id="tab-general" onclick="switchTab('general')" style="padding: 9px 16px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #fff; background: rgba(255,255,255,0.06); border-right: 2px solid #fff; cursor: pointer; text-transform: uppercase;">GENERAL</div>
+        <div id="tab-display" onclick="switchTab('display')" style="padding: 9px 16px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #555; border-right: 2px solid transparent; cursor: pointer; text-transform: uppercase; transition: all 0.15s ease;">DISPLAY</div>
+        <div id="tab-data" onclick="switchTab('data')" style="padding: 9px 16px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #555; border-right: 2px solid transparent; cursor: pointer; text-transform: uppercase; transition: all 0.15s ease;">DATA</div>
+        <div id="tab-account" onclick="switchTab('account')" style="padding: 9px 16px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #555; border-right: 2px solid transparent; cursor: pointer; text-transform: uppercase; transition: all 0.15s ease;">ACCOUNT</div>
+      </div>
+
+      <!-- Right content -->
+      <div style="flex: 1; padding: 20px 24px; overflow-y: auto;">
+
+        <!-- GENERAL tab -->
+        <div id="content-general">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; color: #555; text-transform: uppercase; margin-bottom: 14px;">Preferences</div>
+
+          <div style="margin-bottom: 18px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888; margin-bottom: 8px; letter-spacing: 0.05em;">DEFAULT TAB</div>
+            <div style="display: flex; gap: 6px;">
+              <div style="padding: 5px 14px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">Dashboard</div>
+              <div style="padding: 5px 14px; border: 1px solid #1a1a1a; color: #555; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">Watchlist</div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888; margin-bottom: 8px; letter-spacing: 0.05em;">CLOCK FORMAT</div>
+            <div style="display: flex; gap: 6px;">
+              <div style="padding: 5px 14px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">12h</div>
+              <div style="padding: 5px 14px; border: 1px solid #1a1a1a; color: #555; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">24h</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DISPLAY tab -->
+        <div id="content-display" style="display: none;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; color: #555; text-transform: uppercase; margin-bottom: 14px;">Banner</div>
+
+          <div style="margin-bottom: 18px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888; margin-bottom: 8px; letter-spacing: 0.05em;">SCROLL SPEED</div>
+            <div style="display: flex; gap: 6px;">
+              <div style="padding: 5px 14px; border: 1px solid #1a1a1a; color: #555; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">Fast</div>
+              <div style="padding: 5px 14px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">Regular</div>
+              <div style="padding: 5px 14px; border: 1px solid #1a1a1a; color: #555; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">Slow</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 18px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888; margin-bottom: 8px; letter-spacing: 0.05em;">UPDATE FREQUENCY</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <div style="padding: 5px 14px; border: 1px solid #1a1a1a; color: #555; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">3s</div>
+              <div style="padding: 5px 14px; border: 1px solid #1a1a1a; color: #555; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">10s</div>
+              <div style="padding: 5px 14px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">1m</div>
+              <div style="padding: 5px 14px; border: 1px solid #1a1a1a; color: #555; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">5m</div>
+              <div style="padding: 5px 14px; border: 1px solid #1a1a1a; color: #555; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">10m</div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888; margin-bottom: 8px; letter-spacing: 0.05em;">TICKERS</div>
+            <div style="background: #111; border: 1px solid #1a1a1a; border-radius: 4px; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888; min-height: 60px;">
+              <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                <span style="padding: 3px 8px; background: rgba(255,255,255,0.06); border: 1px solid #2a2a2a; border-radius: 3px; color: #ccc;">^GSPC</span>
+                <span style="padding: 3px 8px; background: rgba(255,255,255,0.06); border: 1px solid #2a2a2a; border-radius: 3px; color: #ccc;">^IXIC</span>
+                <span style="padding: 3px 8px; background: rgba(255,255,255,0.06); border: 1px solid #2a2a2a; border-radius: 3px; color: #ccc;">^DJI</span>
+                <span style="padding: 3px 8px; background: rgba(255,255,255,0.06); border: 1px solid #2a2a2a; border-radius: 3px; color: #ccc;">^VIX</span>
+                <span style="padding: 3px 8px; background: rgba(255,255,255,0.06); border: 1px solid #2a2a2a; border-radius: 3px; color: #ccc;">GC=F</span>
+                <span style="padding: 3px 8px; background: rgba(255,255,255,0.06); border: 1px solid #2a2a2a; border-radius: 3px; color: #ccc;">CL=F</span>
+                <span style="padding: 3px 10px; border: 1px dashed #333; border-radius: 3px; color: #444;">+ add</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DATA tab -->
+        <div id="content-data" style="display: none;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; color: #555; text-transform: uppercase; margin-bottom: 14px;">Watchlist</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888;">12 saved tickers</div>
+            <div style="padding: 5px 14px; border: 1px solid #f87171; color: #f87171; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px;">Clear Watchlist</div>
+          </div>
+        </div>
+
+        <!-- ACCOUNT tab -->
+        <div id="content-account" style="display: none;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; color: #555; text-transform: uppercase; margin-bottom: 14px;">Account</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888; margin-bottom: 16px;">user@example.com</div>
+          <div style="padding: 7px 14px; border: 1px solid #1a1a1a; color: #888; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px; text-align: center; cursor: pointer;">Sign Out</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function switchTab(name) {
+  const tabs = ['general','display','data','account'];
+  tabs.forEach(t => {
+    const tabEl = document.getElementById('tab-' + t);
+    const contentEl = document.getElementById('content-' + t);
+    if (t === name) {
+      tabEl.style.color = '#fff';
+      tabEl.style.background = 'rgba(255,255,255,0.06)';
+      tabEl.style.borderRight = '2px solid #fff';
+      contentEl.style.display = 'block';
+    } else {
+      tabEl.style.color = '#555';
+      tabEl.style.background = 'transparent';
+      tabEl.style.borderRight = '2px solid transparent';
+      contentEl.style.display = 'none';
+    }
+  });
+}
+</script>
+
+<p class="subtitle" style="margin-top: 16px; font-size: 11px; text-align: center;">Click the tab items in the mockup to preview each section. Let me know what you think in the terminal.</p>
