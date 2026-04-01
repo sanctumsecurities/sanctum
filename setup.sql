@@ -20,3 +20,7 @@ create policy "Anyone can read reports"
 create policy "Authenticated users can insert reports"
   on reports for insert
   with check (auth.uid() is not null);
+
+create policy "Authenticated users can delete reports"
+  on reports for delete
+  using (auth.uid() is not null);
