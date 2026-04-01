@@ -586,6 +586,8 @@ export default function Home() {
                     const priceChange = price && prevClose ? price - prevClose : null
                     const priceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
                     const isUp = priceChange !== null && priceChange >= 0
+                    const tickerChart = chartData[report.ticker]
+                    const ah = tickerChart?.afterHours || null
 
                     const formatMktCap = (val: number) => {
                       if (!val) return '—'
@@ -682,6 +684,33 @@ export default function Home() {
                             </span>
                           )}
                         </div>
+
+                        {/* After Hours / Pre-Market */}
+                        {ah && (
+                          <div style={{ marginBottom: 10, marginTop: -8 }}>
+                            <span style={{
+                              fontSize: 11, color: '#555',
+                              fontFamily: "'JetBrains Mono', monospace",
+                            }}>
+                              {ah.label}:
+                            </span>
+                            <span style={{
+                              fontSize: 11, color: '#999',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              marginLeft: 6,
+                            }}>
+                              ${ah.price.toFixed(2)}
+                            </span>
+                            <span style={{
+                              fontSize: 11,
+                              fontFamily: "'JetBrains Mono', monospace",
+                              marginLeft: 6,
+                              color: ah.change >= 0 ? '#22c55e' : '#f87171',
+                            }}>
+                              {ah.change >= 0 ? '+' : ''}{ah.changePct.toFixed(2)}%
+                            </span>
+                          </div>
+                        )}
 
                         {/* Metrics Grid */}
                         <div style={{
