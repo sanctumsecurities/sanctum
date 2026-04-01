@@ -637,7 +637,12 @@ export default function Home() {
                           el.style.borderColor = '#3a3a3a'
                           el.style.background = '#111'
                           const highlights = el.querySelector('[data-highlights]') as HTMLElement | null
-                          if (highlights) highlights.style.opacity = '1'
+                          if (highlights) {
+                            highlights.style.opacity = '1'
+                            highlights.style.maxHeight = '120px'
+                            highlights.style.marginTop = '10px'
+                            highlights.style.marginBottom = '6px'
+                          }
                         }}
                         onMouseLeave={e => {
                           const el = e.currentTarget
@@ -647,7 +652,12 @@ export default function Home() {
                           el.style.borderColor = '#1a1a1a'
                           el.style.background = '#0f0f0f'
                           const highlights = el.querySelector('[data-highlights]') as HTMLElement | null
-                          if (highlights) highlights.style.opacity = '0'
+                          if (highlights) {
+                            highlights.style.opacity = '0'
+                            highlights.style.maxHeight = '0'
+                            highlights.style.marginTop = '0'
+                            highlights.style.marginBottom = '0'
+                          }
                         }}
                         onClick={() => { setCurrentReport(report); setShowReport(true) }}
                       >
@@ -655,14 +665,14 @@ export default function Home() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                           <div>
                             <div style={{
-                              fontSize: 20, fontWeight: 700, color: '#fff',
+                              fontSize: 22, fontWeight: 700, color: '#fff',
                               letterSpacing: '0.05em',
                               fontFamily: "'JetBrains Mono', monospace",
                             }}>
                               {report.ticker}
                             </div>
                             <div style={{
-                              fontSize: 12, color: '#555', marginTop: 2,
+                              fontSize: 13, color: '#555', marginTop: 2,
                               fontFamily: "'DM Sans', sans-serif",
                               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                               maxWidth: 160,
@@ -670,28 +680,44 @@ export default function Home() {
                               {d.name || ''}
                             </div>
                           </div>
-                          {sentiment && (
-                            <span style={{
-                              fontSize: 10, fontWeight: 600,
-                              color: sentimentColor,
-                              background: sentimentBg,
-                              border: `1px solid ${sentimentColor}22`,
-                              borderRadius: 3,
-                              padding: '3px 8px',
-                              letterSpacing: '0.08em',
-                              fontFamily: "'JetBrains Mono', monospace",
-                              textTransform: 'uppercase',
-                              flexShrink: 0,
-                            }}>
-                              {sentiment}
-                            </span>
-                          )}
+                          {sentiment && (() => {
+                            const low = d.fiftyTwoWeekLow
+                            const high = d.fiftyTwoWeekHigh
+                            const buyLow = low && high ? low + (high - low) * 0.05 : null
+                            const buyHigh = low && high ? low + (high - low) * 0.35 : null
+                            return (
+                              <div style={{
+                                flexShrink: 0,
+                                textAlign: 'right',
+                              }}>
+                                <div style={{
+                                  fontSize: 13, fontWeight: 700,
+                                  color: sentimentColor,
+                                  letterSpacing: '0.08em',
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  textTransform: 'uppercase',
+                                }}>
+                                  {sentiment}
+                                </div>
+                                {buyLow != null && buyHigh != null && (
+                                  <div style={{
+                                    fontSize: 9, color: '#666',
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    marginTop: 3,
+                                    letterSpacing: '0.03em',
+                                  }}>
+                                    BUY ${buyLow.toFixed(0)}–${buyHigh.toFixed(0)}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </div>
 
                         {/* Price */}
                         <div style={{ marginBottom: 14 }}>
                           <span style={{
-                            fontSize: 24, fontWeight: 600, color: '#fff',
+                            fontSize: 26, fontWeight: 600, color: '#fff',
                             fontFamily: "'JetBrains Mono', monospace",
                           }}>
                             {price ? `$${price.toFixed(2)}` : '—'}
@@ -738,40 +764,23 @@ export default function Home() {
                         {/* Metrics Grid */}
                         <div style={{
                           display: 'grid', gridTemplateColumns: '1fr 1fr',
-                          gap: '10px 16px', marginBottom: 14,
+                          gap: '8px', marginBottom: 14,
                         }}>
-                          <div>
-                            <div style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 2 }}>
-                              MKT CAP
+                          {[
+                            { label: 'MKT CAP', value: formatMktCap(d.marketCap) },
+                            { label: 'P/E', value: d.pe ? d.pe.toFixed(2) : '—' },
+                            { label: 'BETA', value: d.beta ? d.beta.toFixed(2) : '—' },
+                            { label: 'DIV YIELD', value: d.dividendYield ? `${(d.dividendYield * 100).toFixed(2)}%` : '—' },
+                          ].map((m, i) => (
+                            <div key={i}>
+                              <div style={{ fontSize: 11, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 4 }}>
+                                {m.label}
+                              </div>
+                              <div style={{ fontSize: 16, color: '#ddd', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>
+                                {m.value}
+                              </div>
                             </div>
-                            <div style={{ fontSize: 14, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
-                              {formatMktCap(d.marketCap)}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 2 }}>
-                              P/E
-                            </div>
-                            <div style={{ fontSize: 14, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
-                              {d.pe ? d.pe.toFixed(2) : '—'}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 2 }}>
-                              BETA
-                            </div>
-                            <div style={{ fontSize: 14, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
-                              {d.beta ? d.beta.toFixed(2) : '—'}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 2 }}>
-                              DIV YIELD
-                            </div>
-                            <div style={{ fontSize: 14, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
-                              {d.dividendYield ? `${(d.dividendYield * 100).toFixed(2)}%` : '—'}
-                            </div>
-                          </div>
+                          ))}
                         </div>
 
                         {/* Sector + Industry */}
@@ -798,8 +807,11 @@ export default function Home() {
                             const pts = tickerChart?.points
                             if (!crosshair || !dot || !tip || !pts || pts.length < 2) return
 
-                            const x = e.clientX - rect.left
-                            const pct = Math.max(0, Math.min(1, x / rect.width))
+                            const scale = 1.15
+                            const localW = rect.width / scale
+                            const localH = rect.height / scale
+                            const x = (e.clientX - rect.left) / scale
+                            const pct = Math.max(0, Math.min(1, x / localW))
                             const idx = Math.round(pct * (pts.length - 1))
                             const pt = pts[idx]
                             const openPrice = pts[0].price
@@ -809,8 +821,10 @@ export default function Home() {
                             const min = Math.min(...pts.map(p => p.price))
                             const max = Math.max(...pts.map(p => p.price))
                             const range = max - min || 1
-                            const yPct = 1 - (pt.price - min) / range
-                            const dotY = yPct * rect.height
+                            const padRatio = 2 / 80
+                            const rangeRatio = 76 / 80
+                            const yPct = padRatio + (1 - (pt.price - min) / range) * rangeRatio
+                            const dotY = yPct * localH
 
                             crosshair.style.left = `${x}px`
                             crosshair.style.display = 'block'
@@ -825,7 +839,7 @@ export default function Home() {
 
                             tip.innerHTML = `<div style="font-size:10px;color:#555;margin-bottom:2px">${timeStr}</div><div><span style="color:#fff;font-weight:600">$${pt.price.toFixed(2)}</span> <span style="color:${changeColor}">${changeStr}</span></div>`
                             tip.style.display = 'block'
-                            const tipLeft = Math.max(0, Math.min(x - 50, rect.width - 110))
+                            const tipLeft = Math.max(0, Math.min(x - 50, localW - 110))
                             tip.style.left = `${tipLeft}px`
                           }}
                           onMouseLeave={e => {
@@ -907,9 +921,11 @@ export default function Home() {
                             data-highlights
                             style={{
                               opacity: 0,
-                              transition: 'opacity 250ms ease',
-                              marginTop: 10,
-                              marginBottom: 6,
+                              maxHeight: 0,
+                              overflow: 'hidden',
+                              transition: 'opacity 250ms ease, max-height 250ms ease',
+                              marginTop: 0,
+                              marginBottom: 0,
                             }}
                           >
                             <div style={{
