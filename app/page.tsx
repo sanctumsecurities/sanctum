@@ -1484,7 +1484,7 @@ export default function Home() {
               margin: 0, lineHeight: 1,
               width: 'fit-content',
             }}>
-              sanctum
+              Sanctum
             </h1>
 
             {/* Ticker search bar */}
