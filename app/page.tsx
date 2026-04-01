@@ -31,8 +31,6 @@ export default function Home() {
 
   const [watchlist, setWatchlist] = useState<string[]>([])
 
-  const [chartData, setChartData] = useState<Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null }>>({})
-
   const [currentTime, setCurrentTime] = useState(new Date())
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showGenerateModal, setShowGenerateModal] = useState(false)
@@ -82,20 +80,6 @@ export default function Home() {
     const stored = localStorage.getItem('sanctum-watchlist')
     if (stored) setWatchlist(JSON.parse(stored))
   }, [])
-
-  // ── Fetch chart data for saved reports ──
-  useEffect(() => {
-    savedReports.forEach(report => {
-      const ticker = report.ticker
-      if (!ticker || chartData[ticker]) return
-      fetch(`/api/chart?ticker=${ticker}`)
-        .then(res => res.json())
-        .then(res => {
-          setChartData(prev => ({ ...prev, [ticker]: { points: res.points, afterHours: res.afterHours || null } }))
-        })
-        .catch(() => {})
-    })
-  }, [savedReports]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveWatchlist = (list: string[]) => {
     setWatchlist(list)
