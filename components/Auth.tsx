@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 
@@ -18,6 +18,68 @@ export default function Auth() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [displayedText, setDisplayedText] = useState('')
+  const [caretVisible, setCaretVisible] = useState(false)
+  useEffect(() => {
+    const timers: (ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>)[] = []
+
+    // Helper to track timers for cleanup
+    const addTimeout = (fn: () => void, ms: number) => {
+      const id = setTimeout(fn, ms)
+      timers.push(id)
+      return id
+    }
+    const addInterval = (fn: () => void, ms: number) => {
+      const id = setInterval(fn, ms)
+      timers.push(id)
+      return id
+    }
+
+    // Phase 1: Idle blink for 4 seconds
+    const blinkInterval = addInterval(() => {
+      setCaretVisible(v => !v)
+    }, 530)
+
+    setCaretVisible(true)
+
+    addTimeout(() => {
+      // End Phase 1
+      clearInterval(blinkInterval)
+      setCaretVisible(true)
+
+      // Phase 2: Type "SANCTUM" one character at a time
+      const text = 'SANCTUM'
+      let charIndex = 0
+
+      const typeNextChar = () => {
+        charIndex++
+        setDisplayedText(text.slice(0, charIndex))
+
+        if (charIndex < text.length) {
+          const delay = 120 + Math.random() * 170 // 120-290ms
+          addTimeout(typeNextChar, delay)
+        } else {
+          // Phase 3: Rest blink after 300ms pause
+          addTimeout(() => {
+            addInterval(() => {
+              setCaretVisible(v => !v)
+            }, 530)
+          }, 300)
+        }
+      }
+
+      const firstDelay = 120 + Math.random() * 170
+      addTimeout(typeNextChar, firstDelay)
+    }, 4000)
+
+    // Cleanup all timers on unmount
+    return () => {
+      timers.forEach(id => {
+        clearTimeout(id as ReturnType<typeof setTimeout>)
+        clearInterval(id as ReturnType<typeof setInterval>)
+      })
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,10 +136,11 @@ export default function Auth() {
           <h1 style={{
             fontSize: 48, fontWeight: 700, color: '#fff',
             letterSpacing: '0.08em',
-            fontFamily: "'Instrument Serif', serif",
+            fontFamily: "'JetBrains Mono', monospace",
             margin: 0, lineHeight: 1,
           }}>
-            SANCTUM SECURITIES
+            {displayedText}
+            <span style={{ fontWeight: 300, opacity: caretVisible ? 1 : 0, ...(displayedText && { display: 'inline-block', width: 0 }) }}>|</span>
           </h1>
         </div>
 
@@ -125,13 +188,15 @@ export default function Auth() {
             )}
           </AnimatePresence>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 mt-3 text-sm font-bold uppercase tracking-[0.1em] bg-zinc-100 text-zinc-900 rounded-lg transition-colors duration-200 hover:bg-white disabled:opacity-50 disabled:cursor-default cursor-pointer"
-          >
-            {loading ? 'Authenticating...' : 'Sign In'}
-          </button>
+          <div className="flex justify-center mt-12">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-1.5 text-xs font-bold uppercase tracking-[0.1em] bg-transparent text-white border border-white rounded-lg transition-colors duration-200 hover:bg-white hover:text-zinc-900 disabled:opacity-50 disabled:cursor-default cursor-pointer"
+            >
+              {loading ? 'Authenticating...' : 'Sign In'}
+            </button>
+          </div>
         </form>
 
       </motion.div>
