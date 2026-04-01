@@ -9,6 +9,11 @@
 html {
   scrollbar-width: thin;
   scrollbar-color: #1a1a1a #0a0a0a;
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
 }
 
 ::-webkit-scrollbar {
