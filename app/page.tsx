@@ -19,6 +19,13 @@ interface SavedReport {
 }
 
 type HealthStatus = 'ok' | 'degraded' | 'down'
+type TickerItem = {
+  symbol: string
+  label: string
+  price: number
+  change: number
+  changePct: number
+}
 interface ServiceHealth { name: string; status: 'ok' | 'error' | 'unconfigured'; latency: number; detail?: string }
 interface HealthData {
   services: ServiceHealth[]
@@ -52,6 +59,113 @@ function Clock({ format }: { format: '12h' | '24h' }) {
         hour12: format === '12h',
       })}
     </span>
+  )
+}
+
+// Instrument list — keep in sync with INSTRUMENTS in app/api/ticker-band/route.ts
+const TICKER_BAND_INSTRUMENTS = [
+  { symbol: '^GSPC', label: 'S&P 500 (^GSPC)' },
+  { symbol: '^IXIC', label: 'NASDAQ (^IXIC)' },
+  { symbol: '^DJI', label: 'DOW (^DJI)' },
+  { symbol: '^RUT', label: 'RUSSELL (^RUT)' },
+  { symbol: '^VIX', label: 'VIX (^VIX)' },
+  { symbol: 'GC=F', label: 'GOLD (GC=F)' },
+  { symbol: 'CL=F', label: 'OIL (CL=F)' },
+]
+
+function TickerBanner() {
+  const [items, setItems] = useState<TickerItem[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  const fetchData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ticker-band')
+      if (!res.ok) return
+      const data: TickerItem[] = await res.json()
+      if (Array.isArray(data) && data.length > 0) {
+        setItems(data)
+        setLoaded(true)
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.warn('[TickerBanner] fetch failed:', err)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+    const id = setInterval(fetchData, 60_000)
+    return () => clearInterval(id)
+  }, [fetchData])
+
+  const displayItems: TickerItem[] = loaded
+    ? items
+    : TICKER_BAND_INSTRUMENTS.map(i => ({ ...i, price: 0, change: 0, changePct: 0 }))
+
+  const renderStrip = (keyPrefix: string) =>
+    displayItems.flatMap((item) => {
+      const isUp = item.change >= 0
+      const color = loaded ? (isUp ? '#22c55e' : '#f87171') : '#333'
+      const sign = item.change > 0 ? '+' : ''
+      const pctStr = loaded ? `${sign}${item.changePct.toFixed(2)}%` : '\u2014'
+      const priceStr = loaded
+        ? item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '\u2014'
+      const arrow = loaded ? (isUp ? '\u25b2' : '\u25bc') : ''
+
+      return [
+        <span
+          key={`${keyPrefix}-${item.symbol}`}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <span style={{
+            color: '#444', fontSize: 10,
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.12em',
+          }}>
+            {item.label}
+          </span>
+          <span style={{ color: '#888', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
+            {priceStr}
+          </span>
+          <span style={{ color, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
+            {arrow ? `${arrow} ` : ''}{pctStr}
+          </span>
+        </span>,
+        <span
+          key={`${keyPrefix}-${item.symbol}-sep`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 32,
+            color: '#2a2a2a', fontSize: 10,
+            fontFamily: "'JetBrains Mono', monospace",
+          }}
+        >
+          ·
+        </span>,
+      ]
+    })
+
+  return (
+    <div style={{
+      position: 'fixed', top: 56, left: 0, right: 0, zIndex: 99,
+      height: 28,
+      background: '#080808',
+      borderBottom: '1px solid #1a1a1a',
+      overflow: 'hidden',
+      display: 'flex', alignItems: 'center',
+    }}>
+      <div
+        className="ticker-scroll"
+        style={{ display: 'inline-flex', whiteSpace: 'nowrap', alignItems: 'center' }}
+      >
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+          {renderStrip('a')}
+        </span>
+        <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center' }}>
+          {renderStrip('b')}
+        </span>
+      </div>
+    </div>
   )
 }
 
@@ -764,6 +878,7 @@ export default function Home() {
 
   // ── Measure title width for search bar ──
   useEffect(() => {
+    if (loading) return
     const measure = () => {
       if (titleRef.current) setTitleWidth(titleRef.current.offsetWidth)
     }
@@ -771,7 +886,7 @@ export default function Home() {
     document.fonts.ready.then(measure)
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [])
+  }, [loading])
 
   // ── Ticker search autocomplete ──
   useEffect(() => {
@@ -988,7 +1103,7 @@ export default function Home() {
     return (
       <div>
         <div style={{
-          position: 'sticky', top: 0, zIndex: 50,
+          position: 'sticky', top: 84, zIndex: 50,
           background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)',
           borderBottom: '1px solid #1a1a1a',
           padding: '0 40px',
@@ -1059,6 +1174,16 @@ export default function Home() {
         }
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes tickerScroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .ticker-scroll {
+          animation: tickerScroll 60s linear infinite;
+        }
+        .ticker-scroll:hover {
+          animation-play-state: paused;
         }
         @media (max-width: 768px) {
           .nav-links-desktop { display: none !important; }
@@ -1246,8 +1371,14 @@ export default function Home() {
             })}
           </div>
 
-          {/* Right: Icons */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
+        </div>
+
+        {/* Right: Icons — flush to viewport edge */}
+        <div style={{
+          position: 'absolute', right: 0, top: 0, height: 56,
+          display: 'flex', alignItems: 'center',
+          paddingRight: 40, gap: 12,
+        }}>
             <button
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
@@ -1308,12 +1439,11 @@ export default function Home() {
               </svg>
             </button>
           </div>
-        </div>
 
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
           <div className="mobile-menu" style={{
-            position: 'absolute', top: 56, left: 0, right: 0,
+            position: 'absolute', top: 84 /* 56 nav + 28 ticker banner */, left: 0, right: 0,
             background: '#0a0a0a', borderBottom: '1px solid #1a1a1a',
             padding: '8px 20px 16px',
             display: 'flex', flexDirection: 'column', gap: 0,
@@ -1337,8 +1467,10 @@ export default function Home() {
         )}
       </nav>
 
+      <TickerBanner />
+
       {/* ── Main Content ── */}
-      <main style={{ paddingTop: 56 }}>
+      <main style={{ paddingTop: 84 }}>
 
         {/* ══ DASHBOARD ══ */}
         {activeTab === 'Dashboard' && (
@@ -1357,7 +1489,7 @@ export default function Home() {
               margin: 0, lineHeight: 1,
               width: 'fit-content',
             }}>
-              sanctum
+              SANCTUM
             </h1>
 
             {/* Ticker search bar */}
