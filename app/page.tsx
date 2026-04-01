@@ -814,17 +814,40 @@ export default function Home() {
   const sessionStartRef = useRef<number>(Date.now())
   const [sessionUptimeDisplay, setSessionUptimeDisplay] = useState('00:00:00')
 
+  const loadSettingsFromSupabase = useCallback(async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('user_settings')
+        .select('settings')
+        .eq('user_id', userId)
+        .single()
+      if (data?.settings) {
+        const merged = { ...DEFAULT_SETTINGS, ...data.settings }
+        setSettings(merged)
+        localStorage.setItem('sanctum-settings', JSON.stringify(merged))
+        if (merged.defaultTab) setActiveTab(merged.defaultTab)
+      }
+    } catch {}
+  }, [])
+
   // ── Auth ──
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
+      if (session?.user?.id) loadSettingsFromSupabase(session.user.id)
     }).catch(() => setLoading(false))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
+      if (session?.user?.id) {
+        loadSettingsFromSupabase(session.user.id)
+      } else {
+        setSettings(DEFAULT_SETTINGS)
+        localStorage.removeItem('sanctum-settings')
+      }
     })
     return () => subscription.unsubscribe()
-  }, [])
+  }, [loadSettingsFromSupabase])
 
   // ── Load saved reports ──
   const loadReports = useCallback(async () => {
@@ -891,9 +914,12 @@ export default function Home() {
     setSettings(prev => {
       const updated = { ...prev, ...patch }
       localStorage.setItem('sanctum-settings', JSON.stringify(updated))
+      supabase.from('user_settings')
+        .upsert({ user_id: session?.user?.id, settings: updated, updated_at: new Date().toISOString() })
+        .then(() => {})
       return updated
     })
-  }, [])
+  }, [session?.user?.id])
 
   // ── Measure title width for search bar ──
   useEffect(() => {
