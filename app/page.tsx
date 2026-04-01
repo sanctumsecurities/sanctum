@@ -436,6 +436,203 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
   prev.colIndex === next.colIndex
 )
 
+const TICKER_LIST: { symbol: string; name: string }[] = [
+  { symbol: 'AAPL', name: 'Apple Inc.' },
+  { symbol: 'MSFT', name: 'Microsoft Corporation' },
+  { symbol: 'GOOGL', name: 'Alphabet Inc.' },
+  { symbol: 'GOOG', name: 'Alphabet Inc. Class C' },
+  { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+  { symbol: 'NVDA', name: 'NVIDIA Corporation' },
+  { symbol: 'META', name: 'Meta Platforms Inc.' },
+  { symbol: 'TSLA', name: 'Tesla Inc.' },
+  { symbol: 'AVGO', name: 'Broadcom Inc.' },
+  { symbol: 'ORCL', name: 'Oracle Corporation' },
+  { symbol: 'NFLX', name: 'Netflix Inc.' },
+  { symbol: 'ADBE', name: 'Adobe Inc.' },
+  { symbol: 'CRM', name: 'Salesforce Inc.' },
+  { symbol: 'AMD', name: 'Advanced Micro Devices Inc.' },
+  { symbol: 'INTC', name: 'Intel Corporation' },
+  { symbol: 'QCOM', name: 'Qualcomm Inc.' },
+  { symbol: 'TXN', name: 'Texas Instruments Inc.' },
+  { symbol: 'AMAT', name: 'Applied Materials Inc.' },
+  { symbol: 'MU', name: 'Micron Technology Inc.' },
+  { symbol: 'ASML', name: 'ASML Holding N.V.' },
+  { symbol: 'KLAC', name: 'KLA Corporation' },
+  { symbol: 'LRCX', name: 'Lam Research Corporation' },
+  { symbol: 'CSCO', name: 'Cisco Systems Inc.' },
+  { symbol: 'IBM', name: 'International Business Machines' },
+  { symbol: 'NOW', name: 'ServiceNow Inc.' },
+  { symbol: 'WDAY', name: 'Workday Inc.' },
+  { symbol: 'SNOW', name: 'Snowflake Inc.' },
+  { symbol: 'DDOG', name: 'Datadog Inc.' },
+  { symbol: 'NET', name: 'Cloudflare Inc.' },
+  { symbol: 'CRWD', name: 'CrowdStrike Holdings Inc.' },
+  { symbol: 'ZS', name: 'Zscaler Inc.' },
+  { symbol: 'PANW', name: 'Palo Alto Networks Inc.' },
+  { symbol: 'PLTR', name: 'Palantir Technologies Inc.' },
+  { symbol: 'COIN', name: 'Coinbase Global Inc.' },
+  { symbol: 'HOOD', name: 'Robinhood Markets Inc.' },
+  { symbol: 'SHOP', name: 'Shopify Inc.' },
+  { symbol: 'SQ', name: 'Block Inc.' },
+  { symbol: 'PYPL', name: 'PayPal Holdings Inc.' },
+  { symbol: 'UBER', name: 'Uber Technologies Inc.' },
+  { symbol: 'LYFT', name: 'Lyft Inc.' },
+  { symbol: 'ABNB', name: 'Airbnb Inc.' },
+  { symbol: 'BKNG', name: 'Booking Holdings Inc.' },
+  { symbol: 'RBLX', name: 'Roblox Corporation' },
+  { symbol: 'SNAP', name: 'Snap Inc.' },
+  { symbol: 'PINS', name: 'Pinterest Inc.' },
+  { symbol: 'SPOT', name: 'Spotify Technology S.A.' },
+  { symbol: 'TTD', name: 'The Trade Desk Inc.' },
+  { symbol: 'TWLO', name: 'Twilio Inc.' },
+  { symbol: 'HUBS', name: 'HubSpot Inc.' },
+  { symbol: 'TEAM', name: 'Atlassian Corporation' },
+  { symbol: 'MDB', name: 'MongoDB Inc.' },
+  { symbol: 'ZM', name: 'Zoom Video Communications Inc.' },
+  { symbol: 'DOCU', name: 'DocuSign Inc.' },
+  { symbol: 'SOFI', name: 'SoFi Technologies Inc.' },
+  { symbol: 'AFRM', name: 'Affirm Holdings Inc.' },
+  { symbol: 'UPST', name: 'Upstart Holdings Inc.' },
+  { symbol: 'RIVN', name: 'Rivian Automotive Inc.' },
+  { symbol: 'LCID', name: 'Lucid Group Inc.' },
+  { symbol: 'NIO', name: 'NIO Inc.' },
+  { symbol: 'XPEV', name: 'XPeng Inc.' },
+  { symbol: 'LI', name: 'Li Auto Inc.' },
+  { symbol: 'BABA', name: 'Alibaba Group Holding Ltd.' },
+  { symbol: 'JD', name: 'JD.com Inc.' },
+  { symbol: 'PDD', name: 'PDD Holdings Inc.' },
+  { symbol: 'SE', name: 'Sea Limited' },
+  { symbol: 'MELI', name: 'MercadoLibre Inc.' },
+  { symbol: 'GME', name: 'GameStop Corp.' },
+  { symbol: 'AMC', name: 'AMC Entertainment Holdings Inc.' },
+  { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
+  { symbol: 'BAC', name: 'Bank of America Corporation' },
+  { symbol: 'GS', name: 'The Goldman Sachs Group Inc.' },
+  { symbol: 'MS', name: 'Morgan Stanley' },
+  { symbol: 'C', name: 'Citigroup Inc.' },
+  { symbol: 'WFC', name: 'Wells Fargo & Company' },
+  { symbol: 'AXP', name: 'American Express Company' },
+  { symbol: 'BLK', name: 'BlackRock Inc.' },
+  { symbol: 'SCHW', name: 'The Charles Schwab Corporation' },
+  { symbol: 'COF', name: 'Capital One Financial Corporation' },
+  { symbol: 'V', name: 'Visa Inc.' },
+  { symbol: 'MA', name: 'Mastercard Inc.' },
+  { symbol: 'UNH', name: 'UnitedHealth Group Inc.' },
+  { symbol: 'JNJ', name: 'Johnson & Johnson' },
+  { symbol: 'PFE', name: 'Pfizer Inc.' },
+  { symbol: 'MRK', name: 'Merck & Co. Inc.' },
+  { symbol: 'ABBV', name: 'AbbVie Inc.' },
+  { symbol: 'LLY', name: 'Eli Lilly and Company' },
+  { symbol: 'BMY', name: 'Bristol-Myers Squibb Company' },
+  { symbol: 'AMGN', name: 'Amgen Inc.' },
+  { symbol: 'GILD', name: 'Gilead Sciences Inc.' },
+  { symbol: 'REGN', name: 'Regeneron Pharmaceuticals Inc.' },
+  { symbol: 'VRTX', name: 'Vertex Pharmaceuticals Inc.' },
+  { symbol: 'MRNA', name: 'Moderna Inc.' },
+  { symbol: 'ABT', name: 'Abbott Laboratories' },
+  { symbol: 'TMO', name: 'Thermo Fisher Scientific Inc.' },
+  { symbol: 'MDT', name: 'Medtronic plc' },
+  { symbol: 'DHR', name: 'Danaher Corporation' },
+  { symbol: 'CVS', name: 'CVS Health Corporation' },
+  { symbol: 'ISRG', name: 'Intuitive Surgical Inc.' },
+  { symbol: 'XOM', name: 'Exxon Mobil Corporation' },
+  { symbol: 'CVX', name: 'Chevron Corporation' },
+  { symbol: 'COP', name: 'ConocoPhillips' },
+  { symbol: 'SLB', name: 'SLB (Schlumberger)' },
+  { symbol: 'EOG', name: 'EOG Resources Inc.' },
+  { symbol: 'OXY', name: 'Occidental Petroleum Corporation' },
+  { symbol: 'DVN', name: 'Devon Energy Corporation' },
+  { symbol: 'WMT', name: 'Walmart Inc.' },
+  { symbol: 'COST', name: 'Costco Wholesale Corporation' },
+  { symbol: 'TGT', name: 'Target Corporation' },
+  { symbol: 'HD', name: 'The Home Depot Inc.' },
+  { symbol: 'LOW', name: "Lowe's Companies Inc." },
+  { symbol: 'MCD', name: "McDonald's Corporation" },
+  { symbol: 'SBUX', name: 'Starbucks Corporation' },
+  { symbol: 'NKE', name: 'NIKE Inc.' },
+  { symbol: 'DIS', name: 'The Walt Disney Company' },
+  { symbol: 'PG', name: 'Procter & Gamble Co.' },
+  { symbol: 'KO', name: 'The Coca-Cola Company' },
+  { symbol: 'PEP', name: 'PepsiCo Inc.' },
+  { symbol: 'PM', name: 'Philip Morris International Inc.' },
+  { symbol: 'MO', name: 'Altria Group Inc.' },
+  { symbol: 'BA', name: 'The Boeing Company' },
+  { symbol: 'CAT', name: 'Caterpillar Inc.' },
+  { symbol: 'DE', name: 'Deere & Company' },
+  { symbol: 'GE', name: 'GE Aerospace' },
+  { symbol: 'HON', name: 'Honeywell International Inc.' },
+  { symbol: 'MMM', name: '3M Company' },
+  { symbol: 'UPS', name: 'United Parcel Service Inc.' },
+  { symbol: 'FDX', name: 'FedEx Corporation' },
+  { symbol: 'RTX', name: 'RTX Corporation' },
+  { symbol: 'LMT', name: 'Lockheed Martin Corporation' },
+  { symbol: 'NOC', name: 'Northrop Grumman Corporation' },
+  { symbol: 'GD', name: 'General Dynamics Corporation' },
+  { symbol: 'VZ', name: 'Verizon Communications Inc.' },
+  { symbol: 'T', name: 'AT&T Inc.' },
+  { symbol: 'TMUS', name: 'T-Mobile US Inc.' },
+  { symbol: 'CMCSA', name: 'Comcast Corporation' },
+  { symbol: 'AMT', name: 'American Tower Corporation' },
+  { symbol: 'PLD', name: 'Prologis Inc.' },
+  { symbol: 'EQIX', name: 'Equinix Inc.' },
+  { symbol: 'O', name: 'Realty Income Corporation' },
+  { symbol: 'SPG', name: 'Simon Property Group Inc.' },
+  { symbol: 'NEE', name: 'NextEra Energy Inc.' },
+  { symbol: 'DUK', name: 'Duke Energy Corporation' },
+  { symbol: 'SO', name: 'The Southern Company' },
+  { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust' },
+  { symbol: 'QQQ', name: 'Invesco QQQ Trust' },
+  { symbol: 'IWM', name: 'iShares Russell 2000 ETF' },
+  { symbol: 'GLD', name: 'SPDR Gold Shares' },
+  { symbol: 'SLV', name: 'iShares Silver Trust' },
+  { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond ETF' },
+  { symbol: 'HYG', name: 'iShares High Yield Corporate Bond ETF' },
+  { symbol: 'XLF', name: 'Financial Select Sector SPDR Fund' },
+  { symbol: 'XLE', name: 'Energy Select Sector SPDR Fund' },
+  { symbol: 'XLK', name: 'Technology Select Sector SPDR Fund' },
+  { symbol: 'XLV', name: 'Health Care Select Sector SPDR Fund' },
+  { symbol: 'VTI', name: 'Vanguard Total Stock Market ETF' },
+  { symbol: 'VOO', name: 'Vanguard S&P 500 ETF' },
+  { symbol: 'BND', name: 'Vanguard Total Bond Market ETF' },
+  { symbol: 'ARKK', name: 'ARK Innovation ETF' },
+  { symbol: 'IAU', name: 'iShares Gold Trust' },
+  { symbol: 'SCHD', name: 'Schwab US Dividend Equity ETF' },
+  { symbol: 'VIG', name: 'Vanguard Dividend Appreciation ETF' },
+  { symbol: 'BRK.B', name: 'Berkshire Hathaway Inc. Class B' },
+  { symbol: 'BRK.A', name: 'Berkshire Hathaway Inc. Class A' },
+  { symbol: 'WBD', name: 'Warner Bros. Discovery Inc.' },
+  { symbol: 'PARA', name: 'Paramount Global' },
+  { symbol: 'NFLX', name: 'Netflix Inc.' },
+  { symbol: 'SONY', name: 'Sony Group Corporation' },
+  { symbol: 'TSM', name: 'Taiwan Semiconductor Manufacturing' },
+  { symbol: 'SAMSUNG', name: 'Samsung Electronics Co. Ltd.' },
+  { symbol: 'RACE', name: 'Ferrari N.V.' },
+  { symbol: 'LVMH', name: 'LVMH Moët Hennessy Louis Vuitton' },
+  { symbol: 'TM', name: 'Toyota Motor Corporation' },
+  { symbol: 'HMC', name: 'Honda Motor Co. Ltd.' },
+  { symbol: 'F', name: 'Ford Motor Company' },
+  { symbol: 'GM', name: 'General Motors Company' },
+  { symbol: 'STLA', name: 'Stellantis N.V.' },
+  { symbol: 'WOLF', name: 'Wolfspeed Inc.' },
+  { symbol: 'ARM', name: 'Arm Holdings plc' },
+  { symbol: 'SMCI', name: 'Super Micro Computer Inc.' },
+  { symbol: 'DELL', name: 'Dell Technologies Inc.' },
+  { symbol: 'HPQ', name: 'HP Inc.' },
+  { symbol: 'HPE', name: 'Hewlett Packard Enterprise Co.' },
+  { symbol: 'ACN', name: 'Accenture plc' },
+  { symbol: 'SAP', name: 'SAP SE' },
+  { symbol: 'INTU', name: 'Intuit Inc.' },
+  { symbol: 'MSCI', name: 'MSCI Inc.' },
+  { symbol: 'SPGI', name: 'S&P Global Inc.' },
+  { symbol: 'MCO', name: "Moody's Corporation" },
+  { symbol: 'ICE', name: 'Intercontinental Exchange Inc.' },
+  { symbol: 'CME', name: 'CME Group Inc.' },
+  { symbol: 'NDAQ', name: 'Nasdaq Inc.' },
+  { symbol: 'USB', name: 'U.S. Bancorp' },
+  { symbol: 'PNC', name: 'PNC Financial Services Group Inc.' },
+  { symbol: 'TFC', name: 'Truist Financial Corporation' },
+]
+
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -457,6 +654,14 @@ export default function Home() {
   const [showGenerateModal, setShowGenerateModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState({ defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist', clockFormat: '12h' as '12h' | '24h' })
+
+  const [tickerSuggestions, setTickerSuggestions] = useState<Array<{ symbol: string; name: string }>>([])
+  const [highlightedIdx, setHighlightedIdx] = useState(-1)
+  const [searchFocused, setSearchFocused] = useState(false)
+  const searchBarRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const [titleWidth, setTitleWidth] = useState<number | undefined>(undefined)
 
   // ── Auth ──
   useEffect(() => {
@@ -536,6 +741,46 @@ export default function Home() {
     localStorage.setItem('sanctum-settings', JSON.stringify(updated))
   }
 
+  // ── Measure title width for search bar ──
+  useEffect(() => {
+    const measure = () => {
+      if (titleRef.current) setTitleWidth(titleRef.current.offsetWidth)
+    }
+    measure()
+    document.fonts.ready.then(measure)
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
+
+  // ── Ticker search autocomplete ──
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchBarRef.current && !searchBarRef.current.contains(e.target as Node)) {
+        setTickerSuggestions([])
+        setHighlightedIdx(-1)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleTickerSearch = (value: string) => {
+    const upper = value.toUpperCase()
+    setSearchTicker(upper)
+    setError('')
+    if (!upper) {
+      setTickerSuggestions([])
+      setHighlightedIdx(-1)
+      return
+    }
+    const matches = TICKER_LIST.filter(t =>
+      t.symbol.startsWith(upper) ||
+      t.name.toLowerCase().includes(upper.toLowerCase())
+    ).slice(0, 5)
+    setTickerSuggestions(matches)
+    setHighlightedIdx(-1)
+  }
+
   const saveWatchlist = (list: string[]) => {
     setWatchlist(list)
     localStorage.setItem('sanctum-watchlist', JSON.stringify(list))
@@ -561,17 +806,19 @@ export default function Home() {
   }, [])
 
   // ── Generate Report ──
-  const generateReport = async () => {
-    if (!searchTicker.trim()) return
+  const generateReport = async (tickerOverride?: string) => {
+    const resolvedTicker = (tickerOverride || searchTicker).trim().toUpperCase()
+    if (!resolvedTicker) return
     setGenerating(true)
     setError('')
     setShowReport(false)
+    setTickerSuggestions([])
 
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker: searchTicker.trim() }),
+        body: JSON.stringify({ ticker: resolvedTicker }),
       })
 
       if (!res.ok) {
@@ -580,7 +827,7 @@ export default function Home() {
       }
 
       const { data, ai } = await res.json()
-      const ticker = searchTicker.trim().toUpperCase()
+      const ticker = resolvedTicker
 
       // Delete any existing reports for this ticker globally
       await supabase.from('reports').delete().eq('ticker', ticker)
@@ -905,42 +1152,166 @@ export default function Home() {
             overflowX: 'hidden',
           }}>
             {/* Hero heading */}
-            <h1 className="hero-title" style={{
+            <h1 ref={titleRef} className="hero-title" style={{
               fontSize: 64, fontWeight: 700, color: '#fff',
               letterSpacing: '0.08em',
               fontFamily: "'JetBrains Mono', monospace",
               margin: 0, lineHeight: 1,
+              width: 'fit-content',
             }}>
               sanctum
             </h1>
 
-            {/* Generate button */}
-            <button
-              onClick={() => { setShowGenerateModal(true); setError(''); setSearchTicker('') }}
-              style={{
-                marginTop: 40,
-                background: 'transparent',
-                border: '1px solid #2a2a2a',
-                borderRadius: 4,
-                color: '#fff',
-                fontSize: 14,
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.05em',
-                padding: '14px 28px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget).style.borderColor = '#444'
-                ;(e.currentTarget).style.background = 'rgba(255,255,255,0.03)'
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget).style.borderColor = '#2a2a2a'
-                ;(e.currentTarget).style.background = 'transparent'
-              }}
+            {/* Ticker search bar */}
+            <div
+              ref={searchBarRef}
+              style={{ marginTop: 40, position: 'relative', width: titleWidth ?? 420 }}
             >
-              + GENERATE NEW REPORT
-            </button>
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  border: `1px solid ${searchFocused ? '#444' : '#2a2a2a'}`,
+                  borderRadius: tickerSuggestions.length > 0 && !generating ? '4px 4px 0 0' : '4px',
+                  padding: '12px 16px',
+                  background: searchFocused ? 'rgba(255,255,255,0.02)' : 'transparent',
+                  transition: 'border-color 0.2s ease, background 0.2s ease',
+                }}
+              >
+                {generating ? (
+                  <div style={{
+                    width: 10, height: 10, borderRadius: '50%',
+                    border: '1.5px solid #333',
+                    borderTopColor: '#fff',
+                    animation: 'spin 0.8s linear infinite',
+                    flexShrink: 0,
+                  }} />
+                ) : (
+                  <span style={{
+                    fontSize: 12, color: searchFocused ? '#fff' : '#444',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    flexShrink: 0, userSelect: 'none',
+                    transition: 'color 0.2s ease',
+                  }}>
+                    &gt;
+                  </span>
+                )}
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={generating ? `ANALYZING ${searchTicker}...` : searchTicker}
+                  onChange={e => !generating && handleTickerSearch(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setSearchFocused(false)}
+                  onKeyDown={e => {
+                    if (generating) return
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      setHighlightedIdx(prev => Math.min(prev + 1, tickerSuggestions.length - 1))
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault()
+                      setHighlightedIdx(prev => Math.max(prev - 1, -1))
+                    } else if (e.key === 'Enter') {
+                      if (highlightedIdx >= 0 && tickerSuggestions[highlightedIdx]) {
+                        const t = tickerSuggestions[highlightedIdx]
+                        setSearchTicker(t.symbol)
+                        setTickerSuggestions([])
+                        setHighlightedIdx(-1)
+                        generateReport(t.symbol)
+                      } else if (searchTicker.trim()) {
+                        setTickerSuggestions([])
+                        generateReport()
+                      }
+                    } else if (e.key === 'Escape') {
+                      setTickerSuggestions([])
+                      setHighlightedIdx(-1)
+                    }
+                  }}
+                  placeholder="ENTER TICKER TO GENERATE REPORT"
+                  disabled={generating}
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    color: generating ? '#555' : '#fff',
+                    fontSize: 12,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    letterSpacing: '0.05em',
+                    outline: 'none',
+                    cursor: generating ? 'default' : 'text',
+                  }}
+                />
+              </div>
+
+              {/* Autocomplete suggestions */}
+              {!generating && tickerSuggestions.length > 0 && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0,
+                  background: '#0a0a0a',
+                  border: '1px solid #444',
+                  borderTop: 'none',
+                  borderRadius: '0 0 4px 4px',
+                  zIndex: 50,
+                  overflow: 'hidden',
+                }}>
+                  {tickerSuggestions.map((t, i) => (
+                    <div
+                      key={t.symbol}
+                      onMouseDown={e => {
+                        e.preventDefault()
+                        setSearchTicker(t.symbol)
+                        setTickerSuggestions([])
+                        setHighlightedIdx(-1)
+                        generateReport(t.symbol)
+                      }}
+                      onMouseEnter={() => setHighlightedIdx(i)}
+                      onMouseLeave={() => setHighlightedIdx(-1)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        padding: '10px 16px',
+                        background: highlightedIdx === i ? 'rgba(255,255,255,0.05)' : 'transparent',
+                        cursor: 'pointer',
+                        borderTop: i > 0 ? '1px solid #1a1a1a' : 'none',
+                        transition: 'background 0.1s ease',
+                      }}
+                    >
+                      <span style={{
+                        fontSize: 13,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: highlightedIdx === i ? '#fff' : '#ccc',
+                        letterSpacing: '0.05em',
+                        minWidth: 56,
+                        flexShrink: 0,
+                        transition: 'color 0.1s ease',
+                      }}>
+                        {t.symbol}
+                      </span>
+                      <span style={{
+                        fontSize: 11,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: '#444',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {t.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Inline error */}
+              {error && !generating && (
+                <div style={{
+                  marginTop: 8,
+                  fontSize: 12, color: '#f87171',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.03em',
+                }}>
+                  ERROR: {error}
+                </div>
+              )}
+            </div>
 
             {/* Content: empty state or reports list */}
             {savedReports.length === 0 ? (
@@ -966,7 +1337,7 @@ export default function Home() {
                   fontSize: 12, color: '#555', margin: 0,
                   fontFamily: "'DM Sans', sans-serif",
                 }}>
-                  Click &quot;Generate New Report&quot; to analyze a stock.
+                  Type a ticker above to analyze a stock.
                 </p>
               </div>
             ) : (
@@ -1231,7 +1602,7 @@ export default function Home() {
                 CANCEL
               </button>
               <button
-                onClick={generateReport}
+                onClick={() => generateReport()}
                 disabled={generating || !searchTicker.trim()}
                 style={{
                   background: generating || !searchTicker.trim() ? 'transparent' : 'rgba(255,255,255,0.06)',
