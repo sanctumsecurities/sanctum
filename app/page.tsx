@@ -1095,7 +1095,7 @@ export default function Home() {
     return (
       <div>
         <div style={{
-          position: 'sticky', top: 0, zIndex: 50,
+          position: 'sticky', top: 84, zIndex: 50,
           background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)',
           borderBottom: '1px solid #1a1a1a',
           padding: '0 40px',
@@ -1430,7 +1430,7 @@ export default function Home() {
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
           <div className="mobile-menu" style={{
-            position: 'absolute', top: 84, left: 0, right: 0,
+            position: 'absolute', top: 84 /* 56 nav + 28 ticker banner */, left: 0, right: 0,
             background: '#0a0a0a', borderBottom: '1px solid #1a1a1a',
             padding: '8px 20px 16px',
             display: 'flex', flexDirection: 'column', gap: 0,
