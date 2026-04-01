@@ -18,6 +18,16 @@ interface SavedReport {
   created_at: string
 }
 
+type HealthStatus = 'ok' | 'degraded' | 'down'
+interface ServiceHealth { name: string; status: 'ok' | 'error' | 'unconfigured'; latency: number; detail?: string }
+interface HealthData {
+  services: ServiceHealth[]
+  overallStatus: HealthStatus
+  checkedAt: number
+  spy?: { price: number; change: number; changePct: number }
+}
+
+
 const formatMktCap = (val: number) => {
   if (!val) return '\u2014'
   if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`
@@ -663,6 +673,17 @@ export default function Home() {
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [titleWidth, setTitleWidth] = useState<number | undefined>(undefined)
 
+  // ── Health popup ──
+  const [healthData, setHealthData] = useState<HealthData | null>(null)
+  const [healthLoading, setHealthLoading] = useState(false)
+  const [showHealthPopup, setShowHealthPopup] = useState(false)
+  const [healthPopupFadingOut, setHealthPopupFadingOut] = useState(false)
+  const healthHoverEnterTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const healthHoverLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const healthFadeOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sessionStartRef = useRef<number>(Date.now())
+  const [sessionUptimeDisplay, setSessionUptimeDisplay] = useState('00:00:00')
+
   // ── Auth ──
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -780,6 +801,81 @@ export default function Home() {
     setTickerSuggestions(matches)
     setHighlightedIdx(-1)
   }
+
+  // ── Health checks ──
+  const fetchHealth = useCallback(async () => {
+    setHealthLoading(true)
+    try {
+      const res = await fetch('/api/health')
+      const json = await res.json()
+      setHealthData(json)
+    } catch {
+      setHealthData({ services: [], overallStatus: 'down', checkedAt: Date.now() })
+    } finally {
+      setHealthLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!session) return
+    fetchHealth()
+    const id = setInterval(fetchHealth, 120_000)
+    return () => clearInterval(id)
+  }, [session, fetchHealth])
+
+  // ── Session uptime ──
+  useEffect(() => {
+    const id = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000)
+      const h = Math.floor(elapsed / 3600).toString().padStart(2, '0')
+      const m = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0')
+      const s = (elapsed % 60).toString().padStart(2, '0')
+      setSessionUptimeDisplay(`${h}:${m}:${s}`)
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Health popup hover handlers ──
+  const startFadeOut = useCallback(() => {
+    setHealthPopupFadingOut(true)
+    healthFadeOutTimer.current = setTimeout(() => {
+      setShowHealthPopup(false)
+      setHealthPopupFadingOut(false)
+    }, 150)
+  }, [])
+
+  const cancelFadeOut = useCallback(() => {
+    if (healthFadeOutTimer.current) { clearTimeout(healthFadeOutTimer.current); healthFadeOutTimer.current = null }
+    setHealthPopupFadingOut(false)
+  }, [])
+
+  const handleStatusMouseEnter = useCallback(() => {
+    if (healthHoverLeaveTimer.current) { clearTimeout(healthHoverLeaveTimer.current); healthHoverLeaveTimer.current = null }
+    cancelFadeOut()
+    if (!showHealthPopup) healthHoverEnterTimer.current = setTimeout(() => setShowHealthPopup(true), 200)
+  }, [showHealthPopup, cancelFadeOut])
+
+  const handleStatusMouseLeave = useCallback(() => {
+    if (healthHoverEnterTimer.current) { clearTimeout(healthHoverEnterTimer.current); healthHoverEnterTimer.current = null }
+    healthHoverLeaveTimer.current = setTimeout(startFadeOut, 100)
+  }, [startFadeOut])
+
+  const handlePopupMouseEnter = useCallback(() => {
+    if (healthHoverLeaveTimer.current) { clearTimeout(healthHoverLeaveTimer.current); healthHoverLeaveTimer.current = null }
+    cancelFadeOut()
+  }, [cancelFadeOut])
+
+  const handlePopupMouseLeave = useCallback(() => {
+    startFadeOut()
+  }, [startFadeOut])
+
+  useEffect(() => {
+    return () => {
+      if (healthHoverEnterTimer.current) clearTimeout(healthHoverEnterTimer.current)
+      if (healthHoverLeaveTimer.current) clearTimeout(healthHoverLeaveTimer.current)
+      if (healthFadeOutTimer.current) clearTimeout(healthFadeOutTimer.current)
+    }
+  }, [])
 
   const saveWatchlist = (list: string[]) => {
     setWatchlist(list)
@@ -939,12 +1035,23 @@ export default function Home() {
   }
 
   // ── Main Shell ──
+  const statusColor = healthData?.overallStatus === 'down' ? '#ef4444'
+    : healthData?.overallStatus === 'degraded' ? '#eab308'
+    : '#22c55e'
+  const statusLabel = healthData?.overallStatus === 'down' ? 'TERMINAL DOWN'
+    : healthData?.overallStatus === 'degraded' ? 'TERMINAL DEGRADED'
+    : 'TERMINAL ACTIVE'
+
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', overflowX: 'hidden', maxWidth: '100vw' }}>
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(8px); }
         }
         @keyframes pulse {
           0%, 100% { opacity: 1; }
@@ -988,25 +1095,116 @@ export default function Home() {
           display: 'flex', alignItems: 'center', gap: 0,
           paddingLeft: 40,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Hoverable status indicator with popup */}
+          <div
+            style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, cursor: 'default' }}
+            onMouseEnter={handleStatusMouseEnter}
+            onMouseLeave={handleStatusMouseLeave}
+          >
             <div style={{
               width: 7, height: 7, borderRadius: '50%',
-              background: '#22c55e',
+              background: statusColor,
               animation: 'pulse 2s ease-in-out infinite',
               flexShrink: 0,
+              transition: 'background 0.4s ease',
             }} />
             <span style={{
-              fontSize: 11, color: '#22c55e',
+              fontSize: 11, color: statusColor,
               letterSpacing: '0.15em',
               fontFamily: "'JetBrains Mono', monospace",
               fontWeight: 500,
+              transition: 'color 0.4s ease',
             }}>
-              TERMINAL ACTIVE
+              {statusLabel}
             </span>
+
+            {/* ── Health Popup Panel ── */}
+            {showHealthPopup && (
+              <div
+                onMouseEnter={handlePopupMouseEnter}
+                onMouseLeave={handlePopupMouseLeave}
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 22px)',
+                  left: 0,
+                  width: 268,
+                  background: '#0f0f0f',
+                  border: '1px solid #1a1a1a',
+                  borderRadius: 4,
+                  padding: '14px 16px',
+                  zIndex: 200,
+                  animation: healthPopupFadingOut ? 'fadeOut 0.15s ease forwards' : 'fadeIn 0.15s ease',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+                }}
+              >
+                {/* Header */}
+                {(() => {
+                  const total = healthData?.services.length ?? 0
+                  const active = healthData?.services.filter(s => s.status === 'ok').length ?? 0
+                  const activeColor = active === total && total > 0 ? '#22c55e' : active <= 1 ? '#ef4444' : '#f59e0b'
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <span style={{ fontSize: 9, color: '#444', letterSpacing: '0.2em', fontFamily: "'JetBrains Mono', monospace" }}>
+                        SYSTEM HEALTH
+                      </span>
+                      <span style={{ fontSize: 9, color: activeColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                        {active}/{total} ACTIVE
+                      </span>
+                    </div>
+                  )
+                })()}
+
+                {/* Service rows */}
+                {(healthData?.services ?? []).map(svc => {
+                  const isOnline = svc.status === 'ok'
+                  return (
+                    <div key={svc.name} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '6px 0', borderBottom: '1px solid #111',
+                    }}>
+                      <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+                        {svc.name.toUpperCase()}
+                      </span>
+                      <span style={{ fontSize: 9, color: isOnline ? '#22c55e' : '#ef4444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                        {isOnline ? 'ONLINE' : 'OFFLINE'}
+                      </span>
+                    </div>
+                  )
+                })}
+
+                {/* Footer */}
+                <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button
+                    onClick={e => { e.stopPropagation(); fetchHealth() }}
+                    disabled={healthLoading}
+                    style={{
+                      background: 'none', border: 'none', cursor: healthLoading ? 'default' : 'pointer',
+                      color: healthLoading ? '#2a2a2a' : '#333',
+                      fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
+                      letterSpacing: '0.1em', padding: 0,
+                      transition: 'color 0.15s ease',
+                    }}
+                    onMouseEnter={e => { if (!healthLoading) (e.currentTarget as HTMLButtonElement).style.color = '#fff' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = healthLoading ? '#2a2a2a' : '#333' }}
+                  >
+                    {healthLoading ? 'CHECKING...' : '↺ REFRESH'}
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 9, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                      UPTIME
+                    </span>
+                    <span style={{ fontSize: 9, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
+                      {sessionUptimeDisplay}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+
           <span style={{
             color: '#333', fontSize: 14,
-            margin: '0 10px',
+            margin: '0 18px',
             userSelect: 'none',
             lineHeight: 1,
           }}>|</span>
