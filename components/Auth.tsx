@@ -140,7 +140,7 @@ export default function Auth() {
             margin: 0, lineHeight: 1,
           }}>
             {displayedText}
-            <span style={{ fontWeight: 300, opacity: caretVisible ? 1 : 0 }}>|</span>
+            <span style={{ fontWeight: 300, opacity: caretVisible ? 1 : 0, ...(displayedText && { display: 'inline-block', width: 0 }) }}>|</span>
           </h1>
         </div>
 
