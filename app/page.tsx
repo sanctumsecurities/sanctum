@@ -165,13 +165,6 @@ function MarketStatus() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div style={{
-        width: 7, height: 7, borderRadius: '50%',
-        background: color,
-        animation: 'pulse 2s ease-in-out infinite',
-        flexShrink: 0,
-        transition: 'background 0.4s ease',
-      }} />
       <span style={{
         fontSize: 11, color,
         letterSpacing: '0.15em',
