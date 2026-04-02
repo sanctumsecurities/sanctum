@@ -6,6 +6,7 @@ import Auth from '@/components/Auth'
 import dynamic from 'next/dynamic'
 import type { Session } from '@supabase/supabase-js'
 import SettingsModal from '@/components/SettingsModal'
+import FearGreedMeter from '@/components/FearGreedMeter'
 
 const ReportView = dynamic(() => import('@/components/ReportView'), { ssr: false })
 
@@ -1466,6 +1467,10 @@ export default function Home() {
           display: 'flex', alignItems: 'center',
           paddingRight: 40, gap: 12,
         }}>
+            <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <FearGreedMeter />
+              <span style={{ width: 1, height: 16, background: '#2a2a2a', flexShrink: 0 }} />
+            </div>
             <button
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
