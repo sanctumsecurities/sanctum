@@ -26,28 +26,6 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   ])
 }
 
-async function fetchInstrument(
-  symbol: string,
-  label: string
-): Promise<{ symbol: string; label: string; price: number; change: number; changePct: number } | null> {
-  try {
-    const quote = await withTimeout(yahooFinance.quote(symbol), 5000) as any
-    if (quote?.regularMarketPrice == null) return null
-    const resolvedLabel = label === symbol
-      ? (quote.shortName ? `${quote.shortName} (${symbol})` : symbol)
-      : label
-    return {
-      symbol,
-      label: resolvedLabel,
-      price: quote.regularMarketPrice as number,
-      change: (quote.regularMarketChange ?? 0) as number,
-      changePct: (quote.regularMarketChangePercent ?? 0) as number,
-    }
-  } catch {
-    return null
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
     const tickersParam = request.nextUrl.searchParams.get('tickers')
@@ -58,10 +36,27 @@ export async function GET(request: NextRequest) {
         })
       : DEFAULT_INSTRUMENTS
 
-    const results = await Promise.all(
-      instruments.map(({ symbol, label }) => fetchInstrument(symbol, label))
-    )
-    const items = results.filter((r): r is NonNullable<typeof r> => r !== null)
+    const symbols = instruments.map(i => i.symbol)
+    const quotes = await withTimeout(yahooFinance.quote(symbols), 8000) as any[]
+    const quotesArr = Array.isArray(quotes) ? quotes : [quotes]
+
+    const items = quotesArr
+      .map((quote: any, idx: number) => {
+        if (quote?.regularMarketPrice == null) return null
+        const { symbol, label } = instruments[idx]
+        const resolvedLabel = label === symbol
+          ? (quote.shortName ? `${quote.shortName} (${symbol})` : symbol)
+          : label
+        return {
+          symbol,
+          label: resolvedLabel,
+          price: quote.regularMarketPrice as number,
+          change: (quote.regularMarketChange ?? 0) as number,
+          changePct: (quote.regularMarketChangePercent ?? 0) as number,
+        }
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+
     return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err: any) {
     return NextResponse.json(
