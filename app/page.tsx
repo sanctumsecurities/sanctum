@@ -659,7 +659,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
             for (const dayShift of [0, 86400000]) {
               const bMs = etMidnightUtcMs + dayShift + (etH * 60 + etM) * 60000
               const x = ((bMs - startMs) / (endMs - startMs)) * w
-              if (x > 0 && x < w) sessionMarkers.push({ x, label: bLabel })
+              if (x >= 0 && x <= w) sessionMarkers.push({ x, label: bLabel })
             }
           }
 
