@@ -145,19 +145,19 @@ function TickerBanner({ speed, updateFreq, tickers }: TickerBannerProps) {
           key={`${keyPrefix}-${item.symbol}`}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <span style={{ color: '#444', fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.12em' }}>
+          <span style={{ color: '#444', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.12em' }}>
             {item.label}
           </span>
-          <span style={{ color: '#888', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
+          <span style={{ color: '#888', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>
             {priceStr}
           </span>
-          <span style={{ color, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
+          <span style={{ color, fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>
             {arrow ? `${arrow} ` : ''}{pctStr}
           </span>
         </span>,
         <span
           key={`${keyPrefix}-${item.symbol}-sep`}
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, color: '#2a2a2a', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, color: '#2a2a2a', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}
         >
           ·
         </span>,
@@ -167,7 +167,7 @@ function TickerBanner({ speed, updateFreq, tickers }: TickerBannerProps) {
   return (
     <div style={{
       position: 'fixed', top: 56, left: 0, right: 0, zIndex: 99,
-      height: 28,
+      height: 34,
       background: '#080808',
       borderBottom: '1px solid #1a1a1a',
       overflow: 'hidden',
@@ -1069,7 +1069,7 @@ export default function Home() {
         <div className="nav-status" style={{
           position: 'absolute', left: 0, top: 0, height: 56,
           display: 'flex', alignItems: 'center', gap: 0,
-          paddingLeft: 40,
+          paddingLeft: 40, zIndex: 1,
         }}>
           {/* Hoverable status indicator with popup */}
           <div
