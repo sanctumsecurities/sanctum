@@ -22,9 +22,12 @@ let cache: { data: any; ts: number; key: string } | null = null
 const CACHE_TTL = 15_000
 
 function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>
   return Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+    Promise.resolve(promise).finally(() => clearTimeout(timeoutId)),
+    new Promise<T>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('timeout')), ms)
+    }),
   ])
 }
 

@@ -15,11 +15,12 @@ interface ServiceResult {
 }
 
 function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>
   return Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), ms)
-    ),
+    Promise.resolve(promise).finally(() => clearTimeout(timeoutId)),
+    new Promise<T>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('timeout')), ms)
+    }),
   ])
 }
 
@@ -60,6 +61,29 @@ async function checkGemini(): Promise<ServiceResult> {
   }
 }
 
+async function checkFearGreed(): Promise<ServiceResult> {
+  const t0 = Date.now()
+  try {
+    const res = await withTimeout(
+      fetch('https://production.dataviz.cnn.io/index/fearandgreed/graphdata', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Referer': 'https://edition.cnn.com/markets/fear-and-greed',
+        },
+      }),
+      5000
+    )
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    if (typeof data?.fear_and_greed?.score !== 'number') throw new Error('unexpected shape')
+    return { name: 'CNN', status: 'ok', latency: Date.now() - t0 }
+  } catch (err: any) {
+    return { name: 'CNN', status: 'error', latency: Date.now() - t0, detail: err.message }
+  }
+}
+
 async function checkSupabase(): Promise<ServiceResult> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -84,7 +108,7 @@ async function checkSupabase(): Promise<ServiceResult> {
 
 function deriveOverall(services: ServiceResult[]): 'ok' | 'degraded' | 'down' {
   const configured = services.filter(s => s.status !== 'unconfigured')
-  if (configured.length === 0) return 'ok'
+  if (configured.length === 0) return 'degraded'
   if (configured.every(s => s.status === 'ok')) return 'ok'
   if (configured.every(s => s.status === 'error')) return 'down'
   return 'degraded'
@@ -92,14 +116,15 @@ function deriveOverall(services: ServiceResult[]): 'ok' | 'degraded' | 'down' {
 
 export async function GET() {
   try {
-    const [yahooResult, geminiResult, supabaseResult] = await Promise.all([
+    const [yahooResult, geminiResult, supabaseResult, fearGreedResult] = await Promise.all([
       checkYahooFinance(),
       checkGemini(),
       checkSupabase(),
+      checkFearGreed(),
     ])
 
     const { spyPrice, spyChange, spyChangePct, ...yahooService } = yahooResult
-    const services: ServiceResult[] = [yahooService, geminiResult, supabaseResult]
+    const services: ServiceResult[] = [yahooService, geminiResult, supabaseResult, fearGreedResult]
     const overallStatus = deriveOverall(services)
 
     const spy = spyPrice != null

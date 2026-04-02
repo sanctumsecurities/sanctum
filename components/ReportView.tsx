@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -233,13 +233,22 @@ const tabs = ['Overview', 'Financials', 'Valuation', 'Strategy', 'Risks']
 export default function ReportView({ data, ai, ticker }: ReportViewProps) {
   const [activeTab, setActiveTab] = useState('Overview')
   const [animating, setAnimating] = useState(false)
+  const switchTabTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (switchTabTimer.current) clearTimeout(switchTabTimer.current)
+    }
+  }, [])
 
   const switchTab = (t: string) => {
     if (t === activeTab) return
+    if (switchTabTimer.current) clearTimeout(switchTabTimer.current)
     setAnimating(true)
-    setTimeout(() => {
+    switchTabTimer.current = setTimeout(() => {
       setActiveTab(t)
       setAnimating(false)
+      switchTabTimer.current = null
     }, 200)
   }
 
