@@ -63,6 +63,177 @@ function Clock({ format }: { format: '12h' | '24h' }) {
   )
 }
 
+// ── Market Hours Status ──
+function MarketStatus() {
+  const [now, setNow] = useState(new Date())
+  const [showPopup, setShowPopup] = useState(false)
+  const [fadingOut, setFadingOut] = useState(false)
+  const [userTz] = useState<string>(() => {
+    const parts = Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(new Date())
+    return parts.find(p => p.type === 'timeZoneName')?.value ?? 'LOCAL'
+  })
+  const hoverEnterTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fadeOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (hoverEnterTimer.current) clearTimeout(hoverEnterTimer.current)
+      if (hoverLeaveTimer.current) clearTimeout(hoverLeaveTimer.current)
+      if (fadeOutTimer.current) clearTimeout(fadeOutTimer.current)
+    }
+  }, [])
+
+  const pad = (n: number) => n.toString().padStart(2, '0')
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(now)
+  const etH = parseInt(parts.find(p => p.type === 'hour')!.value)
+  const etM = parseInt(parts.find(p => p.type === 'minute')!.value)
+  const etS = parseInt(parts.find(p => p.type === 'second')!.value)
+  const etDayName = parts.find(p => p.type === 'weekday')!.value
+  const etDay = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(etDayName)
+  const totalSec = etH * 3600 + etM * 60 + etS
+  const isWeekend = etDay === 0 || etDay === 6
+
+  let label: string, color: string, nextPhase: string, nextPhaseColor: string, secsUntil: number
+
+  if (!isWeekend && totalSec >= 4 * 3600 && totalSec < 9 * 3600 + 1800) {
+    label = 'PRE-MARKET'; color = '#eab308'
+    nextPhase = 'MARKET OPEN'; nextPhaseColor = '#22c55e'
+    secsUntil = (9 * 3600 + 1800) - totalSec
+  } else if (!isWeekend && totalSec >= 9 * 3600 + 1800 && totalSec < 16 * 3600) {
+    label = 'MARKET OPEN'; color = '#22c55e'
+    nextPhase = 'AFTER-HOURS'; nextPhaseColor = '#f97316'
+    secsUntil = 16 * 3600 - totalSec
+  } else if (!isWeekend && totalSec >= 16 * 3600 && totalSec < 20 * 3600) {
+    label = 'AFTER-HOURS'; color = '#f97316'
+    nextPhase = 'MARKET CLOSED'; nextPhaseColor = '#444'
+    secsUntil = 20 * 3600 - totalSec
+  } else {
+    label = 'MARKET CLOSED'; color = '#444'
+    nextPhase = 'PRE-MARKET'; nextPhaseColor = '#eab308'
+    let daysAhead = 0
+    if (etDay === 6) daysAhead = 2
+    else if (etDay === 0) daysAhead = 1
+    else if (totalSec >= 20 * 3600) daysAhead = 1
+    secsUntil = daysAhead * 86400 + 4 * 3600 - totalSec
+  }
+
+  const countdown = `${pad(Math.floor(secsUntil / 3600))}:${pad(Math.floor((secsUntil % 3600) / 60))}:${pad(secsUntil % 60)}`
+
+  const startFadeOut = useCallback(() => {
+    setFadingOut(true)
+    fadeOutTimer.current = setTimeout(() => { setShowPopup(false); setFadingOut(false) }, 150)
+  }, [])
+
+  const cancelFadeOut = useCallback(() => {
+    if (fadeOutTimer.current) { clearTimeout(fadeOutTimer.current); fadeOutTimer.current = null }
+    setFadingOut(false)
+  }, [])
+
+  const handleMouseEnter = useCallback(() => {
+    if (hoverLeaveTimer.current) { clearTimeout(hoverLeaveTimer.current); hoverLeaveTimer.current = null }
+    cancelFadeOut()
+    if (!showPopup) hoverEnterTimer.current = setTimeout(() => setShowPopup(true), 200)
+  }, [showPopup, cancelFadeOut])
+
+  const handleMouseLeave = useCallback(() => {
+    if (hoverEnterTimer.current) { clearTimeout(hoverEnterTimer.current); hoverEnterTimer.current = null }
+    hoverLeaveTimer.current = setTimeout(startFadeOut, 100)
+  }, [startFadeOut])
+
+  const handlePopupMouseEnter = useCallback(() => {
+    if (hoverLeaveTimer.current) { clearTimeout(hoverLeaveTimer.current); hoverLeaveTimer.current = null }
+    cancelFadeOut()
+  }, [cancelFadeOut])
+
+  const handlePopupMouseLeave = useCallback(() => {
+    startFadeOut()
+  }, [startFadeOut])
+
+  return (
+    <div
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, cursor: 'default' }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div style={{
+        width: 7, height: 7, borderRadius: '50%',
+        background: color,
+        animation: 'pulse 2s ease-in-out infinite',
+        flexShrink: 0,
+        transition: 'background 0.4s ease',
+      }} />
+      <span style={{
+        fontSize: 11, color,
+        letterSpacing: '0.15em',
+        fontFamily: "'JetBrains Mono', monospace",
+        fontWeight: 500,
+        transition: 'color 0.4s ease',
+      }}>
+        {label}
+      </span>
+
+      {showPopup && (
+        <div
+          onMouseEnter={handlePopupMouseEnter}
+          onMouseLeave={handlePopupMouseLeave}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 22px)',
+            left: 0,
+            width: 310,
+            background: '#0f0f0f',
+            border: '1px solid #1a1a1a',
+            borderRadius: 4,
+            padding: '16px 20px',
+            zIndex: 200,
+            animation: fadingOut ? 'fadeOut 0.15s ease forwards' : 'fadeIn 0.15s ease',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+          }}
+        >
+          {/* Rows */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #111' }}>
+            <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+              NEXT PHASE
+            </span>
+            <span style={{ fontSize: 11, color: nextPhaseColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+              {nextPhase}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #111' }}>
+            <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+              TIME REMAINING
+            </span>
+            <span style={{ fontSize: 13, color: '#bbb', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+              {countdown}
+            </span>
+          </div>
+
+          {/* Footer */}
+          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+              YOUR TIMEZONE
+            </span>
+            <span style={{ fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
+              {userTz}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Instrument list — keep in sync with INSTRUMENTS in app/api/ticker-band/route.ts
 const TICKER_BAND_INSTRUMENTS = [
   { symbol: '^GSPC', label: 'S&P 500 (^GSPC)' },
@@ -1103,11 +1274,11 @@ export default function Home() {
                   position: 'absolute',
                   top: 'calc(100% + 22px)',
                   left: 0,
-                  width: 268,
+                  width: 310,
                   background: '#0f0f0f',
                   border: '1px solid #1a1a1a',
                   borderRadius: 4,
-                  padding: '14px 16px',
+                  padding: '16px 20px',
                   zIndex: 200,
                   animation: healthPopupFadingOut ? 'fadeOut 0.15s ease forwards' : 'fadeIn 0.15s ease',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
@@ -1119,11 +1290,11 @@ export default function Home() {
                   const active = healthData?.services.filter(s => s.status === 'ok').length ?? 0
                   const activeColor = active === total && total > 0 ? '#22c55e' : active <= 1 ? '#ef4444' : '#f59e0b'
                   return (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 9, color: '#444', letterSpacing: '0.2em', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                      <span style={{ fontSize: 11, color: '#444', letterSpacing: '0.2em', fontFamily: "'JetBrains Mono', monospace" }}>
                         SYSTEM HEALTH
                       </span>
-                      <span style={{ fontSize: 9, color: activeColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                      <span style={{ fontSize: 11, color: activeColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
                         {active}/{total} ACTIVE
                       </span>
                     </div>
@@ -1136,12 +1307,12 @@ export default function Home() {
                   return (
                     <div key={svc.name} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '6px 0', borderBottom: '1px solid #111',
+                      padding: '8px 0', borderBottom: '1px solid #111',
                     }}>
-                      <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+                      <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
                         {svc.name.toUpperCase()}
                       </span>
-                      <span style={{ fontSize: 9, color: isOnline ? '#22c55e' : '#ef4444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                      <span style={{ fontSize: 11, color: isOnline ? '#22c55e' : '#ef4444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
                         {isOnline ? 'ONLINE' : 'OFFLINE'}
                       </span>
                     </div>
@@ -1149,14 +1320,14 @@ export default function Home() {
                 })}
 
                 {/* Footer */}
-                <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <button
                     onClick={e => { e.stopPropagation(); fetchHealth() }}
                     disabled={healthLoading}
                     style={{
                       background: 'none', border: 'none', cursor: healthLoading ? 'default' : 'pointer',
                       color: healthLoading ? '#2a2a2a' : '#333',
-                      fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
                       letterSpacing: '0.1em', padding: 0,
                       transition: 'color 0.15s ease',
                     }}
@@ -1166,10 +1337,10 @@ export default function Home() {
                     {healthLoading ? 'CHECKING...' : '↺ REFRESH'}
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 9, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                    <span style={{ fontSize: 11, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
                       UPTIME
                     </span>
-                    <span style={{ fontSize: 9, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span style={{ fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
                       {sessionUptimeDisplay}
                     </span>
                   </div>
@@ -1178,6 +1349,13 @@ export default function Home() {
             )}
           </div>
 
+          <span style={{
+            color: '#333', fontSize: 14,
+            margin: '0 18px',
+            userSelect: 'none',
+            lineHeight: 1,
+          }}>|</span>
+          <MarketStatus />
           <span style={{
             color: '#333', fontSize: 14,
             margin: '0 18px',
