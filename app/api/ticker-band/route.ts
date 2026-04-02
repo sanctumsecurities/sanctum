@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import YahooFinance from 'yahoo-finance2'
-
-const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] })
+import { yahooFinance } from '@/lib/yahoo'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +16,10 @@ const DEFAULT_INSTRUMENTS = [
 const DEFAULT_LABEL_MAP: Record<string, string> = Object.fromEntries(
   DEFAULT_INSTRUMENTS.map(({ symbol, label }) => [symbol, label])
 )
+
+// ── In-memory cache (15s TTL) ──
+let cache: { data: any; ts: number; key: string } | null = null
+const CACHE_TTL = 15_000
 
 function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -37,10 +39,20 @@ export async function GET(request: NextRequest) {
       : DEFAULT_INSTRUMENTS
 
     const symbols = instruments.map(i => i.symbol)
-    const quotes = await withTimeout(yahooFinance.quote(symbols), 8000) as any[]
-    const quotesArr = Array.isArray(quotes) ? quotes : [quotes]
+    const cacheKey = symbols.join(',')
 
-    const items = quotesArr
+    // Return cached data if still fresh
+    if (cache && cache.key === cacheKey && Date.now() - cache.ts < CACHE_TTL) {
+      return NextResponse.json(cache.data, { headers: { 'Cache-Control': 'no-store' } })
+    }
+
+    // Use quoteCombine for automatic request batching
+    const quotes = await withTimeout(
+      Promise.all(symbols.map(s => yahooFinance.quoteCombine(s))),
+      8000
+    )
+
+    const items = quotes
       .map((quote: any, idx: number) => {
         if (quote?.regularMarketPrice == null) return null
         const { symbol, label } = instruments[idx]
@@ -56,6 +68,9 @@ export async function GET(request: NextRequest) {
         }
       })
       .filter((r): r is NonNullable<typeof r> => r !== null)
+
+    // Update cache
+    cache = { data: items, ts: Date.now(), key: cacheKey }
 
     return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err: any) {

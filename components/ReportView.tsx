@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ComposedChart, Area,
@@ -94,7 +95,7 @@ const CompanyLogo = ({ ticker, website, name }: { ticker: string; website?: stri
         background: '#ffffff', flexShrink: 0,
         boxShadow: '0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
       }}>
-        <img
+        <Image
           src={logoUrl} alt={name} width={54} height={54}
           style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 7 }}
           onError={() => setImgError(true)}

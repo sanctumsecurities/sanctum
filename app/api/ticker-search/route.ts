@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import YahooFinance from 'yahoo-finance2'
+import { yahooFinance } from '@/lib/yahoo'
 
 export const dynamic = 'force-dynamic'
-
-const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] })
 
 export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get('q') ?? ''
