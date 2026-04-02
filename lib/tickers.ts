@@ -164,7 +164,6 @@ export const TICKER_LIST: { symbol: string; name: string }[] = [
   { symbol: 'BRK.A', name: 'Berkshire Hathaway Inc. Class A' },
   { symbol: 'WBD', name: 'Warner Bros. Discovery Inc.' },
   { symbol: 'PARA', name: 'Paramount Global' },
-  { symbol: 'NFLX', name: 'Netflix Inc.' },
   { symbol: 'SONY', name: 'Sony Group Corporation' },
   { symbol: 'TSM', name: 'Taiwan Semiconductor Manufacturing' },
   { symbol: 'SAMSUNG', name: 'Samsung Electronics Co. Ltd.' },

@@ -30,7 +30,8 @@ export async function GET() {
     const data = await res.json()
     const { score, rating } = data.fear_and_greed
     return NextResponse.json({ score: Math.round(score), rating })
-  } catch {
+  } catch (err) {
+    console.error('[fear-greed] fetch failed:', err)
     return NextResponse.json({ error: 'unavailable' }, { status: 502 })
   }
 }

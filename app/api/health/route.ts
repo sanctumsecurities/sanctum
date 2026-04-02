@@ -15,11 +15,12 @@ interface ServiceResult {
 }
 
 function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>
   return Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), ms)
-    ),
+    Promise.resolve(promise).finally(() => clearTimeout(timeoutId)),
+    new Promise<T>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('timeout')), ms)
+    }),
   ])
 }
 
@@ -107,7 +108,7 @@ async function checkSupabase(): Promise<ServiceResult> {
 
 function deriveOverall(services: ServiceResult[]): 'ok' | 'degraded' | 'down' {
   const configured = services.filter(s => s.status !== 'unconfigured')
-  if (configured.length === 0) return 'ok'
+  if (configured.length === 0) return 'degraded'
   if (configured.every(s => s.status === 'ok')) return 'ok'
   if (configured.every(s => s.status === 'error')) return 'down'
   return 'degraded'

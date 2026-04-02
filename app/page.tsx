@@ -96,10 +96,10 @@ function MarketStatus() {
     timeZone: 'America/New_York',
     weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   }).formatToParts(now)
-  const etH = parseInt(parts.find(p => p.type === 'hour')!.value)
-  const etM = parseInt(parts.find(p => p.type === 'minute')!.value)
-  const etS = parseInt(parts.find(p => p.type === 'second')!.value)
-  const etDayName = parts.find(p => p.type === 'weekday')!.value
+  const etH = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0')
+  const etM = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0')
+  const etS = parseInt(parts.find(p => p.type === 'second')?.value ?? '0')
+  const etDayName = parts.find(p => p.type === 'weekday')?.value ?? 'Mon'
   const etDay = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(etDayName)
   const totalSec = etH * 3600 + etM * 60 + etS
   const isWeekend = etDay === 0 || etDay === 6
@@ -635,12 +635,12 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
           const endMs = new Date(pts[pts.length - 1].time).getTime()
           // Derive ET date from the most recent data point to stay on the current trading day
           const etParts = etFormatter.formatToParts(new Date(endMs))
-          const pyr = etParts.find(p => p.type === 'year')!.value
-          const pmo = etParts.find(p => p.type === 'month')!.value
-          const pda = etParts.find(p => p.type === 'day')!.value
-          const pH  = etParts.find(p => p.type === 'hour')!.value
-          const pM  = etParts.find(p => p.type === 'minute')!.value
-          const pS  = etParts.find(p => p.type === 'second')!.value
+          const pyr = etParts.find(p => p.type === 'year')?.value ?? '2024'
+          const pmo = etParts.find(p => p.type === 'month')?.value ?? '01'
+          const pda = etParts.find(p => p.type === 'day')?.value ?? '01'
+          const pH  = etParts.find(p => p.type === 'hour')?.value ?? '00'
+          const pM  = etParts.find(p => p.type === 'minute')?.value ?? '00'
+          const pS  = etParts.find(p => p.type === 'second')?.value ?? '00'
           const probeEtFakeUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T${pH}:${pM}:${pS}Z`)
           const offsetMs = endMs - probeEtFakeUtcMs
           const etMidnightUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T00:00:00Z`) + offsetMs
@@ -917,13 +917,15 @@ export default function Home() {
           setChartData(prev => ({ ...prev, ...chartMap }))
         }
       })
-      .catch(() => {})
+      .catch(err => console.error('[charts] batch fetch failed:', err))
   }, [savedReports])
 
   // ── Load watchlist from localStorage ──
   useEffect(() => {
-    const stored = localStorage.getItem('sanctum-watchlist')
-    if (stored) setWatchlist(JSON.parse(stored))
+    try {
+      const stored = localStorage.getItem('sanctum-watchlist')
+      if (stored) setWatchlist(JSON.parse(stored))
+    } catch {}
   }, [])
 
   // ── Load settings from localStorage ──
@@ -946,7 +948,7 @@ export default function Home() {
       if (session?.user?.id) {
         supabase.from('user_settings')
           .upsert({ user_id: session.user.id, settings: updated, updated_at: new Date().toISOString() })
-          .then(() => {})
+          .then(({ error }) => { if (error) console.error('[settings] save failed:', error) })
       }
       return updated
     })
@@ -963,6 +965,13 @@ export default function Home() {
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
   }, [loading])
+
+  // ── Cleanup search debounce on unmount ──
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [])
 
   // ── Ticker search autocomplete ──
   useEffect(() => {
@@ -1088,7 +1097,11 @@ export default function Home() {
   }
 
   const deleteReport = useCallback(async (id: string) => {
-    await supabase.from('reports').delete().eq('id', id)
+    const { error } = await supabase.from('reports').delete().eq('id', id)
+    if (error) {
+      console.error('[reports] delete failed:', error)
+      return
+    }
     setSavedReports(prev => prev.filter(r => r.id !== id))
   }, [])
 

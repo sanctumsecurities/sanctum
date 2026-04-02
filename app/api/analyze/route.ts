@@ -184,11 +184,11 @@ Requirements:
         overview: {
           sentiment: 'Neutral',
           highlights: [
-            { icon: '📊', text: `${data.name} trades at ${data.pe.toFixed(1)}x earnings with a market cap of $${(data.marketCap / 1e9).toFixed(0)}B.` },
-            { icon: '💰', text: `Operating margins of ${(data.operatingMargins * 100).toFixed(1)}% and profit margins of ${(data.profitMargins * 100).toFixed(1)}%.` },
-            { icon: '📈', text: `Beta of ${data.beta.toFixed(2)} relative to the broader market.` },
-            { icon: '🏢', text: `Operates in the ${data.sector} sector, ${data.industry} industry.` },
-            { icon: '💵', text: `Free cash flow of $${(data.freeCashflow / 1e9).toFixed(1)}B.` },
+            { icon: '📊', text: `${data.name} trades at ${data.pe ? data.pe.toFixed(1) + 'x earnings' : 'N/A earnings'} with a market cap of $${data.marketCap ? (data.marketCap / 1e9).toFixed(0) + 'B' : 'N/A'}.` },
+            { icon: '💰', text: `Operating margins of ${data.operatingMargins ? (data.operatingMargins * 100).toFixed(1) + '%' : 'N/A'} and profit margins of ${data.profitMargins ? (data.profitMargins * 100).toFixed(1) + '%' : 'N/A'}.` },
+            { icon: '📈', text: `Beta of ${data.beta ? data.beta.toFixed(2) : 'N/A'} relative to the broader market.` },
+            { icon: '🏢', text: `Operates in the ${data.sector || 'unknown'} sector, ${data.industry || 'unknown'} industry.` },
+            { icon: '💵', text: `Free cash flow of ${data.freeCashflow ? '$' + (data.freeCashflow / 1e9).toFixed(1) + 'B' : 'N/A'}.` },
           ],
         },
         strategy: [
@@ -207,11 +207,14 @@ Requirements:
     analysisCache.set(symbol, { data, ai, ts: Date.now() })
 
     // Evict stale entries (keep cache bounded)
+    const now = Date.now()
+    for (const [key, val] of analysisCache) {
+      if (now - val.ts > CACHE_TTL) analysisCache.delete(key)
+    }
+    // Hard cap: if still over 50 entries, remove oldest
     if (analysisCache.size > 50) {
-      const now = Date.now()
-      for (const [key, val] of analysisCache) {
-        if (now - val.ts > CACHE_TTL) analysisCache.delete(key)
-      }
+      const oldest = [...analysisCache.entries()].sort((a, b) => a[1].ts - b[1].ts)
+      for (let i = 0; i < oldest.length - 50; i++) analysisCache.delete(oldest[i][0])
     }
 
     // ── Step 3 & 4: Return Response (client handles Supabase save) ──

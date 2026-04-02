@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
       }))
 
     return NextResponse.json(suggestions)
-  } catch {
+  } catch (err) {
+    console.error('[ticker-search] search failed:', err)
     return NextResponse.json([])
   }
 }

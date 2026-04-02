@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     const ticker = req.nextUrl.searchParams.get('ticker')
