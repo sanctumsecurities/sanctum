@@ -1421,7 +1421,7 @@ export default function Home() {
             userSelect: 'none',
             lineHeight: 1,
           }}>|</span>
-          <Clock format={settings.clockFormat} />
+          <FearGreedMeter />
         </div>
 
         <div className="nav-inner" style={{
@@ -1467,8 +1467,8 @@ export default function Home() {
           display: 'flex', alignItems: 'center',
           paddingRight: 40, gap: 12,
         }}>
-            <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <FearGreedMeter />
+            <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <Clock format={settings.clockFormat} />
               <span style={{ width: 1, height: 16, background: '#2a2a2a', flexShrink: 0 }} />
             </div>
             <button
