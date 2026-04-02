@@ -63,6 +63,177 @@ function Clock({ format }: { format: '12h' | '24h' }) {
   )
 }
 
+// ── Market Hours Status ──
+function MarketStatus() {
+  const [now, setNow] = useState(new Date())
+  const [showPopup, setShowPopup] = useState(false)
+  const [fadingOut, setFadingOut] = useState(false)
+  const [userTz] = useState<string>(() => {
+    const parts = Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(new Date())
+    return parts.find(p => p.type === 'timeZoneName')?.value ?? 'LOCAL'
+  })
+  const hoverEnterTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fadeOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (hoverEnterTimer.current) clearTimeout(hoverEnterTimer.current)
+      if (hoverLeaveTimer.current) clearTimeout(hoverLeaveTimer.current)
+      if (fadeOutTimer.current) clearTimeout(fadeOutTimer.current)
+    }
+  }, [])
+
+  const pad = (n: number) => n.toString().padStart(2, '0')
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(now)
+  const etH = parseInt(parts.find(p => p.type === 'hour')!.value)
+  const etM = parseInt(parts.find(p => p.type === 'minute')!.value)
+  const etS = parseInt(parts.find(p => p.type === 'second')!.value)
+  const etDayName = parts.find(p => p.type === 'weekday')!.value
+  const etDay = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(etDayName)
+  const totalSec = etH * 3600 + etM * 60 + etS
+  const isWeekend = etDay === 0 || etDay === 6
+
+  let label: string, color: string, nextPhase: string, nextPhaseColor: string, secsUntil: number
+
+  if (!isWeekend && totalSec >= 4 * 3600 && totalSec < 9 * 3600 + 1800) {
+    label = 'PRE-MARKET'; color = '#eab308'
+    nextPhase = 'MARKET OPEN'; nextPhaseColor = '#22c55e'
+    secsUntil = (9 * 3600 + 1800) - totalSec
+  } else if (!isWeekend && totalSec >= 9 * 3600 + 1800 && totalSec < 16 * 3600) {
+    label = 'MARKET OPEN'; color = '#22c55e'
+    nextPhase = 'AFTER-HOURS'; nextPhaseColor = '#f97316'
+    secsUntil = 16 * 3600 - totalSec
+  } else if (!isWeekend && totalSec >= 16 * 3600 && totalSec < 20 * 3600) {
+    label = 'AFTER-HOURS'; color = '#f97316'
+    nextPhase = 'MARKET CLOSED'; nextPhaseColor = '#444'
+    secsUntil = 20 * 3600 - totalSec
+  } else {
+    label = 'MARKET CLOSED'; color = '#444'
+    nextPhase = 'PRE-MARKET'; nextPhaseColor = '#eab308'
+    let daysAhead = 0
+    if (etDay === 6) daysAhead = 2
+    else if (etDay === 0) daysAhead = 1
+    else if (totalSec >= 20 * 3600) daysAhead = 1
+    secsUntil = daysAhead * 86400 + 4 * 3600 - totalSec
+  }
+
+  const countdown = `${pad(Math.floor(secsUntil / 3600))}:${pad(Math.floor((secsUntil % 3600) / 60))}:${pad(secsUntil % 60)}`
+
+  const startFadeOut = useCallback(() => {
+    setFadingOut(true)
+    fadeOutTimer.current = setTimeout(() => { setShowPopup(false); setFadingOut(false) }, 150)
+  }, [])
+
+  const cancelFadeOut = useCallback(() => {
+    if (fadeOutTimer.current) { clearTimeout(fadeOutTimer.current); fadeOutTimer.current = null }
+    setFadingOut(false)
+  }, [])
+
+  const handleMouseEnter = useCallback(() => {
+    if (hoverLeaveTimer.current) { clearTimeout(hoverLeaveTimer.current); hoverLeaveTimer.current = null }
+    cancelFadeOut()
+    if (!showPopup) hoverEnterTimer.current = setTimeout(() => setShowPopup(true), 200)
+  }, [showPopup, cancelFadeOut])
+
+  const handleMouseLeave = useCallback(() => {
+    if (hoverEnterTimer.current) { clearTimeout(hoverEnterTimer.current); hoverEnterTimer.current = null }
+    hoverLeaveTimer.current = setTimeout(startFadeOut, 100)
+  }, [startFadeOut])
+
+  const handlePopupMouseEnter = useCallback(() => {
+    if (hoverLeaveTimer.current) { clearTimeout(hoverLeaveTimer.current); hoverLeaveTimer.current = null }
+    cancelFadeOut()
+  }, [cancelFadeOut])
+
+  const handlePopupMouseLeave = useCallback(() => {
+    startFadeOut()
+  }, [startFadeOut])
+
+  return (
+    <div
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, cursor: 'default' }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div style={{
+        width: 7, height: 7, borderRadius: '50%',
+        background: color,
+        animation: 'pulse 2s ease-in-out infinite',
+        flexShrink: 0,
+        transition: 'background 0.4s ease',
+      }} />
+      <span style={{
+        fontSize: 11, color,
+        letterSpacing: '0.15em',
+        fontFamily: "'JetBrains Mono', monospace",
+        fontWeight: 500,
+        transition: 'color 0.4s ease',
+      }}>
+        {label}
+      </span>
+
+      {showPopup && (
+        <div
+          onMouseEnter={handlePopupMouseEnter}
+          onMouseLeave={handlePopupMouseLeave}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 22px)',
+            left: 0,
+            width: 310,
+            background: '#0f0f0f',
+            border: '1px solid #1a1a1a',
+            borderRadius: 4,
+            padding: '16px 20px',
+            zIndex: 200,
+            animation: fadingOut ? 'fadeOut 0.15s ease forwards' : 'fadeIn 0.15s ease',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+          }}
+        >
+          {/* Rows */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #111' }}>
+            <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+              NEXT PHASE
+            </span>
+            <span style={{ fontSize: 11, color: nextPhaseColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+              {nextPhase}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #111' }}>
+            <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+              TIME REMAINING
+            </span>
+            <span style={{ fontSize: 13, color: '#bbb', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+              {countdown}
+            </span>
+          </div>
+
+          {/* Footer */}
+          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+              YOUR TIMEZONE
+            </span>
+            <span style={{ fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
+              {userTz}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Instrument list — keep in sync with INSTRUMENTS in app/api/ticker-band/route.ts
 const TICKER_BAND_INSTRUMENTS = [
   { symbol: '^GSPC', label: 'S&P 500 (^GSPC)' },
@@ -145,19 +316,19 @@ function TickerBanner({ speed, updateFreq, tickers }: TickerBannerProps) {
           key={`${keyPrefix}-${item.symbol}`}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <span style={{ color: '#444', fontSize: 10, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.12em' }}>
+          <span style={{ color: '#444', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.12em' }}>
             {item.label}
           </span>
-          <span style={{ color: '#888', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
+          <span style={{ color: '#888', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>
             {priceStr}
           </span>
-          <span style={{ color, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
+          <span style={{ color, fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>
             {arrow ? `${arrow} ` : ''}{pctStr}
           </span>
         </span>,
         <span
           key={`${keyPrefix}-${item.symbol}-sep`}
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, color: '#2a2a2a', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, color: '#2a2a2a', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}
         >
           ·
         </span>,
@@ -167,7 +338,7 @@ function TickerBanner({ speed, updateFreq, tickers }: TickerBannerProps) {
   return (
     <div style={{
       position: 'fixed', top: 56, left: 0, right: 0, zIndex: 99,
-      height: 28,
+      height: 34,
       background: '#080808',
       borderBottom: '1px solid #1a1a1a',
       overflow: 'hidden',
@@ -198,6 +369,13 @@ interface ReportCardProps {
   onDelete: (id: string) => void
   onFocus: (id: string | null) => void
 }
+
+const etFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit',
+  hour12: false,
+})
 
 const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, focusedCardId, colIndex, onOpen, onDelete, onFocus }: ReportCardProps) {
   const d = report.data || {}
@@ -457,6 +635,44 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
           const up = prices[prices.length - 1] >= prices[0]
           const strokeColor = up ? '#22c55e' : '#f87171'
           const fillColor = up ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)'
+
+          // Compute ET session boundary markers for the current trading day only
+          const startMs = new Date(pts[0].time).getTime()
+          const endMs = new Date(pts[pts.length - 1].time).getTime()
+          // Derive ET date from the most recent data point to stay on the current trading day
+          const etParts = etFormatter.formatToParts(new Date(endMs))
+          const pyr = etParts.find(p => p.type === 'year')!.value
+          const pmo = etParts.find(p => p.type === 'month')!.value
+          const pda = etParts.find(p => p.type === 'day')!.value
+          const pH  = etParts.find(p => p.type === 'hour')!.value
+          const pM  = etParts.find(p => p.type === 'minute')!.value
+          const pS  = etParts.find(p => p.type === 'second')!.value
+          const probeEtFakeUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T${pH}:${pM}:${pS}Z`)
+          const offsetMs = endMs - probeEtFakeUtcMs
+          const etMidnightUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T00:00:00Z`) + offsetMs
+          const sessionBoundaries = [
+            { label: 'P', etH: 4,  etM: 0  },
+            { label: 'O', etH: 9,  etM: 30 },
+            { label: 'A', etH: 16, etM: 0  },
+            { label: 'C', etH: 20, etM: 0  },
+          ]
+          // Pre-compute UTC ms for each data point for index-based alignment
+          const ptMs = pts.map(p => new Date(p.time).getTime())
+          const sessionMarkers: { x: number; label: string; key: string }[] = []
+          for (const { label: bLabel, etH, etM } of sessionBoundaries) {
+            const bMs = etMidnightUtcMs + (etH * 60 + etM) * 60000
+            if (bMs < startMs || bMs > endMs) continue
+            // Snap to nearest data point index (aligns with index-based sparkline rendering)
+            let closestIdx = 0
+            let closestDiff = Infinity
+            for (let i = 0; i < ptMs.length; i++) {
+              const diff = Math.abs(ptMs[i] - bMs)
+              if (diff < closestDiff) { closestDiff = diff; closestIdx = i }
+            }
+            const x = (closestIdx / (pts.length - 1)) * w
+            sessionMarkers.push({ x, label: bLabel, key: bLabel })
+          }
+
           return (
             <svg
               viewBox={`0 0 ${w} ${h}`}
@@ -465,6 +681,26 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
             >
               <polygon points={fillPoints} fill={fillColor} />
               <polyline points={linePoints} fill="none" stroke={strokeColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+              {sessionMarkers.map(({ x, label: mLabel, key: mKey }) => (
+                <g key={mKey}>
+                  <line
+                    x1={x} y1={10} x2={x} y2={h}
+                    stroke="rgba(255,255,255,0.12)"
+                    strokeWidth="1"
+                    strokeDasharray="2,3"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <text
+                    x={x} y={8}
+                    textAnchor="middle"
+                    fontSize="7"
+                    fill="rgba(255,255,255,0.30)"
+                    fontFamily="'JetBrains Mono', monospace"
+                  >
+                    {mLabel}
+                  </text>
+                </g>
+              ))}
             </svg>
           )
         })()}
@@ -579,203 +815,6 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
   prev.colIndex === next.colIndex
 )
 
-const TICKER_LIST: { symbol: string; name: string }[] = [
-  { symbol: 'AAPL', name: 'Apple Inc.' },
-  { symbol: 'MSFT', name: 'Microsoft Corporation' },
-  { symbol: 'GOOGL', name: 'Alphabet Inc.' },
-  { symbol: 'GOOG', name: 'Alphabet Inc. Class C' },
-  { symbol: 'AMZN', name: 'Amazon.com Inc.' },
-  { symbol: 'NVDA', name: 'NVIDIA Corporation' },
-  { symbol: 'META', name: 'Meta Platforms Inc.' },
-  { symbol: 'TSLA', name: 'Tesla Inc.' },
-  { symbol: 'AVGO', name: 'Broadcom Inc.' },
-  { symbol: 'ORCL', name: 'Oracle Corporation' },
-  { symbol: 'NFLX', name: 'Netflix Inc.' },
-  { symbol: 'ADBE', name: 'Adobe Inc.' },
-  { symbol: 'CRM', name: 'Salesforce Inc.' },
-  { symbol: 'AMD', name: 'Advanced Micro Devices Inc.' },
-  { symbol: 'INTC', name: 'Intel Corporation' },
-  { symbol: 'QCOM', name: 'Qualcomm Inc.' },
-  { symbol: 'TXN', name: 'Texas Instruments Inc.' },
-  { symbol: 'AMAT', name: 'Applied Materials Inc.' },
-  { symbol: 'MU', name: 'Micron Technology Inc.' },
-  { symbol: 'ASML', name: 'ASML Holding N.V.' },
-  { symbol: 'KLAC', name: 'KLA Corporation' },
-  { symbol: 'LRCX', name: 'Lam Research Corporation' },
-  { symbol: 'CSCO', name: 'Cisco Systems Inc.' },
-  { symbol: 'IBM', name: 'International Business Machines' },
-  { symbol: 'NOW', name: 'ServiceNow Inc.' },
-  { symbol: 'WDAY', name: 'Workday Inc.' },
-  { symbol: 'SNOW', name: 'Snowflake Inc.' },
-  { symbol: 'DDOG', name: 'Datadog Inc.' },
-  { symbol: 'NET', name: 'Cloudflare Inc.' },
-  { symbol: 'CRWD', name: 'CrowdStrike Holdings Inc.' },
-  { symbol: 'ZS', name: 'Zscaler Inc.' },
-  { symbol: 'PANW', name: 'Palo Alto Networks Inc.' },
-  { symbol: 'PLTR', name: 'Palantir Technologies Inc.' },
-  { symbol: 'COIN', name: 'Coinbase Global Inc.' },
-  { symbol: 'HOOD', name: 'Robinhood Markets Inc.' },
-  { symbol: 'SHOP', name: 'Shopify Inc.' },
-  { symbol: 'SQ', name: 'Block Inc.' },
-  { symbol: 'PYPL', name: 'PayPal Holdings Inc.' },
-  { symbol: 'UBER', name: 'Uber Technologies Inc.' },
-  { symbol: 'LYFT', name: 'Lyft Inc.' },
-  { symbol: 'ABNB', name: 'Airbnb Inc.' },
-  { symbol: 'BKNG', name: 'Booking Holdings Inc.' },
-  { symbol: 'RBLX', name: 'Roblox Corporation' },
-  { symbol: 'SNAP', name: 'Snap Inc.' },
-  { symbol: 'PINS', name: 'Pinterest Inc.' },
-  { symbol: 'SPOT', name: 'Spotify Technology S.A.' },
-  { symbol: 'TTD', name: 'The Trade Desk Inc.' },
-  { symbol: 'TWLO', name: 'Twilio Inc.' },
-  { symbol: 'HUBS', name: 'HubSpot Inc.' },
-  { symbol: 'TEAM', name: 'Atlassian Corporation' },
-  { symbol: 'MDB', name: 'MongoDB Inc.' },
-  { symbol: 'ZM', name: 'Zoom Video Communications Inc.' },
-  { symbol: 'DOCU', name: 'DocuSign Inc.' },
-  { symbol: 'SOFI', name: 'SoFi Technologies Inc.' },
-  { symbol: 'AFRM', name: 'Affirm Holdings Inc.' },
-  { symbol: 'UPST', name: 'Upstart Holdings Inc.' },
-  { symbol: 'RIVN', name: 'Rivian Automotive Inc.' },
-  { symbol: 'LCID', name: 'Lucid Group Inc.' },
-  { symbol: 'NIO', name: 'NIO Inc.' },
-  { symbol: 'XPEV', name: 'XPeng Inc.' },
-  { symbol: 'LI', name: 'Li Auto Inc.' },
-  { symbol: 'BABA', name: 'Alibaba Group Holding Ltd.' },
-  { symbol: 'JD', name: 'JD.com Inc.' },
-  { symbol: 'PDD', name: 'PDD Holdings Inc.' },
-  { symbol: 'SE', name: 'Sea Limited' },
-  { symbol: 'MELI', name: 'MercadoLibre Inc.' },
-  { symbol: 'GME', name: 'GameStop Corp.' },
-  { symbol: 'AMC', name: 'AMC Entertainment Holdings Inc.' },
-  { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
-  { symbol: 'BAC', name: 'Bank of America Corporation' },
-  { symbol: 'GS', name: 'The Goldman Sachs Group Inc.' },
-  { symbol: 'MS', name: 'Morgan Stanley' },
-  { symbol: 'C', name: 'Citigroup Inc.' },
-  { symbol: 'WFC', name: 'Wells Fargo & Company' },
-  { symbol: 'AXP', name: 'American Express Company' },
-  { symbol: 'BLK', name: 'BlackRock Inc.' },
-  { symbol: 'SCHW', name: 'The Charles Schwab Corporation' },
-  { symbol: 'COF', name: 'Capital One Financial Corporation' },
-  { symbol: 'V', name: 'Visa Inc.' },
-  { symbol: 'MA', name: 'Mastercard Inc.' },
-  { symbol: 'UNH', name: 'UnitedHealth Group Inc.' },
-  { symbol: 'JNJ', name: 'Johnson & Johnson' },
-  { symbol: 'PFE', name: 'Pfizer Inc.' },
-  { symbol: 'MRK', name: 'Merck & Co. Inc.' },
-  { symbol: 'ABBV', name: 'AbbVie Inc.' },
-  { symbol: 'LLY', name: 'Eli Lilly and Company' },
-  { symbol: 'BMY', name: 'Bristol-Myers Squibb Company' },
-  { symbol: 'AMGN', name: 'Amgen Inc.' },
-  { symbol: 'GILD', name: 'Gilead Sciences Inc.' },
-  { symbol: 'REGN', name: 'Regeneron Pharmaceuticals Inc.' },
-  { symbol: 'VRTX', name: 'Vertex Pharmaceuticals Inc.' },
-  { symbol: 'MRNA', name: 'Moderna Inc.' },
-  { symbol: 'ABT', name: 'Abbott Laboratories' },
-  { symbol: 'TMO', name: 'Thermo Fisher Scientific Inc.' },
-  { symbol: 'MDT', name: 'Medtronic plc' },
-  { symbol: 'DHR', name: 'Danaher Corporation' },
-  { symbol: 'CVS', name: 'CVS Health Corporation' },
-  { symbol: 'ISRG', name: 'Intuitive Surgical Inc.' },
-  { symbol: 'XOM', name: 'Exxon Mobil Corporation' },
-  { symbol: 'CVX', name: 'Chevron Corporation' },
-  { symbol: 'COP', name: 'ConocoPhillips' },
-  { symbol: 'SLB', name: 'SLB (Schlumberger)' },
-  { symbol: 'EOG', name: 'EOG Resources Inc.' },
-  { symbol: 'OXY', name: 'Occidental Petroleum Corporation' },
-  { symbol: 'DVN', name: 'Devon Energy Corporation' },
-  { symbol: 'WMT', name: 'Walmart Inc.' },
-  { symbol: 'COST', name: 'Costco Wholesale Corporation' },
-  { symbol: 'TGT', name: 'Target Corporation' },
-  { symbol: 'HD', name: 'The Home Depot Inc.' },
-  { symbol: 'LOW', name: "Lowe's Companies Inc." },
-  { symbol: 'MCD', name: "McDonald's Corporation" },
-  { symbol: 'SBUX', name: 'Starbucks Corporation' },
-  { symbol: 'NKE', name: 'NIKE Inc.' },
-  { symbol: 'DIS', name: 'The Walt Disney Company' },
-  { symbol: 'PG', name: 'Procter & Gamble Co.' },
-  { symbol: 'KO', name: 'The Coca-Cola Company' },
-  { symbol: 'PEP', name: 'PepsiCo Inc.' },
-  { symbol: 'PM', name: 'Philip Morris International Inc.' },
-  { symbol: 'MO', name: 'Altria Group Inc.' },
-  { symbol: 'BA', name: 'The Boeing Company' },
-  { symbol: 'CAT', name: 'Caterpillar Inc.' },
-  { symbol: 'DE', name: 'Deere & Company' },
-  { symbol: 'GE', name: 'GE Aerospace' },
-  { symbol: 'HON', name: 'Honeywell International Inc.' },
-  { symbol: 'MMM', name: '3M Company' },
-  { symbol: 'UPS', name: 'United Parcel Service Inc.' },
-  { symbol: 'FDX', name: 'FedEx Corporation' },
-  { symbol: 'RTX', name: 'RTX Corporation' },
-  { symbol: 'LMT', name: 'Lockheed Martin Corporation' },
-  { symbol: 'NOC', name: 'Northrop Grumman Corporation' },
-  { symbol: 'GD', name: 'General Dynamics Corporation' },
-  { symbol: 'VZ', name: 'Verizon Communications Inc.' },
-  { symbol: 'T', name: 'AT&T Inc.' },
-  { symbol: 'TMUS', name: 'T-Mobile US Inc.' },
-  { symbol: 'CMCSA', name: 'Comcast Corporation' },
-  { symbol: 'AMT', name: 'American Tower Corporation' },
-  { symbol: 'PLD', name: 'Prologis Inc.' },
-  { symbol: 'EQIX', name: 'Equinix Inc.' },
-  { symbol: 'O', name: 'Realty Income Corporation' },
-  { symbol: 'SPG', name: 'Simon Property Group Inc.' },
-  { symbol: 'NEE', name: 'NextEra Energy Inc.' },
-  { symbol: 'DUK', name: 'Duke Energy Corporation' },
-  { symbol: 'SO', name: 'The Southern Company' },
-  { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust' },
-  { symbol: 'QQQ', name: 'Invesco QQQ Trust' },
-  { symbol: 'IWM', name: 'iShares Russell 2000 ETF' },
-  { symbol: 'GLD', name: 'SPDR Gold Shares' },
-  { symbol: 'SLV', name: 'iShares Silver Trust' },
-  { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond ETF' },
-  { symbol: 'HYG', name: 'iShares High Yield Corporate Bond ETF' },
-  { symbol: 'XLF', name: 'Financial Select Sector SPDR Fund' },
-  { symbol: 'XLE', name: 'Energy Select Sector SPDR Fund' },
-  { symbol: 'XLK', name: 'Technology Select Sector SPDR Fund' },
-  { symbol: 'XLV', name: 'Health Care Select Sector SPDR Fund' },
-  { symbol: 'VTI', name: 'Vanguard Total Stock Market ETF' },
-  { symbol: 'VOO', name: 'Vanguard S&P 500 ETF' },
-  { symbol: 'BND', name: 'Vanguard Total Bond Market ETF' },
-  { symbol: 'ARKK', name: 'ARK Innovation ETF' },
-  { symbol: 'IAU', name: 'iShares Gold Trust' },
-  { symbol: 'SCHD', name: 'Schwab US Dividend Equity ETF' },
-  { symbol: 'VIG', name: 'Vanguard Dividend Appreciation ETF' },
-  { symbol: 'BRK.B', name: 'Berkshire Hathaway Inc. Class B' },
-  { symbol: 'BRK.A', name: 'Berkshire Hathaway Inc. Class A' },
-  { symbol: 'WBD', name: 'Warner Bros. Discovery Inc.' },
-  { symbol: 'PARA', name: 'Paramount Global' },
-  { symbol: 'NFLX', name: 'Netflix Inc.' },
-  { symbol: 'SONY', name: 'Sony Group Corporation' },
-  { symbol: 'TSM', name: 'Taiwan Semiconductor Manufacturing' },
-  { symbol: 'SAMSUNG', name: 'Samsung Electronics Co. Ltd.' },
-  { symbol: 'RACE', name: 'Ferrari N.V.' },
-  { symbol: 'LVMH', name: 'LVMH Moët Hennessy Louis Vuitton' },
-  { symbol: 'TM', name: 'Toyota Motor Corporation' },
-  { symbol: 'HMC', name: 'Honda Motor Co. Ltd.' },
-  { symbol: 'F', name: 'Ford Motor Company' },
-  { symbol: 'GM', name: 'General Motors Company' },
-  { symbol: 'STLA', name: 'Stellantis N.V.' },
-  { symbol: 'WOLF', name: 'Wolfspeed Inc.' },
-  { symbol: 'ARM', name: 'Arm Holdings plc' },
-  { symbol: 'SMCI', name: 'Super Micro Computer Inc.' },
-  { symbol: 'DELL', name: 'Dell Technologies Inc.' },
-  { symbol: 'HPQ', name: 'HP Inc.' },
-  { symbol: 'HPE', name: 'Hewlett Packard Enterprise Co.' },
-  { symbol: 'ACN', name: 'Accenture plc' },
-  { symbol: 'SAP', name: 'SAP SE' },
-  { symbol: 'INTU', name: 'Intuit Inc.' },
-  { symbol: 'MSCI', name: 'MSCI Inc.' },
-  { symbol: 'SPGI', name: 'S&P Global Inc.' },
-  { symbol: 'MCO', name: "Moody's Corporation" },
-  { symbol: 'ICE', name: 'Intercontinental Exchange Inc.' },
-  { symbol: 'CME', name: 'CME Group Inc.' },
-  { symbol: 'NDAQ', name: 'Nasdaq Inc.' },
-  { symbol: 'USB', name: 'U.S. Bancorp' },
-  { symbol: 'PNC', name: 'PNC Financial Services Group Inc.' },
-  { symbol: 'TFC', name: 'Truist Financial Corporation' },
-]
-
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -803,6 +842,7 @@ export default function Home() {
   const [searchFocused, setSearchFocused] = useState(false)
   const searchBarRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [titleWidth, setTitleWidth] = useState<number | undefined>(undefined)
 
@@ -866,7 +906,7 @@ export default function Home() {
     if (session) loadReports()
   }, [session, loadReports])
 
-  // ── Fetch 1-day chart data for report tickers ──
+  // ── Fetch 1-day chart data for report tickers (batch endpoint) ──
   const fetchedTickersRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (savedReports.length === 0) return
@@ -874,24 +914,16 @@ export default function Home() {
     const unfetched = tickers.filter(t => !fetchedTickersRef.current.has(t))
     if (unfetched.length === 0) return
     unfetched.forEach(t => fetchedTickersRef.current.add(t))
-    Promise.all(
-      unfetched.map(ticker =>
-        fetch(`/api/chart?ticker=${encodeURIComponent(ticker)}`)
-          .then(r => r.json())
-          .then(res => ({ ticker, data: res }))
-          .catch(() => ({ ticker, data: null }))
-      )
-    ).then(results => {
-      const newData: Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null }> = {}
-      results.forEach(({ ticker, data: res }) => {
-        if (res?.points?.length) {
-          newData[ticker] = { points: res.points, afterHours: res.afterHours || null }
+
+    // Batch all tickers into one request
+    fetch(`/api/charts?tickers=${encodeURIComponent(unfetched.join(','))}`)
+      .then(r => r.json())
+      .then((chartMap: Record<string, { points: { time: string; price: number }[]; afterHours: any }>) => {
+        if (chartMap && typeof chartMap === 'object' && !chartMap.error) {
+          setChartData(prev => ({ ...prev, ...chartMap }))
         }
       })
-      if (Object.keys(newData).length > 0) {
-        setChartData(prev => ({ ...prev, ...newData }))
-      }
-    })
+      .catch(() => {})
   }, [savedReports])
 
   // ── Load watchlist from localStorage ──
@@ -954,17 +986,22 @@ export default function Home() {
     const upper = value.toUpperCase()
     setSearchTicker(upper)
     setError('')
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     if (!upper) {
       setTickerSuggestions([])
       setHighlightedIdx(-1)
       return
     }
-    const matches = TICKER_LIST.filter(t =>
-      t.symbol.startsWith(upper) ||
-      t.name.toLowerCase().includes(upper.toLowerCase())
-    ).slice(0, 5)
-    setTickerSuggestions(matches)
-    setHighlightedIdx(-1)
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/ticker-search?q=${encodeURIComponent(upper)}`)
+        const suggestions = await res.json()
+        setTickerSuggestions(suggestions)
+        setHighlightedIdx(-1)
+      } catch {
+        setTickerSuggestions([])
+      }
+    }, 200)
   }
 
   // ── Health checks ──
@@ -1268,7 +1305,7 @@ export default function Home() {
         <div className="nav-status" style={{
           position: 'absolute', left: 0, top: 0, height: 56,
           display: 'flex', alignItems: 'center', gap: 0,
-          paddingLeft: 40,
+          paddingLeft: 40, zIndex: 1,
         }}>
           {/* Hoverable status indicator with popup */}
           <div
@@ -1302,11 +1339,11 @@ export default function Home() {
                   position: 'absolute',
                   top: 'calc(100% + 22px)',
                   left: 0,
-                  width: 268,
+                  width: 310,
                   background: '#0f0f0f',
                   border: '1px solid #1a1a1a',
                   borderRadius: 4,
-                  padding: '14px 16px',
+                  padding: '16px 20px',
                   zIndex: 200,
                   animation: healthPopupFadingOut ? 'fadeOut 0.15s ease forwards' : 'fadeIn 0.15s ease',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
@@ -1318,11 +1355,11 @@ export default function Home() {
                   const active = healthData?.services.filter(s => s.status === 'ok').length ?? 0
                   const activeColor = active === total && total > 0 ? '#22c55e' : active <= 1 ? '#ef4444' : '#f59e0b'
                   return (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 9, color: '#444', letterSpacing: '0.2em', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                      <span style={{ fontSize: 11, color: '#444', letterSpacing: '0.2em', fontFamily: "'JetBrains Mono', monospace" }}>
                         SYSTEM HEALTH
                       </span>
-                      <span style={{ fontSize: 9, color: activeColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                      <span style={{ fontSize: 11, color: activeColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
                         {active}/{total} ACTIVE
                       </span>
                     </div>
@@ -1335,12 +1372,12 @@ export default function Home() {
                   return (
                     <div key={svc.name} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '6px 0', borderBottom: '1px solid #111',
+                      padding: '8px 0', borderBottom: '1px solid #111',
                     }}>
-                      <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+                      <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
                         {svc.name.toUpperCase()}
                       </span>
-                      <span style={{ fontSize: 9, color: isOnline ? '#22c55e' : '#ef4444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                      <span style={{ fontSize: 11, color: isOnline ? '#22c55e' : '#ef4444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
                         {isOnline ? 'ONLINE' : 'OFFLINE'}
                       </span>
                     </div>
@@ -1348,14 +1385,14 @@ export default function Home() {
                 })}
 
                 {/* Footer */}
-                <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <button
                     onClick={e => { e.stopPropagation(); fetchHealth() }}
                     disabled={healthLoading}
                     style={{
                       background: 'none', border: 'none', cursor: healthLoading ? 'default' : 'pointer',
                       color: healthLoading ? '#2a2a2a' : '#333',
-                      fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
                       letterSpacing: '0.1em', padding: 0,
                       transition: 'color 0.15s ease',
                     }}
@@ -1365,10 +1402,10 @@ export default function Home() {
                     {healthLoading ? 'CHECKING...' : '↺ REFRESH'}
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 9, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                    <span style={{ fontSize: 11, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
                       UPTIME
                     </span>
-                    <span style={{ fontSize: 9, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span style={{ fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
                       {sessionUptimeDisplay}
                     </span>
                   </div>
@@ -1377,6 +1414,13 @@ export default function Home() {
             )}
           </div>
 
+          <span style={{
+            color: '#333', fontSize: 14,
+            margin: '0 18px',
+            userSelect: 'none',
+            lineHeight: 1,
+          }}>|</span>
+          <MarketStatus />
           <span style={{
             color: '#333', fontSize: 14,
             margin: '0 18px',

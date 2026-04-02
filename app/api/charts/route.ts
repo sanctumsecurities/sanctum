@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
 
-export async function GET(req: NextRequest) {
+export const dynamic = 'force-dynamic'
+
+async function fetchChart(symbol: string) {
   try {
-    const ticker = req.nextUrl.searchParams.get('ticker')
-    if (!ticker) {
-      return NextResponse.json({ error: 'Ticker is required' }, { status: 400 })
-    }
-
-    const symbol = ticker.toUpperCase().trim()
-
     const [chartResult, quoteResult] = await Promise.all([
       yahooFinance.chart(symbol, {
         period1: new Date(Date.now() - 24 * 60 * 60 * 1000),
@@ -26,7 +21,6 @@ export async function GET(req: NextRequest) {
         price: q.close as number,
       }))
 
-    // Build after-hours data
     let afterHours: { price: number; change: number; changePct: number; label: string } | null = null
     const marketState = (quoteResult as any).marketState as string | undefined
 
@@ -46,8 +40,31 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ticker: symbol, points, afterHours })
+    return { ticker: symbol, points, afterHours }
+  } catch {
+    return { ticker: symbol, points: [], afterHours: null }
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const tickersParam = req.nextUrl.searchParams.get('tickers')
+    if (!tickersParam) {
+      return NextResponse.json({ error: 'tickers param required' }, { status: 400 })
+    }
+
+    const tickers = tickersParam.split(',').filter(Boolean).slice(0, 30).map(t => t.trim().toUpperCase())
+    const results = await Promise.all(tickers.map(fetchChart))
+
+    const chartMap: Record<string, { points: { time: string; price: number }[]; afterHours: any }> = {}
+    for (const r of results) {
+      if (r.points.length > 0) {
+        chartMap[r.ticker] = { points: r.points, afterHours: r.afterHours }
+      }
+    }
+
+    return NextResponse.json(chartMap)
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Failed to fetch chart' }, { status: 500 })
+    return NextResponse.json({ error: err.message || 'Failed to fetch charts' }, { status: 500 })
   }
 }

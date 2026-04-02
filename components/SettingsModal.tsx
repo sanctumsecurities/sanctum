@@ -45,7 +45,7 @@ const FIELD_LABEL: React.CSSProperties = {
   marginBottom: 8,
 }
 
-type Tab = 'general' | 'display' | 'data' | 'account'
+type Tab = 'general' | 'watchlist' | 'ticker-band' | 'account'
 
 interface Props {
   settings: AppSettings
@@ -60,6 +60,8 @@ export default function SettingsModal({ settings, updateSettings, watchlist, sav
   const [activeTab, setActiveTab] = useState<Tab>('general')
   const [tickerInput, setTickerInput] = useState('')
   const [addingTicker, setAddingTicker] = useState(false)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const navItem = (tab: Tab, label: string) => (
     <div
@@ -149,8 +151,8 @@ export default function SettingsModal({ settings, updateSettings, watchlist, sav
           {/* Left nav */}
           <div style={{ width: 130, borderRight: '1px solid #1a1a1a', paddingTop: 12, flexShrink: 0 }}>
             {navItem('general', 'General')}
-            {navItem('display', 'Display')}
-            {navItem('data', 'Data')}
+            {navItem('watchlist', 'Watchlist')}
+            {navItem('ticker-band', 'Ticker Band')}
             {navItem('account', 'Account')}
           </div>
 
@@ -186,10 +188,44 @@ export default function SettingsModal({ settings, updateSettings, watchlist, sav
               </>
             )}
 
-            {/* ── DISPLAY ── */}
-            {activeTab === 'display' && (
+            {/* ── WATCHLIST ── */}
+            {activeTab === 'watchlist' && (
               <>
-                <div style={SECTION_LABEL}>Banner</div>
+                <div style={SECTION_LABEL}>Watchlist</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#888', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }}>
+                      CLEAR WATCHLIST
+                    </div>
+                    <div style={{ fontSize: 11, color: '#444', fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>
+                      {watchlist.length} item{watchlist.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => saveWatchlist([])}
+                    disabled={watchlist.length === 0}
+                    style={{
+                      background: watchlist.length > 0 ? 'rgba(248,113,113,0.08)' : 'transparent',
+                      border: `1px solid ${watchlist.length > 0 ? 'rgba(248,113,113,0.3)' : '#1a1a1a'}`,
+                      borderRadius: 4,
+                      color: watchlist.length > 0 ? '#f87171' : '#333',
+                      fontSize: 12, padding: '6px 14px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      letterSpacing: '0.05em',
+                      cursor: watchlist.length > 0 ? 'pointer' : 'default',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    CLEAR
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* ── TICKER BAND ── */}
+            {activeTab === 'ticker-band' && (
+              <>
+                <div style={SECTION_LABEL}>Ticker Band</div>
 
                 <div style={{ marginBottom: 20 }}>
                   <div style={FIELD_LABEL}>SCROLL SPEED</div>
@@ -213,7 +249,7 @@ export default function SettingsModal({ settings, updateSettings, watchlist, sav
                   </div>
                 </div>
 
-                <div>
+                <div style={{ marginBottom: 20 }}>
                   <div style={FIELD_LABEL}>TICKERS</div>
                   <div style={{
                     background: '#0f0f0f',
@@ -226,18 +262,35 @@ export default function SettingsModal({ settings, updateSettings, watchlist, sav
                     minHeight: 48,
                     alignItems: 'flex-start',
                   }}>
-                    {settings.bannerTickers.map(sym => (
+                    {settings.bannerTickers.map((sym, i) => (
                       <span
                         key={sym}
+                        draggable
+                        onDragStart={() => setDragIndex(i)}
+                        onDragOver={e => { e.preventDefault(); setDragOverIndex(i) }}
+                        onDrop={() => {
+                          if (dragIndex === null || dragIndex === i) return
+                          const next = [...settings.bannerTickers]
+                          const [moved] = next.splice(dragIndex, 1)
+                          next.splice(i, 0, moved)
+                          updateSettings({ bannerTickers: next })
+                          setDragIndex(null)
+                          setDragOverIndex(null)
+                        }}
+                        onDragEnd={() => { setDragIndex(null); setDragOverIndex(null) }}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5,
                           padding: '3px 8px',
-                          background: 'rgba(255,255,255,0.06)',
-                          border: '1px solid #2a2a2a',
+                          background: dragIndex === i ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${dragOverIndex === i && dragIndex !== i ? 'rgba(255,255,255,0.4)' : '#2a2a2a'}`,
                           borderRadius: 3,
                           fontFamily: "'JetBrains Mono', monospace",
                           fontSize: 11,
                           color: '#ccc',
+                          opacity: dragIndex === i ? 0.4 : 1,
+                          cursor: 'grab',
+                          transition: 'border-color 0.1s ease, opacity 0.1s ease',
+                          userSelect: 'none',
                         }}
                       >
                         {sym}
@@ -310,40 +363,6 @@ export default function SettingsModal({ settings, updateSettings, watchlist, sav
                     onMouseLeave={e => (e.currentTarget.style.color = '#444')}
                   >
                     Reset to defaults
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* ── DATA ── */}
-            {activeTab === 'data' && (
-              <>
-                <div style={SECTION_LABEL}>Watchlist</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: 12, color: '#888', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }}>
-                      CLEAR WATCHLIST
-                    </div>
-                    <div style={{ fontSize: 11, color: '#444', fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>
-                      {watchlist.length} item{watchlist.length !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => saveWatchlist([])}
-                    disabled={watchlist.length === 0}
-                    style={{
-                      background: watchlist.length > 0 ? 'rgba(248,113,113,0.08)' : 'transparent',
-                      border: `1px solid ${watchlist.length > 0 ? 'rgba(248,113,113,0.3)' : '#1a1a1a'}`,
-                      borderRadius: 4,
-                      color: watchlist.length > 0 ? '#f87171' : '#333',
-                      fontSize: 12, padding: '6px 14px',
-                      fontFamily: "'JetBrains Mono', monospace",
-                      letterSpacing: '0.05em',
-                      cursor: watchlist.length > 0 ? 'pointer' : 'default',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    CLEAR
                   </button>
                 </div>
               </>

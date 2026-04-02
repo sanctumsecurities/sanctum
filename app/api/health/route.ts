@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
-import YahooFinance from 'yahoo-finance2'
+import { yahooFinance } from '@/lib/yahoo'
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
-
-const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] })
 
 type ServiceStatus = 'ok' | 'error' | 'unconfigured'
 
@@ -70,14 +68,12 @@ async function checkSupabase(): Promise<ServiceResult> {
   }
   const t0 = Date.now()
   try {
-    const client = createClient(url, key)
     const result = await withTimeout(
-      client.from('reports').select('id').limit(1),
+      supabase.from('reports').select('id').limit(1),
       5000
     )
     const latency = Date.now() - t0
     if ((result as any).error && (result as any).error.code !== 'PGRST116') {
-      // PGRST116 = no rows, which is fine — it means Supabase is reachable
       return { name: 'Supabase', status: 'error', latency, detail: (result as any).error.message }
     }
     return { name: 'Supabase', status: 'ok', latency }

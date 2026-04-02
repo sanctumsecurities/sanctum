@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import YahooFinance from 'yahoo-finance2'
+import { yahooFinance } from '@/lib/yahoo'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] })
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+
+// ── In-memory cache (5-minute TTL) ──
+const analysisCache = new Map<string, { data: any; ai: any; ts: number }>()
+const CACHE_TTL = 5 * 60 * 1000
 
 function safeNum(val: any, fallback = 0): number {
   if (val === undefined || val === null || isNaN(val)) return fallback
@@ -18,6 +21,12 @@ export async function POST(req: NextRequest) {
     }
 
     const symbol = ticker.toUpperCase().trim()
+
+    // Check cache first
+    const cached = analysisCache.get(symbol)
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      return NextResponse.json({ data: cached.data, ai: cached.ai })
+    }
 
     // ── Step 1: Financial Data ──
     let result: any
@@ -191,6 +200,17 @@ Requirements:
         ],
         bull_case: ['Established market position', 'Sector growth potential', 'Manageable valuation', 'Cash flow generation', 'Industry tailwinds'],
         bear_case: ['Macro uncertainty', 'Competitive pressures', 'Valuation risk', 'Regulatory risk', 'Execution risk'],
+      }
+    }
+
+    // Store in cache
+    analysisCache.set(symbol, { data, ai, ts: Date.now() })
+
+    // Evict stale entries (keep cache bounded)
+    if (analysisCache.size > 50) {
+      const now = Date.now()
+      for (const [key, val] of analysisCache) {
+        if (now - val.ts > CACHE_TTL) analysisCache.delete(key)
       }
     }
 
