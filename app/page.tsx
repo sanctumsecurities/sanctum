@@ -636,10 +636,11 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
           const strokeColor = up ? '#22c55e' : '#f87171'
           const fillColor = up ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)'
 
-          // Compute ET session boundary markers
+          // Compute ET session boundary markers for the current trading day only
           const startMs = new Date(pts[0].time).getTime()
           const endMs = new Date(pts[pts.length - 1].time).getTime()
-          const etParts = etFormatter.formatToParts(new Date(startMs))
+          // Derive ET date from the most recent data point to stay on the current trading day
+          const etParts = etFormatter.formatToParts(new Date(endMs))
           const pyr = etParts.find(p => p.type === 'year')!.value
           const pmo = etParts.find(p => p.type === 'month')!.value
           const pda = etParts.find(p => p.type === 'day')!.value
@@ -647,21 +648,29 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
           const pM  = etParts.find(p => p.type === 'minute')!.value
           const pS  = etParts.find(p => p.type === 'second')!.value
           const probeEtFakeUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T${pH}:${pM}:${pS}Z`)
-          const offsetMs = startMs - probeEtFakeUtcMs
+          const offsetMs = endMs - probeEtFakeUtcMs
           const etMidnightUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T00:00:00Z`) + offsetMs
           const sessionBoundaries = [
             { label: 'P', etH: 4,  etM: 0  },
             { label: 'O', etH: 9,  etM: 30 },
-            { label: 'C', etH: 16, etM: 0  },
-            { label: 'A', etH: 20, etM: 0  },
+            { label: 'A', etH: 16, etM: 0  },
+            { label: 'C', etH: 20, etM: 0  },
           ]
+          // Pre-compute UTC ms for each data point for index-based alignment
+          const ptMs = pts.map(p => new Date(p.time).getTime())
           const sessionMarkers: { x: number; label: string; key: string }[] = []
           for (const { label: bLabel, etH, etM } of sessionBoundaries) {
-            for (const dayShift of [0, 86400000]) {
-              const bMs = etMidnightUtcMs + dayShift + (etH * 60 + etM) * 60000
-              const x = ((bMs - startMs) / (endMs - startMs)) * w
-              if (x >= 0 && x <= w) sessionMarkers.push({ x, label: bLabel, key: `${bLabel}-${dayShift}` })
+            const bMs = etMidnightUtcMs + (etH * 60 + etM) * 60000
+            if (bMs < startMs || bMs > endMs) continue
+            // Snap to nearest data point index (aligns with index-based sparkline rendering)
+            let closestIdx = 0
+            let closestDiff = Infinity
+            for (let i = 0; i < ptMs.length; i++) {
+              const diff = Math.abs(ptMs[i] - bMs)
+              if (diff < closestDiff) { closestDiff = diff; closestIdx = i }
             }
+            const x = (closestIdx / (pts.length - 1)) * w
+            sessionMarkers.push({ x, label: bLabel, key: bLabel })
           }
 
           return (
@@ -675,14 +684,14 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
               {sessionMarkers.map(({ x, label: mLabel, key: mKey }) => (
                 <g key={mKey}>
                   <line
-                    x1={x} y1={0} x2={x} y2={h}
+                    x1={x} y1={10} x2={x} y2={h}
                     stroke="rgba(255,255,255,0.12)"
                     strokeWidth="1"
                     strokeDasharray="2,3"
                     vectorEffect="non-scaling-stroke"
                   />
                   <text
-                    x={x} y={7}
+                    x={x} y={8}
                     textAnchor="middle"
                     fontSize="7"
                     fill="rgba(255,255,255,0.30)"
