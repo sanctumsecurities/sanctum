@@ -803,6 +803,7 @@ export default function Home() {
   const [searchFocused, setSearchFocused] = useState(false)
   const searchBarRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [titleWidth, setTitleWidth] = useState<number | undefined>(undefined)
 
@@ -954,17 +955,22 @@ export default function Home() {
     const upper = value.toUpperCase()
     setSearchTicker(upper)
     setError('')
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     if (!upper) {
       setTickerSuggestions([])
       setHighlightedIdx(-1)
       return
     }
-    const matches = TICKER_LIST.filter(t =>
-      t.symbol.startsWith(upper) ||
-      t.name.toLowerCase().includes(upper.toLowerCase())
-    ).slice(0, 5)
-    setTickerSuggestions(matches)
-    setHighlightedIdx(-1)
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/ticker-search?q=${encodeURIComponent(upper)}`)
+        const suggestions = await res.json()
+        setTickerSuggestions(suggestions)
+        setHighlightedIdx(-1)
+      } catch {
+        setTickerSuggestions([])
+      }
+    }, 200)
   }
 
   // ── Health checks ──
