@@ -25,7 +25,7 @@ const instrumentSerif = Instrument_Serif({
 })
 
 export const metadata: Metadata = {
-  title: 'Sanctum',
+  title: 'SANCTUM',
   description: 'AI-Powered Stock Research Terminal',
 }
 
