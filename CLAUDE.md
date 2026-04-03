@@ -26,7 +26,10 @@ User enters a ticker → `app/page.tsx` calls `/api/analyze` → server fetches 
 |---|---|
 | `/api/analyze` | Core: fetches Yahoo Finance data, sends to Gemini, returns combined financial + AI JSON |
 | `/api/chart` | 24h price data + pre/post-market for a single ticker |
+| `/api/charts` | Multi-period chart data with ET timezone handling; supports 1D, 5D, 1M, 6M, 1Y, 5Y periods |
 | `/api/ticker-band` | Multi-ticker price feed; polled every 60s by TickerBanner |
+| `/api/ticker-search` | Yahoo Finance autocomplete search; returns up to 7 EQUITY/ETF/INDEX/MUTUALFUND matches |
+| `/api/fear-greed` | CNN Fear & Greed index proxy; polled every 5 minutes by FearGreedMeter |
 | `/api/health` | Service health check (Yahoo, Gemini, Supabase, SPY price) |
 
 All routes use `force-dynamic` to disable caching. External API calls have 5-second timeouts.
@@ -35,9 +38,12 @@ All routes use `force-dynamic` to disable caching. External API calls have 5-sec
 
 - **`app/page.tsx`** — Large monolithic client component: tab system (Dashboard/Watchlist), auth state, TickerBanner integration, settings, and report saving. All main state lives here.
 - **`components/ReportView.tsx`** — Renders financial metrics + Recharts visualizations from `/api/analyze` response. Dynamically imported for code-splitting.
+- **`components/FearGreedMeter.tsx`** — CNN Fear & Greed gauge; polls `/api/fear-greed` every 5 minutes, renders a semicircular dial with color-coded zones.
 - **`components/SettingsModal.tsx`** — Vertical-tab settings UI; user preferences (theme, banner speed, tickers) persisted to Supabase.
 - **`components/Auth.tsx`** — Email/password login with Framer Motion animations.
 - **`lib/supabase.ts`** — Supabase client singleton (uses `NEXT_PUBLIC_SUPABASE_*` env vars).
+- **`lib/yahoo.ts`** — Yahoo Finance client singleton with `suppressNotices` config; imported by API routes.
+- **`lib/tickers.ts`** — Static list of well-known ticker symbols and names (used for autocomplete/watchlist defaults).
 - **`setup.sql`** — Database schema + RLS policies (reports readable by all, write/delete requires auth).
 
 ### Database Schema
