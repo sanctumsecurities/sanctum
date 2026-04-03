@@ -40,7 +40,7 @@ export default function Auth() {
       return id
     }
 
-    // Phase 1: Idle blink for 4 seconds
+    // Phase 1: Idle blink for 3 seconds
     const blinkInterval = addInterval(() => {
       setCaretVisible(v => !v)
     }, 530)
@@ -73,7 +73,7 @@ export default function Auth() {
 
       const firstDelay = 120 + Math.random() * 170
       addTimeout(typeNextChar, firstDelay)
-    }, 4000)
+    }, 3000)
 
     return () => {
       timers.forEach(id => {

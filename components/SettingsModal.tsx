@@ -228,6 +228,17 @@ export default function SettingsModal({ settings, updateSettings, watchlist, sav
                 <div style={SECTION_LABEL}>Ticker Band</div>
 
                 <div style={{ marginBottom: 20 }}>
+                  <div style={FIELD_LABEL}>PAUSE ON HOVER</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {([true, false] as const).map(val => (
+                      <button key={String(val)} onClick={() => updateSettings({ bannerHoverPause: val })} style={BTN(settings.bannerHoverPause === val)}>
+                        {val ? 'ON' : 'OFF'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
                   <div style={FIELD_LABEL}>SCROLL SPEED</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {(['fast', 'regular', 'slow'] as const).map(s => (

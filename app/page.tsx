@@ -253,6 +253,7 @@ const DEFAULT_SETTINGS = {
   bannerSpeed: 'regular' as 'fast' | 'regular' | 'slow',
   bannerUpdateFreq: 60_000,
   bannerTickers: DEFAULT_BANNER_TICKERS,
+  bannerHoverPause: true,
 }
 
 export type AppSettings = typeof DEFAULT_SETTINGS
@@ -261,9 +262,10 @@ interface TickerBannerProps {
   speed: number
   updateFreq: number
   tickers: string[]
+  hoverPause: boolean
 }
 
-function TickerBanner({ speed, updateFreq, tickers }: TickerBannerProps) {
+function TickerBanner({ speed, updateFreq, tickers, hoverPause }: TickerBannerProps) {
   const [items, setItems] = useState<TickerItem[]>([])
   const [loaded, setLoaded] = useState(false)
 
@@ -339,7 +341,7 @@ function TickerBanner({ speed, updateFreq, tickers }: TickerBannerProps) {
       display: 'flex', alignItems: 'center',
     }}>
       <div
-        className="ticker-scroll"
+        className={hoverPause ? 'ticker-scroll ticker-hover-pause' : 'ticker-scroll'}
         style={{ display: 'inline-flex', whiteSpace: 'nowrap', alignItems: 'center', animationDuration: `${speed}s` }}
       >
         <span style={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -1276,8 +1278,37 @@ export default function Home() {
         .ticker-scroll {
           animation: tickerScroll 60s linear infinite;
         }
-        .ticker-scroll:hover {
+        .ticker-scroll.ticker-hover-pause:hover {
           animation-play-state: paused;
+        }
+        @keyframes shimmerSweep {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(167%); }
+        }
+        .shimmer-underline {
+          position: relative;
+          height: 1px;
+          width: 100%;
+          background: #333;
+          overflow: hidden;
+        }
+        .shimmer-underline.active::after {
+          content: '';
+          position: absolute;
+          top: 0; left: 0;
+          width: 60%;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            transparent              0%,
+            transparent              5%,
+            rgba(255,255,255,0.42)  40%,
+            rgba(255,255,255,0.50)  50%,
+            rgba(255,255,255,0.42)  60%,
+            transparent             95%,
+            transparent            100%
+          );
+          animation: shimmerSweep 3.5s linear infinite;
         }
         @media (max-width: 768px) {
           .nav-links-desktop { display: none !important; }
@@ -1576,6 +1607,7 @@ export default function Home() {
         speed={BANNER_SPEED_SECS[settings.bannerSpeed]}
         updateFreq={settings.bannerUpdateFreq}
         tickers={settings.bannerTickers}
+        hoverPause={settings.bannerHoverPause}
       />
 
       {/* ── Main Content ── */}
@@ -1609,11 +1641,8 @@ export default function Home() {
               <div
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
-                  border: `1px solid ${searchFocused ? '#444' : '#2a2a2a'}`,
-                  borderRadius: tickerSuggestions.length > 0 && !generating ? '4px 4px 0 0' : '4px',
-                  padding: '12px 16px',
-                  background: searchFocused ? 'rgba(255,255,255,0.02)' : 'transparent',
-                  transition: 'border-color 0.2s ease, background 0.2s ease',
+                  padding: '12px 0',
+                  background: 'transparent',
                 }}
               >
                 {generating ? (
@@ -1680,6 +1709,8 @@ export default function Home() {
                   }}
                 />
               </div>
+
+              <div className={`shimmer-underline${searchFocused ? ' active' : ''}`} />
 
               {/* Autocomplete suggestions */}
               {!generating && tickerSuggestions.length > 0 && (
