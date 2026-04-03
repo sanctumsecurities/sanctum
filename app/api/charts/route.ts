@@ -74,6 +74,10 @@ async function fetchChart(symbol: string, period: string) {
         price: q.close as number,
       }))
 
+    // chartPreviousClose is the close of the last session before the period starts —
+    // the correct reference price for computing period % change (matches Yahoo's calculation)
+    const chartPreviousClose: number | null = (chartResult.meta as any)?.chartPreviousClose ?? null
+
     let afterHours: { price: number; change: number; changePct: number; label: string } | null = null
     if (period === '1D') {
       const marketState = (quoteResult as any).marketState as string | undefined
@@ -94,21 +98,26 @@ async function fetchChart(symbol: string, period: string) {
       }
     }
 
-    // If 1D window hasn't started yet (pre-market hasn't opened), fall back to previous trading day
-    if (period === '1D' && points.length === 0) {
-      const { period1: p1, period2: p2 } = getChartParams('1D')
+    // If 1D window has no/minimal data (market hasn't opened or closed holiday),
+    // fall back to the previous trading day using a full 4 AM–8 PM ET window
+    if (period === '1D' && points.length <= 2) {
+      const { period1: p1 } = getChartParams('1D')
+      // p1 = etMidnightMs + 4h, so work back to prev day's midnight
+      const etMidnightMs = p1.getTime() - 4 * 60 * 60 * 1000
+      const prevMidnightMs = etMidnightMs - 24 * 60 * 60 * 1000
       const prevResult = await yahooFinance.chart(symbol, {
-        period1: new Date(p1.getTime() - 24 * 60 * 60 * 1000),
-        period2: new Date(p2.getTime() - 24 * 60 * 60 * 1000),
+        period1: new Date(prevMidnightMs + 4 * 60 * 60 * 1000),
+        period2: new Date(prevMidnightMs + 20 * 60 * 60 * 1000),
         interval: '5m' as any,
       })
       const prevPoints = (prevResult.quotes || [])
         .filter((q: any) => q.close != null && q.date != null)
         .map((q: any) => ({ time: new Date(q.date).toISOString(), price: q.close as number }))
-      return { ticker: symbol, points: prevPoints, afterHours }
+      const prevChartPreviousClose: number | null = (prevResult.meta as any)?.chartPreviousClose ?? null
+      return { ticker: symbol, points: prevPoints, afterHours, chartPreviousClose: prevChartPreviousClose }
     }
 
-    return { ticker: symbol, points, afterHours }
+    return { ticker: symbol, points, afterHours, chartPreviousClose }
   } catch {
     return { ticker: symbol, points: [], afterHours: null }
   }
@@ -125,10 +134,10 @@ export async function GET(req: NextRequest) {
     const tickers = tickersParam.split(',').filter(Boolean).slice(0, 30).map(t => t.trim().toUpperCase())
     const results = await Promise.all(tickers.map(t => fetchChart(t, period)))
 
-    const chartMap: Record<string, { points: { time: string; price: number }[]; afterHours: any }> = {}
+    const chartMap: Record<string, { points: { time: string; price: number }[]; afterHours: any; chartPreviousClose: number | null }> = {}
     for (const r of results) {
       if (r.points.length > 0) {
-        chartMap[r.ticker] = { points: r.points, afterHours: r.afterHours }
+        chartMap[r.ticker] = { points: r.points, afterHours: r.afterHours, chartPreviousClose: r.chartPreviousClose ?? null }
       }
     }
 

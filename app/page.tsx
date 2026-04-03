@@ -358,7 +358,7 @@ function TickerBanner({ speed, updateFreq, tickers, hoverPause }: TickerBannerPr
 // ── Memoized Report Card (skips re-render unless its own data changes) ──
 interface ReportCardProps {
   report: SavedReport
-  chartData: { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null } | undefined
+  chartData: { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null; chartPreviousClose: number | null } | undefined
   focusedCardId: string | null
   colIndex: number
   onOpen: (report: SavedReport) => void
@@ -380,7 +380,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
   const d = report.data || {}
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('1D')
   const [periodCache, setPeriodCache] = useState<
-    Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null } | null>
+    Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null; chartPreviousClose: number | null } | null>
   >({})
   const [isFetchingPeriod, setIsFetchingPeriod] = useState(false)
 
@@ -395,12 +395,12 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
   const dayPriceChange = price && prevClose ? price - prevClose : null
   const dayPriceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
 
-  // For non-1D periods, derive change from first→last chart point
+  // For non-1D periods, use chartPreviousClose (close before period start) as reference — matches Yahoo's calculation
   const chartPoints = tickerChart?.points
-  const periodFirst = chartPoints && chartPoints.length >= 2 ? chartPoints[0].price : null
+  const periodRef = selectedPeriod !== '1D' ? (tickerChart?.chartPreviousClose ?? null) : null
   const periodLast = chartPoints && chartPoints.length >= 2 ? chartPoints[chartPoints.length - 1].price : null
-  const periodPriceChange = periodFirst && periodLast && selectedPeriod !== '1D' ? periodLast - periodFirst : null
-  const periodPriceChangePct = periodFirst && periodLast && selectedPeriod !== '1D' ? ((periodLast - periodFirst) / periodFirst) * 100 : null
+  const periodPriceChange = periodRef && periodLast ? periodLast - periodRef : null
+  const periodPriceChangePct = periodRef && periodLast ? ((periodLast - periodRef) / periodRef) * 100 : null
 
   const priceChange = selectedPeriod === '1D' ? dayPriceChange : periodPriceChange
   const priceChangePct = selectedPeriod === '1D' ? dayPriceChangePct : periodPriceChangePct
@@ -876,7 +876,7 @@ export default function Home() {
   const [showReport, setShowReport] = useState(false)
 
   const [watchlist, setWatchlist] = useState<string[]>([])
-  const [chartData, setChartData] = useState<Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null }>>({})
+  const [chartData, setChartData] = useState<Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null; chartPreviousClose: number | null }>>({})
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null)
@@ -965,7 +965,7 @@ export default function Home() {
     // Batch all tickers into one request
     fetch(`/api/charts?tickers=${encodeURIComponent(unfetched.join(','))}`)
       .then(r => r.json())
-      .then((chartMap: Record<string, { points: { time: string; price: number }[]; afterHours: any }>) => {
+      .then((chartMap: Record<string, { points: { time: string; price: number }[]; afterHours: any; chartPreviousClose: number | null }>) => {
         if (chartMap && typeof chartMap === 'object' && !chartMap.error) {
           setChartData(prev => ({ ...prev, ...chartMap }))
         }
