@@ -1,0 +1,88 @@
+<h2>Where should the timeframe buttons sit?</h2>
+<p class="subtitle">Two placement options for the 1D / 1W / 1M / 3M / 1Y pills</p>
+
+<div class="split">
+
+  <div class="mockup">
+    <div class="mockup-header">A — Above the chart</div>
+    <div class="mockup-body">
+      <div style="background:#0d0d0d;border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;width:220px;margin:0 auto;">
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-size:13px;color:#fff;font-weight:600;">AAPL</div>
+            <div style="font-size:10px;color:#555;margin-top:2px;">Apple Inc.</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;color:#22c55e;font-weight:700;">BULLISH</div>
+          </div>
+        </div>
+        <!-- Price -->
+        <div style="margin-bottom:10px;">
+          <span style="font-size:20px;font-weight:600;color:#fff;">$213.32</span>
+          <span style="font-size:11px;color:#22c55e;margin-left:6px;">+1.24%</span>
+        </div>
+        <!-- Timeframe pills ABOVE chart -->
+        <div style="display:flex;gap:3px;margin-bottom:6px;">
+          <span style="font-size:8px;padding:2px 6px;background:#222;color:#22c55e;border-radius:3px;border:1px solid #333;cursor:pointer;">1D</span>
+          <span style="font-size:8px;padding:2px 6px;background:#111;color:#444;border-radius:3px;border:1px solid #1a1a1a;cursor:pointer;">1W</span>
+          <span style="font-size:8px;padding:2px 6px;background:#111;color:#444;border-radius:3px;border:1px solid #1a1a1a;cursor:pointer;">1M</span>
+          <span style="font-size:8px;padding:2px 6px;background:#111;color:#444;border-radius:3px;border:1px solid #1a1a1a;cursor:pointer;">3M</span>
+          <span style="font-size:8px;padding:2px 6px;background:#111;color:#444;border-radius:3px;border:1px solid #1a1a1a;cursor:pointer;">1Y</span>
+        </div>
+        <!-- Chart -->
+        <svg viewBox="0 0 200 55" style="width:100%;height:55px;display:block;margin-bottom:8px;">
+          <polyline points="0,45 25,40 50,38 75,35 95,30 110,28 130,22 155,18 175,15 200,12" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+          <polygon points="0,55 0,45 25,40 50,38 75,35 95,30 110,28 130,22 155,18 175,15 200,12 200,55" fill="rgba(34,197,94,0.08)"/>
+          <!-- session markers -->
+          <line x1="55" y1="12" x2="55" y2="45" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="2,3"/>
+          <text x="55" y="8" text-anchor="middle" font-size="5" fill="rgba(255,255,255,0.25)" font-family="JetBrains Mono">O</text>
+        </svg>
+        <!-- Footer -->
+        <div style="border-top:1px solid #1a1a1a;padding-top:8px;font-size:10px;color:#333;">Apr 2 · you</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B — Inline with chart (right-aligned)</div>
+    <div class="mockup-body">
+      <div style="background:#0d0d0d;border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;width:220px;margin:0 auto;">
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-size:13px;color:#fff;font-weight:600;">AAPL</div>
+            <div style="font-size:10px;color:#555;margin-top:2px;">Apple Inc.</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;color:#22c55e;font-weight:700;">BULLISH</div>
+          </div>
+        </div>
+        <!-- Price -->
+        <div style="margin-bottom:10px;">
+          <span style="font-size:20px;font-weight:600;color:#fff;">$213.32</span>
+          <span style="font-size:11px;color:#22c55e;margin-left:6px;">+1.24%</span>
+        </div>
+        <!-- Chart with inline pills row -->
+        <div style="position:relative;">
+          <div style="display:flex;justify-content:flex-end;gap:3px;margin-bottom:4px;">
+            <span style="font-size:8px;padding:2px 6px;background:#222;color:#22c55e;border-radius:3px;border:1px solid #333;cursor:pointer;">1D</span>
+            <span style="font-size:8px;padding:2px 6px;background:#111;color:#444;border-radius:3px;border:1px solid #1a1a1a;cursor:pointer;">1W</span>
+            <span style="font-size:8px;padding:2px 6px;background:#111;color:#444;border-radius:3px;border:1px solid #1a1a1a;cursor:pointer;">1M</span>
+            <span style="font-size:8px;padding:2px 6px;background:#111;color:#444;border-radius:3px;border:1px solid #1a1a1a;cursor:pointer;">3M</span>
+            <span style="font-size:8px;padding:2px 6px;background:#111;color:#444;border-radius:3px;border:1px solid #1a1a1a;cursor:pointer;">1Y</span>
+          </div>
+          <svg viewBox="0 0 200 55" style="width:100%;height:55px;display:block;margin-bottom:8px;">
+            <polyline points="0,45 25,40 50,38 75,35 95,30 110,28 130,22 155,18 175,15 200,12" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+            <polygon points="0,55 0,45 25,40 50,38 75,35 95,30 110,28 130,22 155,18 175,15 200,12 200,55" fill="rgba(34,197,94,0.08)"/>
+            <line x1="55" y1="12" x2="55" y2="45" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="2,3"/>
+            <text x="55" y="8" text-anchor="middle" font-size="5" fill="rgba(255,255,255,0.25)" font-family="JetBrains Mono">O</text>
+          </svg>
+        </div>
+        <!-- Footer -->
+        <div style="border-top:1px solid #1a1a1a;padding-top:8px;font-size:10px;color:#333;">Apr 2 · you</div>
+      </div>
+    </div>
+  </div>
+
+</div>

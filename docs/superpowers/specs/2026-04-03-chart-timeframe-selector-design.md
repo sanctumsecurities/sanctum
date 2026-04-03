@@ -55,7 +55,7 @@ On mount, fetch all tickers at `1D` as before. When a card switches period, fetc
 ### `ReportCard` component
 
 - Add `selectedPeriod` state (default `1D`) — local to each card, not lifted.
-- Render left-aligned pill row above the chart: `1D 1W 1M 3M YTD 1Y`. Active pill: slightly brighter text + subtle border highlight. Clicking fires a fetch if the `ticker:period` key isn't cached, then sets `selectedPeriod`.
+- Render left-aligned pill row above the chart: `1D 1W 1M 3M YTD 1Y`. Styling is strictly monotone — no green or colored accents. Active pill: white text + subtle white/dim border. Inactive pills: dim gray text, no border or very faint border. Clicking fires a fetch if the `ticker:period` key isn't cached, then sets `selectedPeriod`.
 - Pass `tickerChart` from `chartData[report.ticker + ':' + selectedPeriod]`.
 
 ### Chart rendering adjustments
