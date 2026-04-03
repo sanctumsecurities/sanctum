@@ -395,9 +395,9 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
   const dayPriceChange = price && prevClose ? price - prevClose : null
   const dayPriceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
 
-  // For non-1D periods, use chartPreviousClose (close before period start) as reference — matches Yahoo's calculation
+  // For non-1D periods, use chartPreviousClose (close of last session before period) as reference
   const chartPoints = tickerChart?.points
-  const periodRef = selectedPeriod !== '1D' ? (tickerChart?.chartPreviousClose ?? null) : null
+  const periodRef = chartPoints && chartPoints.length >= 2 && selectedPeriod !== '1D' ? (tickerChart?.chartPreviousClose ?? chartPoints[0].price) : null
   const periodLast = chartPoints && chartPoints.length >= 2 ? chartPoints[chartPoints.length - 1].price : null
   const periodPriceChange = periodRef && periodLast ? periodLast - periodRef : null
   const periodPriceChangePct = periodRef && periodLast ? ((periodLast - periodRef) / periodRef) * 100 : null
@@ -698,54 +698,59 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const h = 80
           const padTop = 12
           const padBottom = 2
-          const linePoints = prices.map((v, i) => {
-            const x = (i / (prices.length - 1)) * w
-            const y = padTop + (1 - (v - min) / range) * (h - padTop - padBottom)
+
+          // For 1D: derive the full-day ET window (4 AM – 8 PM) so the chart fills
+          // left-to-right as the day progresses rather than always stretching to fill width
+          let period1Ms = 0
+          let period2Ms = 0
+          const sessionMarkers: { x: number; label: string; key: string }[] = []
+          if (selectedPeriod === '1D') {
+            const endMs = new Date(pts[pts.length - 1].time).getTime()
+            const etParts = etFormatter.formatToParts(new Date(endMs))
+            const pyr = etParts.find(p => p.type === 'year')?.value ?? '2024'
+            const pmo = etParts.find(p => p.type === 'month')?.value ?? '01'
+            const pda = etParts.find(p => p.type === 'day')?.value ?? '01'
+            const pH  = etParts.find(p => p.type === 'hour')?.value ?? '00'
+            const pM  = etParts.find(p => p.type === 'minute')?.value ?? '00'
+            const pS  = etParts.find(p => p.type === 'second')?.value ?? '00'
+            const probeEtFakeUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T${pH}:${pM}:${pS}Z`)
+            const offsetMs = endMs - probeEtFakeUtcMs
+            const etMidnightUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T00:00:00Z`) + offsetMs
+            period1Ms = etMidnightUtcMs + 4  * 60 * 60 * 1000  // 4 AM ET
+            period2Ms = etMidnightUtcMs + 20 * 60 * 60 * 1000  // 8 PM ET
+
+            const sessionBoundaries = [
+              { label: 'P', etH: 4,  etM: 0  },
+              { label: 'O', etH: 9,  etM: 30 },
+              { label: 'A', etH: 16, etM: 0  },
+              { label: 'C', etH: 20, etM: 0  },
+            ]
+            const startMs = new Date(pts[0].time).getTime()
+            for (const { label: bLabel, etH, etM } of sessionBoundaries) {
+              const bMs = etMidnightUtcMs + (etH * 60 + etM) * 60000
+              if (bMs < startMs || bMs > endMs) continue
+              const x = ((bMs - period1Ms) / (period2Ms - period1Ms)) * w
+              sessionMarkers.push({ x, label: bLabel, key: bLabel })
+            }
+          }
+
+          const ptX = (ptTime: string, i: number) => {
+            if (selectedPeriod === '1D' && period2Ms > period1Ms) {
+              return ((new Date(ptTime).getTime() - period1Ms) / (period2Ms - period1Ms)) * w
+            }
+            return (i / (pts.length - 1)) * w
+          }
+
+          const linePoints = pts.map((pt, i) => {
+            const x = ptX(pt.time, i)
+            const y = padTop + (1 - (pt.price - min) / range) * (h - padTop - padBottom)
             return `${x},${y}`
           }).join(' ')
-          const fillPoints = `0,${h} ${linePoints} ${w},${h}`
+          const lastX = ptX(pts[pts.length - 1].time, pts.length - 1)
+          const fillPoints = `0,${h} ${linePoints} ${lastX},${h}`
           const up = prices[prices.length - 1] >= prices[0]
           const strokeColor = up ? '#22c55e' : '#f87171'
           const fillColor = up ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)'
-
-          // Compute ET session boundary markers for the current trading day only (1D only)
-          const sessionMarkers: { x: number; label: string; key: string }[] = []
-          if (selectedPeriod === '1D') {
-          const startMs = new Date(pts[0].time).getTime()
-          const endMs = new Date(pts[pts.length - 1].time).getTime()
-          // Derive ET date from the most recent data point to stay on the current trading day
-          const etParts = etFormatter.formatToParts(new Date(endMs))
-          const pyr = etParts.find(p => p.type === 'year')?.value ?? '2024'
-          const pmo = etParts.find(p => p.type === 'month')?.value ?? '01'
-          const pda = etParts.find(p => p.type === 'day')?.value ?? '01'
-          const pH  = etParts.find(p => p.type === 'hour')?.value ?? '00'
-          const pM  = etParts.find(p => p.type === 'minute')?.value ?? '00'
-          const pS  = etParts.find(p => p.type === 'second')?.value ?? '00'
-          const probeEtFakeUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T${pH}:${pM}:${pS}Z`)
-          const offsetMs = endMs - probeEtFakeUtcMs
-          const etMidnightUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T00:00:00Z`) + offsetMs
-          const sessionBoundaries = [
-            { label: 'P', etH: 4,  etM: 0  },
-            { label: 'O', etH: 9,  etM: 30 },
-            { label: 'A', etH: 16, etM: 0  },
-            { label: 'C', etH: 20, etM: 0  },
-          ]
-          // Pre-compute UTC ms for each data point for index-based alignment
-          const ptMs = pts.map(p => new Date(p.time).getTime())
-          for (const { label: bLabel, etH, etM } of sessionBoundaries) {
-            const bMs = etMidnightUtcMs + (etH * 60 + etM) * 60000
-            if (bMs < startMs || bMs > endMs) continue
-            // Snap to nearest data point index (aligns with index-based sparkline rendering)
-            let closestIdx = 0
-            let closestDiff = Infinity
-            for (let i = 0; i < ptMs.length; i++) {
-              const diff = Math.abs(ptMs[i] - bMs)
-              if (diff < closestDiff) { closestDiff = diff; closestIdx = i }
-            }
-            const x = (closestIdx / (pts.length - 1)) * w
-            sessionMarkers.push({ x, label: bLabel, key: bLabel })
-          }
-          } // end selectedPeriod === '1D'
 
           return (
             <svg
@@ -765,7 +770,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
                     vectorEffect="non-scaling-stroke"
                   />
                   <text
-                    x={x} y={8}
+                    x={Math.max(x, 5)} y={8}
                     textAnchor="middle"
                     fontSize="7"
                     fill="rgba(255,255,255,0.30)"
