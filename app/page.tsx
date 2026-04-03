@@ -663,7 +663,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
               width: '100%', height: '100%', minHeight: 40,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <span style={{ fontSize: 10, color: '#222', fontFamily: "'JetBrains Mono', monospace" }}>
+              <span style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace" }}>
                 loading...
               </span>
             </div>
@@ -696,7 +696,9 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const strokeColor = up ? '#22c55e' : '#f87171'
           const fillColor = up ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)'
 
-          // Compute ET session boundary markers for the current trading day only
+          // Compute ET session boundary markers for the current trading day only (1D only)
+          const sessionMarkers: { x: number; label: string; key: string }[] = []
+          if (selectedPeriod === '1D') {
           const startMs = new Date(pts[0].time).getTime()
           const endMs = new Date(pts[pts.length - 1].time).getTime()
           // Derive ET date from the most recent data point to stay on the current trading day
@@ -718,7 +720,6 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           ]
           // Pre-compute UTC ms for each data point for index-based alignment
           const ptMs = pts.map(p => new Date(p.time).getTime())
-          const sessionMarkers: { x: number; label: string; key: string }[] = []
           for (const { label: bLabel, etH, etM } of sessionBoundaries) {
             const bMs = etMidnightUtcMs + (etH * 60 + etM) * 60000
             if (bMs < startMs || bMs > endMs) continue
@@ -732,6 +733,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
             const x = (closestIdx / (pts.length - 1)) * w
             sessionMarkers.push({ x, label: bLabel, key: bLabel })
           }
+          } // end selectedPeriod === '1D'
 
           return (
             <svg
@@ -741,7 +743,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
             >
               <polygon points={fillPoints} fill={fillColor} />
               <polyline points={linePoints} fill="none" stroke={strokeColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-              {selectedPeriod === '1D' && sessionMarkers.map(({ x, label: mLabel, key: mKey }) => (
+              {sessionMarkers.map(({ x, label: mLabel, key: mKey }) => (
                 <g key={mKey}>
                   <line
                     x1={x} y1={10} x2={x} y2={h}
