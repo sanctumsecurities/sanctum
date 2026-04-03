@@ -366,6 +366,9 @@ interface ReportCardProps {
   onFocus: (id: string | null) => void
 }
 
+const PERIODS = ['1D', '1W', '1M', '3M', 'YTD', '1Y'] as const
+type Period = typeof PERIODS[number]
+
 const etFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/New_York',
   year: 'numeric', month: '2-digit', day: '2-digit',
@@ -373,15 +376,41 @@ const etFormatter = new Intl.DateTimeFormat('en-US', {
   hour12: false,
 })
 
-const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, focusedCardId, colIndex, onOpen, onDelete, onFocus }: ReportCardProps) {
+const ReportCard = memo(function ReportCard({ report, chartData: initialChartData, focusedCardId, colIndex, onOpen, onDelete, onFocus }: ReportCardProps) {
   const d = report.data || {}
+  const [selectedPeriod, setSelectedPeriod] = useState<Period>('1D')
+  const [periodCache, setPeriodCache] = useState<
+    Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null } | null>
+  >({})
+  const [isFetchingPeriod, setIsFetchingPeriod] = useState(false)
+
+  // Active chart data: 1D uses prop from parent; other periods use local cache
+  const tickerChart = selectedPeriod === '1D'
+    ? initialChartData
+    : (periodCache[selectedPeriod] ?? undefined)
+
   const sentiment = report.ai?.overview?.sentiment || ''
   const price = d.price
   const prevClose = d.previousClose
   const priceChange = price && prevClose ? price - prevClose : null
   const priceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
   const isUp = priceChange !== null && priceChange >= 0
-  const ah = tickerChart?.afterHours || null
+  const ah = selectedPeriod === '1D' ? (tickerChart?.afterHours || null) : null
+
+  const handlePeriodSelect = useCallback(async (period: Period) => {
+    setSelectedPeriod(period)
+    if (period === '1D' || periodCache[period] !== undefined) return
+    setIsFetchingPeriod(true)
+    try {
+      const res = await fetch(`/api/charts?tickers=${encodeURIComponent(report.ticker)}&period=${period}`)
+      const data = await res.json()
+      setPeriodCache(prev => ({ ...prev, [period]: data[report.ticker] ?? null }))
+    } catch {
+      setPeriodCache(prev => ({ ...prev, [period]: null }))
+    } finally {
+      setIsFetchingPeriod(false)
+    }
+  }, [periodCache, report.ticker])
 
   const sentimentColor = sentiment === 'Bullish' ? '#22c55e'
     : sentiment === 'Bearish' ? '#f87171' : '#eab308'
@@ -547,6 +576,29 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
       )}
 
       {/* 1-Day Sparkline Chart */}
+        {/* Timeframe selector */}
+        <div style={{ display: 'flex', gap: 3, marginBottom: 6 }}>
+          {PERIODS.map(p => (
+            <button
+              key={p}
+              onClick={e => { e.stopPropagation(); handlePeriodSelect(p) }}
+              style={{
+                fontSize: 9,
+                padding: '2px 5px',
+                background: selectedPeriod === p ? 'rgba(255,255,255,0.07)' : 'transparent',
+                color: selectedPeriod === p ? '#ccc' : '#3a3a3a',
+                border: `1px solid ${selectedPeriod === p ? 'rgba(255,255,255,0.12)' : 'transparent'}`,
+                borderRadius: 3,
+                cursor: 'pointer',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.04em',
+                lineHeight: 1,
+              }}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
       <div
         style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'flex-end', position: 'relative' }}
         onMouseMove={e => {
@@ -558,10 +610,9 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
           const pts = tickerChart?.points
           if (!crosshair || !dot || !tip || !pts || pts.length < 2) return
 
-          const scale = 1.15
-          const localW = rect.width / scale
-          const localH = rect.height / scale
-          const x = (e.clientX - rect.left) / scale
+          const localW = rect.width
+          const localH = rect.height
+          const x = e.clientX - rect.left
           const pct = Math.max(0, Math.min(1, x / localW))
           const idx = Math.round(pct * (pts.length - 1))
           const pt = pts[idx]
@@ -572,8 +623,8 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
           const min = Math.min(...pts.map(p => p.price))
           const max = Math.max(...pts.map(p => p.price))
           const range = max - min || 1
-          const padRatio = 2 / 80
-          const rangeRatio = 76 / 80
+          const padRatio = 12 / 80
+          const rangeRatio = (80 - 12 - 2) / 80
           const yPct = padRatio + (1 - (pt.price - min) / range) * rangeRatio
           const dotY = yPct * localH
 
@@ -584,7 +635,9 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
           dot.style.display = 'block'
           dot.style.background = isChartUp ? '#22c55e' : '#f87171'
 
-          const timeStr = new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+          const timeStr = selectedPeriod === '1D'
+            ? new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+            : new Date(pt.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           const changeStr = `${changeFromOpen >= 0 ? '+' : ''}${changeFromOpen.toFixed(2)}%`
           const changeColor = changeFromOpen >= 0 ? '#22c55e' : '#f87171'
 
@@ -605,13 +658,23 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
       >
         {(() => {
           const pts = tickerChart?.points
+          if (isFetchingPeriod) return (
+            <div style={{
+              width: '100%', height: '100%', minHeight: 40,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ fontSize: 10, color: '#222', fontFamily: "'JetBrains Mono', monospace" }}>
+                loading...
+              </span>
+            </div>
+          )
           if (!pts || pts.length < 2) return (
             <div style={{
               width: '100%', height: '100%', minHeight: 40,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <span style={{ fontSize: 10, color: '#222', fontFamily: "'JetBrains Mono', monospace" }}>
-                loading chart...
+                no data
               </span>
             </div>
           )
@@ -621,10 +684,11 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
           const range = max - min || 1
           const w = 300
           const h = 80
-          const pad = 2
+          const padTop = 12
+          const padBottom = 2
           const linePoints = prices.map((v, i) => {
             const x = (i / (prices.length - 1)) * w
-            const y = pad + (1 - (v - min) / range) * (h - pad * 2)
+            const y = padTop + (1 - (v - min) / range) * (h - padTop - padBottom)
             return `${x},${y}`
           }).join(' ')
           const fillPoints = `0,${h} ${linePoints} ${w},${h}`
@@ -677,7 +741,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
             >
               <polygon points={fillPoints} fill={fillColor} />
               <polyline points={linePoints} fill="none" stroke={strokeColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-              {sessionMarkers.map(({ x, label: mLabel, key: mKey }) => (
+              {selectedPeriod === '1D' && sessionMarkers.map(({ x, label: mLabel, key: mKey }) => (
                 <g key={mKey}>
                   <line
                     x1={x} y1={10} x2={x} y2={h}
@@ -723,33 +787,6 @@ const ReportCard = memo(function ReportCard({ report, chartData: tickerChart, fo
           pointerEvents: 'none', zIndex: 5,
         }} />
       </div>
-
-      {/* AI Highlights (visible on hover via CSS) */}
-      {report.ai?.overview?.highlights?.length > 0 && (
-        <div data-highlights>
-          <div style={{
-            fontSize: 10, color: '#444',
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: '0.08em',
-            marginBottom: 6,
-          }}>
-            HIGHLIGHTS
-          </div>
-          {(report.ai.overview.highlights as { icon: string; text: string }[]).slice(0, 3).map((h, i) => (
-            <div key={i} style={{
-              display: 'flex', gap: 6, alignItems: 'center',
-              fontSize: 11, color: '#777',
-              fontFamily: "'DM Sans', sans-serif",
-              lineHeight: 1.3,
-              marginBottom: 3,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              <span style={{ flexShrink: 0, fontSize: 12 }}>{h.icon}</span>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.text}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Footer: Date | Created by */}
       <div style={{
