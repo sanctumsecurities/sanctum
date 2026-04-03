@@ -366,7 +366,7 @@ interface ReportCardProps {
   onFocus: (id: string | null) => void
 }
 
-const PERIODS = ['1D', '1W', '1M', '3M', 'YTD', '1Y'] as const
+const PERIODS = ['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y'] as const
 type Period = typeof PERIODS[number]
 
 const etFormatter = new Intl.DateTimeFormat('en-US', {
@@ -647,7 +647,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
 
           const timeStr = selectedPeriod === '1D'
             ? new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-            : selectedPeriod === '1W'
+            : selectedPeriod === '5D'
             ? new Date(pt.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
             : new Date(pt.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           const changeStr = `${changeFromOpen >= 0 ? '+' : ''}${changeFromOpen.toFixed(2)}%`

@@ -29,12 +29,14 @@ function getChartParams(period: string): { period1: Date; period2: Date; interva
   const offsetMs = getEtOffset()
 
   switch (period) {
-    case '1W':
+    case '5D':
       return { period1: new Date(now - 7 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1h' }
     case '1M':
       return { period1: new Date(now - 30 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1d' }
     case '3M':
       return { period1: new Date(now - 90 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1d' }
+    case '6M':
+      return { period1: new Date(now - 180 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1d' }
     case '1Y':
       return { period1: new Date(now - 365 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1d' }
     case 'YTD': {
