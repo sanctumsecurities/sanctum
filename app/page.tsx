@@ -9,6 +9,7 @@ import SettingsModal from '@/components/SettingsModal'
 import FearGreedMeter from '@/components/FearGreedMeter'
 
 const ReportView = dynamic(() => import('@/components/ReportView'), { ssr: false })
+const MatrixScatter = dynamic(() => import('@/components/MatrixScatter'), { ssr: false })
 
 interface SavedReport {
   id: string
@@ -283,7 +284,7 @@ const BANNER_LABEL_MAP: Record<string, string> = Object.fromEntries(
 const BANNER_SPEED_SECS = { fast: 45, regular: 60, slow: 75 } as const
 
 const DEFAULT_SETTINGS = {
-  defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist',
+  defaultTab: 'Dashboard' as 'Dashboard' | 'Matrix' | 'Watchlist',
   clockFormat: '12h' as '12h' | '24h',
   bannerSpeed: 'regular' as 'fast' | 'regular' | 'slow',
   bannerUpdateFreq: 60_000,
@@ -906,7 +907,7 @@ export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Watchlist'>('Dashboard')
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Matrix' | 'Watchlist'>('Dashboard')
   const [searchTicker, setSearchTicker] = useState('')
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
@@ -1569,7 +1570,7 @@ export default function Home() {
             position: 'absolute', left: '50%', transform: 'translateX(-50%)',
             display: 'flex', gap: 32,
           }}>
-            {(['Dashboard', 'Watchlist'] as const).map(tab => {
+            {(['Dashboard', 'Matrix', 'Watchlist'] as const).map(tab => {
               const isActive = tab === activeTab
               return (
                 <button
@@ -1675,7 +1676,7 @@ export default function Home() {
             padding: '8px 20px 16px',
             display: 'flex', flexDirection: 'column', gap: 0,
           }}>
-            {(['Dashboard', 'Watchlist'] as const).map(tab => (
+            {(['Dashboard', 'Matrix', 'Watchlist'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setMobileMenuOpen(false) }}
@@ -1932,6 +1933,34 @@ export default function Home() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ══ MATRIX ══ */}
+        {activeTab === 'Matrix' && (
+          <div className="main-content" style={{
+            padding: '40px 40px 0',
+            maxWidth: '100%', margin: '0 auto',
+            animation: 'fadeIn 0.3s ease',
+            boxSizing: 'border-box',
+            overflowX: 'hidden',
+          }}>
+            <h1 className="hero-title" style={{
+              fontSize: 64, fontWeight: 700, color: '#fff',
+              letterSpacing: '0.08em',
+              fontFamily: "'JetBrains Mono', monospace",
+              margin: 0, lineHeight: 1,
+              width: 'fit-content',
+            }}>
+              MATRIX
+            </h1>
+            <p style={{
+              fontSize: 13, color: '#555', margin: '16px 0 32px',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>
+              Return vs. volatility scatter plot. Sized by market cap.
+            </p>
+            <MatrixScatter savedReports={savedReports} watchlist={watchlist} />
           </div>
         )}
 
