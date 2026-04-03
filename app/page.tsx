@@ -392,8 +392,18 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
   const sentiment = report.ai?.overview?.sentiment || ''
   const price = d.price
   const prevClose = d.previousClose
-  const priceChange = price && prevClose ? price - prevClose : null
-  const priceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
+  const dayPriceChange = price && prevClose ? price - prevClose : null
+  const dayPriceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
+
+  // For non-1D periods, derive change from first→last chart point
+  const chartPoints = tickerChart?.points
+  const periodFirst = chartPoints && chartPoints.length >= 2 ? chartPoints[0].price : null
+  const periodLast = chartPoints && chartPoints.length >= 2 ? chartPoints[chartPoints.length - 1].price : null
+  const periodPriceChange = periodFirst && periodLast && selectedPeriod !== '1D' ? periodLast - periodFirst : null
+  const periodPriceChangePct = periodFirst && periodLast && selectedPeriod !== '1D' ? ((periodLast - periodFirst) / periodFirst) * 100 : null
+
+  const priceChange = selectedPeriod === '1D' ? dayPriceChange : periodPriceChange
+  const priceChangePct = selectedPeriod === '1D' ? dayPriceChangePct : periodPriceChangePct
   const isUp = priceChange !== null && priceChange >= 0
   const ah = selectedPeriod === '1D' ? (tickerChart?.afterHours || null) : null
 
@@ -637,6 +647,8 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
 
           const timeStr = selectedPeriod === '1D'
             ? new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+            : selectedPeriod === '1W'
+            ? new Date(pt.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
             : new Date(pt.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           const changeStr = `${changeFromOpen >= 0 ? '+' : ''}${changeFromOpen.toFixed(2)}%`
           const changeColor = changeFromOpen >= 0 ? '#22c55e' : '#f87171'

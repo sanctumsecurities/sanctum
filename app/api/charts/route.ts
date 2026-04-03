@@ -94,6 +94,20 @@ async function fetchChart(symbol: string, period: string) {
       }
     }
 
+    // If 1D window hasn't started yet (pre-market hasn't opened), fall back to previous trading day
+    if (period === '1D' && points.length === 0) {
+      const { period1: p1, period2: p2 } = getChartParams('1D')
+      const prevResult = await yahooFinance.chart(symbol, {
+        period1: new Date(p1.getTime() - 24 * 60 * 60 * 1000),
+        period2: new Date(p2.getTime() - 24 * 60 * 60 * 1000),
+        interval: '5m' as any,
+      })
+      const prevPoints = (prevResult.quotes || [])
+        .filter((q: any) => q.close != null && q.date != null)
+        .map((q: any) => ({ time: new Date(q.date).toISOString(), price: q.close as number }))
+      return { ticker: symbol, points: prevPoints, afterHours }
+    }
+
     return { ticker: symbol, points, afterHours }
   } catch {
     return { ticker: symbol, points: [], afterHours: null }
