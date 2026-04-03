@@ -63,10 +63,9 @@ function getChartParams(period: string): { period1: Date; period2: Date; interva
 async function fetchChart(symbol: string, period: string) {
   try {
     const { period1, period2, interval } = getChartParams(period)
-    const [chartResult, quoteResult] = await Promise.all([
-      yahooFinance.chart(symbol, { period1, period2, interval: interval as any }),
-      yahooFinance.quote(symbol),
-    ])
+    const chartPromise = yahooFinance.chart(symbol, { period1, period2, interval: interval as any })
+    const quotePromise = period === '1D' ? yahooFinance.quote(symbol) : Promise.resolve(null)
+    const [chartResult, quoteResult] = await Promise.all([chartPromise, quotePromise])
 
     const points = (chartResult.quotes || [])
       .filter((q: any) => q.close != null && q.date != null)
