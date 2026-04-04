@@ -279,7 +279,31 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-    const prompt = `You are a senior equity analyst at an elite hedge fund. Generate a deeply researched, institutional-quality stock analysis report for the ticker: ${symbol}.
+    const yahooContext = yahoo ? `
+REAL MARKET DATA (use these exact numbers, do not fabricate):
+- Analyst Targets: Low $${yahoo.analystTargetRange.low.toFixed(2)}, Mean $${yahoo.analystTargetRange.mean.toFixed(2)}, High $${yahoo.analystTargetRange.high.toFixed(2)} (${yahoo.analystTargetRange.numberOfAnalysts} analysts)
+- Current Price: $${yahoo.analystTargetRange.currentPrice.toFixed(2)}
+- Recommendation: ${yahoo.analystConsensus.recommendation}
+- Institutional Ownership: ${yahoo.institutionalOwnership}
+- Trailing P/E: ${yahoo.currentPE.toFixed(1)}, Forward P/E: ${yahoo.forwardPE.toFixed(1)}
+- Has Dividend: ${yahoo.dividendData ? 'Yes' : 'No'}
+- Revenue vs COGS (annual): ${JSON.stringify(yahoo.revenueVsCogs.map((r: any) => ({ year: r.year, revenue: r.revenue + 'B', cogs: r.cogs + 'B', grossProfit: r.grossProfit + 'B' })))}
+- Margin Trends: ${JSON.stringify(yahoo.marginTrends.map((m: any) => ({ year: m.year, gross: m.gross.toFixed(1) + '%', operating: m.operating.toFixed(1) + '%', net: m.net.toFixed(1) + '%' })))}
+- Revenue CAGR: 5yr ${yahoo.revenueCagr.fiveYear || 'N/A'}
+- Net Income CAGR: 5yr ${yahoo.netIncomeCagr.fiveYear || 'N/A'}
+- Insider Activity: ${yahoo.insiderActivity ? 'Net buys (90d): ' + yahoo.insiderActivity.netBuys90Days + ', Notable: ' + yahoo.insiderActivity.notable : 'No data'}
+- Recommendation Trend: ${JSON.stringify(yahoo.recommendationTrend)}
+` : ''
+
+    const prompt = `You are a senior equity analyst at an elite hedge fund with 20+ years of experience. Generate a deeply researched, institutional-quality stock analysis report for the ticker: ${symbol}.
+${yahooContext}
+CRITICAL INSTRUCTIONS:
+1. Every claim MUST be backed by quantitative data — cite specific numbers, growth rates, and margins.
+2. Compare metrics against sector peers and historical averages throughout.
+3. Assign conviction scores (0-100) where requested — 0 = no confidence, 100 = maximum conviction.
+4. Use temporal buckets: NEAR (0-6 months), MEDIUM (6-18 months), LONG (18+ months).
+5. Where REAL MARKET DATA is provided above, use those numbers as ground truth. Do NOT fabricate analyst targets, PE ratios, or ownership data — use the provided values.
+6. Be specific to THIS company — no generic filler. Every sentence should contain company-specific insight.
 
 Return ONLY a raw JSON object. No markdown. No backticks. No preamble. Just JSON.
 
@@ -294,6 +318,7 @@ Schema:
   "website": "string (company website URL, e.g. 'https://www.apple.com')",
   "verdict": "BUY" | "SELL" | "HOLD" | "AVOID",
   "verdictSubtitle": "string — one-line thesis",
+  "convictionScore": number (0-100, your overall conviction in the verdict),
   "badges": ["string — contextual badges like 'DOJ Investigation', 'Buffett Bought', 'Mkt Cap ~$256B'"],
   "overview": {
     "keyMetrics": [
@@ -302,53 +327,92 @@ Schema:
     "businessSummary": "string — 3 paragraphs separated by \\n\\n",
     "whatHasGoneWrong": "string or null — if company is under stress, explain what went wrong",
     "segmentBreakdown": [{ "name": "string", "percentage": number }],
-    "moatScores": [{ "metric": "string", "score": number 0-100 }]
+    "moatScores": [{ "metric": "string", "score": number 0-100 }],
+    "sectorMoatScores": [{ "metric": "string", "score": number 0-100 — sector median for the same metrics as moatScores }],
+    "analystConsensus": {
+      "meanTarget": "string (e.g. '$210')",
+      "lowTarget": "string (e.g. '$155')",
+      "highTarget": "string (e.g. '$280')",
+      "numberOfAnalysts": number,
+      "recommendation": "string (e.g. 'Buy')"
+    },
+    "institutionalOwnership": "string (e.g. '72.5%')",
+    "insiderActivity": { "netBuys90Days": number, "notable": "string" } | null,
+    "revenueCagr": { "fiveYear": "string (e.g. '+12.3%')", "tenYear": "string or null" },
+    "netIncomeCagr": { "fiveYear": "string (e.g. '+8.1%')", "tenYear": "string or null" }
   },
   "financials": {
     "narrativeSummary": "string — 2-3 paragraphs separated by \\n\\n",
     "annualData": [
-      { "year": "string", "revenue": number (in billions), "revenueGrowth": "string (e.g. '+8.2%')", "adjEPS": number, "epsGrowth": "string", "opCF": "string (e.g. '$24.3B')", "keyMetric": "string (relevant KPI)" }
+      { "year": "string", "revenue": number (in billions), "revenueGrowth": "string (e.g. '+8.2%')", "adjEPS": number, "epsGrowth": "string", "opCF": "string (e.g. '$24.3B')", "keyMetric": "string (relevant KPI)", "grossMargin": "string (e.g. '45.2%')", "operatingMargin": "string (e.g. '28.1%')", "fcf": "string (e.g. '$18.5B')" }
     ],
-    "callout": "string — single most important financial warning or insight"
+    "callout": "string — single most important financial warning or insight",
+    "revenueVsCogs": [{ "year": "string", "revenue": number (billions), "cogs": number (billions), "grossProfit": number (billions) }],
+    "marginTrends": [{ "year": "string", "gross": number, "operating": number, "net": number }],
+    "dividendData": {
+      "currentYield": "string", "payoutRatio": "string", "fiveYearCagr": "string",
+      "tenYearCagr": "string or null", "consecutiveYearsGrowth": number | null,
+      "fcfVsDividends": [{ "year": "string", "fcf": number, "dividendsPaid": number }]
+    } | null,
+    "cagrs": {
+      "revenue": { "fiveYear": "string", "tenYear": "string or null" },
+      "netIncome": { "fiveYear": "string", "tenYear": "string or null" },
+      "eps": { "fiveYear": "string", "tenYear": "string or null" }
+    }
   },
   "valuation": {
-    "bullCase": "string — detailed bull case paragraph",
-    "bearCase": "string — detailed bear case paragraph",
-    "metrics": [{ "metric": "string", "current": "string", "fiveYearAvg": "string", "commentary": "string" }]
+    "bullCase": "string — detailed bull case paragraph with quantitative support",
+    "bearCase": "string — detailed bear case paragraph with quantitative support",
+    "metrics": [{ "metric": "string", "current": "string", "fiveYearAvg": "string", "sectorMedian": "string", "commentary": "string" }],
+    "analystTargetRange": {
+      "low": number, "mean": number, "median": number, "high": number,
+      "currentPrice": number, "numberOfAnalysts": number
+    },
+    "historicalPE": [{ "year": "string", "pe": number — estimated trailing P/E for that year }],
+    "sectorMedianPE": number
   },
   "catalysts": {
-    "catalystTable": [{ "timeline": "string", "catalyst": "string", "impact": "string (use arrow like '↑ Positive' or '↓ Negative')", "probability": "string" }],
-    "risks": [{ "risk": "string", "severity": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW", "description": "string" }]
+    "catalystTable": [{ "timeline": "string", "catalyst": "string", "impact": "string (use arrow like '↑ Positive' or '↓ Negative')", "probability": "string", "timeframe": "NEAR" | "MEDIUM" | "LONG", "conviction": number (0-100) }],
+    "risks": [{ "risk": "string", "severity": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW", "description": "string", "likelihood": "HIGH" | "MEDIUM" | "LOW", "timeframe": "NEAR" | "MEDIUM" | "LONG" }],
+    "recommendationTrend": [{ "month": "string", "buy": number, "hold": number, "sell": number }],
+    "insiderTimeline": [{ "date": "string", "type": "BUY" | "SELL", "shares": number, "value": "string" }] | null
   },
   "verdictDetails": {
     "bullCase": { "priceTarget": "string", "return": "string", "description": "string" },
     "baseCase": { "priceTarget": "string", "return": "string", "description": "string" },
     "bearCase": { "priceTarget": "string", "return": "string", "description": "string" },
-    "scenarioMatrix": [{ "scenario": "string", "probability": "string", "priceTarget": "string", "return": "string", "weighted": "string" }],
-    "multiYearProjections": [{ "horizon": "string", "bearCase": "string", "baseCase": "string", "bullCase": "string", "commentary": "string" }],
-    "priceProjectionChart": [{ "year": "string", "bear": number, "base": number, "bull": number }],
+    "scenarioMatrix": [{ "scenario": "string", "probability": "string", "priceTarget": "string", "return": "string", "weighted": "string", "keyAssumptions": ["string — 2-3 key assumptions driving this scenario"] }],
+    "multiYearProjections": [{ "horizon": "string", "bearCase": "string", "baseCase": "string", "bullCase": "string", "commentary": "string", "impliedCagr": "string (e.g. '+12.5% CAGR')" }],
+    "priceProjectionChart": [{ "year": "string", "bear": number, "base": number, "bull": number, "analystMean": number — use the analyst mean target from REAL MARKET DATA if available }],
     "syndicateVerdict": {
       "rating": "BUY" | "SELL" | "HOLD" | "AVOID",
-      "positionSizing": "string — position sizing recommendation",
+      "positionSizing": "string — specific portfolio % range with rationale (e.g. '3-5% position: high conviction + reasonable valuation offsets regulatory risk')",
       "keySignalTitle": "string — dynamic signal title (e.g. 'The Buffett Signal')",
       "keySignalDetail": "string — paragraph explaining the signal",
       "honestRisk": "string — paragraph on the honest risk",
       "howToPosition": "string — paragraph on entry strategy and sizing",
       "longTermThesis": "string — paragraph on 5-10 year outlook"
-    }
+    },
+    "convictionScore": number (0-100, same as root convictionScore),
+    "convictionDrivers": "string — 2-3 sentences explaining what drives or limits conviction"
   }
 }
 
 Requirements:
-- overview.keyMetrics: exactly 6 items: Market Cap, FY Revenue, Next Year Revenue Est., Adj EPS, Op Cash Flow, Dividend/Yield
+- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Adj EPS, Forward P/E, Op Cash Flow, Dividend/Yield (or Institutional Ownership if no dividend)
 - overview.moatScores: exactly 6 items scoring competitive advantages on 0-100 scale
+- overview.sectorMoatScores: exactly 6 items matching the same metrics as moatScores, representing sector median scores
 - overview.segmentBreakdown: 3-8 revenue segments that sum close to 100
-- financials.annualData: 4-5 years of data
-- catalysts.catalystTable: 4-6 catalysts
-- catalysts.risks: 4-6 risks ordered by severity
-- verdictDetails.scenarioMatrix: 3 rows (Bull/Base/Bear) + 1 Expected Value row
-- verdictDetails.multiYearProjections: 3 rows (3-year, 5-year, 10-year)
-- verdictDetails.priceProjectionChart: 5-6 data points for chart (current year through 5 years out)
+- financials.annualData: 4-5 years of data including grossMargin, operatingMargin, fcf per year
+- valuation.historicalPE: 4-5 years of estimated trailing P/E ratios
+- catalysts.catalystTable: 4-6 catalysts each with timeframe (NEAR/MEDIUM/LONG) and conviction (0-100)
+- catalysts.risks: 4-6 risks ordered by severity, each with likelihood (HIGH/MEDIUM/LOW) and timeframe (NEAR/MEDIUM/LONG)
+- verdictDetails.scenarioMatrix: 3 rows (Bull/Base/Bear) + 1 Expected Value row, each with keyAssumptions (2-3 per scenario)
+- verdictDetails.multiYearProjections: 3 rows (3-year, 5-year, 10-year) each with impliedCagr
+- verdictDetails.priceProjectionChart: 5-6 data points (current year through 5 years out) each with analystMean
+- verdictDetails.syndicateVerdict.positionSizing: must be a specific portfolio percentage range with rationale, not generic advice
+- convictionScore + verdictDetails.convictionScore: 0-100 reflecting overall conviction in the thesis
+- verdictDetails.convictionDrivers: explain what supports or limits your conviction
 - Be specific to THIS company — no generic filler
 - Return ONLY the JSON object, no wrapping`
 
