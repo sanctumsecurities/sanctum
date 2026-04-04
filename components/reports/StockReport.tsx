@@ -157,20 +157,23 @@ function ReportLoadingScreen({
 
     loading.classList.add('crt-collapsing')
 
+    // Step 2: Show CRT line after collapse finishes (500ms)
     const t1 = setTimeout(() => {
       crtLine.classList.add('crt-line-visible')
-    }, 400)
+    }, 500)
 
+    // Step 3: Sweep white outward 150ms after line appears
     const t2 = setTimeout(() => {
       sweepTop.classList.add('crt-sweeping')
       sweepBottom.classList.add('crt-sweeping')
       crtLine.style.transition = 'opacity 400ms ease-out'
       crtLine.style.opacity = '0'
-    }, 700)
+    }, 650)
 
+    // Step 4: Done — collapse(500) + line(150) + sweep(600) + reveal delay(200) ≈ 1450
     const t3 = setTimeout(() => {
       onCRTDone()
-    }, 1400)
+    }, 1450)
 
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
   }, [showCRT, onCRTDone])
@@ -460,7 +463,17 @@ export default function StockReport({ ticker }: { ticker: string }) {
   if (!report) return null
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#e8ecf1', fontFamily: "'JetBrains Mono', monospace" }}>
+    <div style={{
+      minHeight: '100vh', background: '#0a0a0a', color: '#e8ecf1',
+      fontFamily: "'JetBrains Mono', monospace",
+      animation: showReport ? 'reportReveal 500ms ease-out 200ms both' : undefined,
+    }}>
+      <style>{`
+        @keyframes reportReveal {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
       <div style={{
         padding: '28px 20px 24px',
         background: 'transparent',
