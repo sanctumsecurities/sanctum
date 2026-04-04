@@ -15,9 +15,6 @@ interface MatrixStock {
   sharpe: number
   price: number
   sector: string
-  prevRet: number | null
-  prevVol: number | null
-  prevDownsideVol: number | null
 }
 
 interface MatrixBenchmark {
@@ -93,6 +90,11 @@ function formatMktCap(val: number): string {
   return `$${val.toLocaleString()}`
 }
 
+function computeCalmar(ret: number, maxDrawdown: number): number {
+  if (maxDrawdown < 0.001) return ret >= 0 ? 50 : -50
+  return Math.max(-50, Math.min(50, ret / maxDrawdown))
+}
+
 function dotRadius(mcap: number, allMcaps: number[]): number {
   if (allMcaps.length === 0 || mcap <= 0) return 6
   const logMin = Math.log10(Math.max(1, Math.min(...allMcaps)))
@@ -112,9 +114,9 @@ function computeConvexHull(points: { x: number; y: number }[]): { x: number; y: 
     while (hull.length >= 2) {
       const a = hull[hull.length - 2]
       const b = hull[hull.length - 1]
-      // Cross product: positive = counter-clockwise (keep), zero or negative = clockwise or collinear (pop)
+      // Cross product: negative = clockwise (keep for upper hull), zero or positive = pop
       const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
-      if (cross <= 0) hull.pop()
+      if (cross >= 0) hull.pop()
       else break
     }
     hull.push(p)
@@ -143,17 +145,6 @@ function catmullRomPath(points: { x: number; y: number }[], tension: number = 0.
     d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`
   }
   return d
-}
-
-function getArrowheadPoints(
-  fromX: number, fromY: number, toX: number, toY: number, size: number = 6
-): string {
-  const angle = Math.atan2(toY - fromY, toX - fromX)
-  const x1 = toX - size * Math.cos(angle - Math.PI / 6)
-  const y1 = toY - size * Math.sin(angle - Math.PI / 6)
-  const x2 = toX - size * Math.cos(angle + Math.PI / 6)
-  const y2 = toY - size * Math.sin(angle + Math.PI / 6)
-  return `${toX},${toY} ${x1},${y1} ${x2},${y2}`
 }
 
 // ── Ticker Search for Custom mode ──
@@ -330,10 +321,12 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const [colorMode, setColorMode] = useState<ColorMode>('quadrant')
-  const [showTrails, setShowTrails] = useState(false)
   const [showFrontier, setShowFrontier] = useState(false)
   const [sectorFilter, setSectorFilter] = useState<string | null>(null)
   const [hoveredFrontier, setHoveredFrontier] = useState(false)
+  const [showCML, setShowCML] = useState(false)
+  const [showCalmar, setShowCalmar] = useState(false)
+  const [hoveredCML, setHoveredCML] = useState(false)
 
   // Responsive sizing — fill remaining viewport
   // Re-run when data loads so containerRef is available
@@ -394,32 +387,38 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
   const spyBenchmark = useMemo(() => data?.benchmarks.find(b => b.symbol === 'SPY') ?? null, [data])
   const spyRet = spyBenchmark?.ret ?? 0
   const spyVol = spyBenchmark ? (volMetric === 'downside' ? spyBenchmark.downsideVol : spyBenchmark.vol) : 0.35
+  const spyYVal = spyBenchmark ? (showCalmar ? computeCalmar(spyBenchmark.ret, spyBenchmark.maxDrawdown) : spyRet) : (showCalmar ? 1.0 : 0)
 
   const getVol = useCallback((s: { vol: number; downsideVol: number }) =>
     volMetric === 'downside' ? s.downsideVol : s.vol, [volMetric])
 
+  const getYVal = useCallback((s: { ret: number; maxDrawdown: number }) =>
+    showCalmar ? computeCalmar(s.ret, s.maxDrawdown) : s.ret, [showCalmar])
+
   const getStockColor = useCallback((s: MatrixStock) => {
     if (colorMode === 'sector') return SECTOR_COLORS[s.sector] || SECTOR_COLORS['Other']
     const sVol = volMetric === 'downside' ? s.downsideVol : s.vol
-    const quad = getQuadrant(s.ret, sVol, spyRet, spyVol)
+    const quad = getQuadrant(getYVal(s), sVol, spyYVal, spyVol)
     return QUADRANT_CONFIG[quad].color
-  }, [colorMode, volMetric, spyRet, spyVol])
+  }, [colorMode, volMetric, spyYVal, spyVol, getYVal])
 
   // Axis ranges — computed from data, with some padding
   const { xMin, xMax, yMin, yMax } = useMemo(() => {
     if (!data || data.stocks.length === 0) {
-      return { xMin: 0, xMax: 0.8, yMin: -0.3, yMax: 0.6 }
+      return showCalmar
+        ? { xMin: 0, xMax: 0.8, yMin: -2, yMax: 5 }
+        : { xMin: 0, xMax: 0.8, yMin: -0.3, yMax: 0.6 }
     }
     const allVols = [...data.stocks.map(s => getVol(s)), ...data.benchmarks.map(b => getVol(b))]
-    const allRets = [...data.stocks.map(s => s.ret), ...data.benchmarks.map(b => b.ret)]
+    const allYVals = [...data.stocks.map(s => getYVal(s)), ...data.benchmarks.map(b => getYVal(b))]
     const vMin = Math.min(0, ...allVols)
     const vMax = Math.max(0.8, ...allVols)
-    const rMin = Math.min(-0.3, ...allRets)
-    const rMax = Math.max(0.6, ...allRets)
+    const rMin = Math.min(showCalmar ? -2 : -0.3, ...allYVals)
+    const rMax = Math.max(showCalmar ? 5 : 0.6, ...allYVals)
     const vPad = (vMax - vMin) * 0.08
     const rPad = (rMax - rMin) * 0.08
     return { xMin: vMin - vPad, xMax: vMax + vPad, yMin: rMin - rPad, yMax: rMax + rPad }
-  }, [data, getVol])
+  }, [data, getVol, getYVal, showCalmar])
 
   const allMcaps = useMemo(() => data ? data.stocks.map(s => s.mcap) : [], [data])
 
@@ -442,7 +441,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
 
     const points = visibleStocks.map(s => ({
       x: getVol(s),
-      y: s.ret,
+      y: getYVal(s),
     }))
 
     const hull = computeConvexHull(points)
@@ -454,7 +453,45 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
       d: catmullRomPath(screenPoints),
       firstPoint: screenPoints[0],
     }
-  }, [showFrontier, data, colorMode, sectorFilter, getVol, toX, toY])
+  }, [showFrontier, data, colorMode, sectorFilter, getVol, getYVal, toX, toY])
+
+  // CML line — from risk-free rate through tangency portfolio
+  const cmlLine = useMemo(() => {
+    if (!showCML || !data || data.stocks.length < 1 || showCalmar) return null
+
+    const visibleStocks = data.stocks.filter(s => {
+      if (colorMode === 'sector' && sectorFilter && s.sector !== sectorFilter) return false
+      return true
+    })
+    if (visibleStocks.length < 1) return null
+
+    // Find tangency stock (highest Sharpe)
+    let tangencyStock = visibleStocks[0]
+    for (const s of visibleStocks) {
+      if (s.sharpe > tangencyStock.sharpe) tangencyStock = s
+    }
+
+    const rf = data.riskFreeRate
+    const tVol = getVol(tangencyStock)
+    const tRet = tangencyStock.ret
+
+    if (tVol < 0.001) return null
+    const slope = (tRet - rf) / tVol
+
+    // Extend to right edge of chart
+    const rightRet = rf + slope * xMax
+
+    return {
+      x1: toX(0),
+      y1: toY(rf),
+      x2: toX(xMax),
+      y2: toY(rightRet),
+      tangencyX: toX(tVol),
+      tangencyY: toY(tRet),
+      tangencySymbol: tangencyStock.symbol,
+      rfLabel: `Rf ${(rf * 100).toFixed(1)}%`,
+    }
+  }, [showCML, showCalmar, data, colorMode, sectorFilter, getVol, xMax, toX, toY])
 
   // Active/hovered symbol
   const activeSymbol = pinnedSymbol ?? hoveredSymbol
@@ -614,33 +651,76 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
 
         {/* Overlay toggles — right */}
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-          {([
-            { key: 'trails', label: 'TRAILS', active: showTrails, toggle: () => setShowTrails(v => !v) },
-            { key: 'frontier', label: 'FRONTIER', active: showFrontier, toggle: () => setShowFrontier(v => !v) },
-          ] as const).map(({ key, label, active, toggle }) => (
-            <button
-              key={key}
-              onClick={toggle}
-              style={{
-                background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
-                border: `1px solid ${active ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-                borderRadius: 4,
-                padding: '4px 10px',
-                fontSize: 11,
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.08em',
-                color: active ? '#fff' : '#555',
-                cursor: 'pointer',
-                textTransform: 'uppercase' as const,
-                transition: 'all 0.2s ease',
-                whiteSpace: 'nowrap' as const,
-              }}
-              onMouseEnter={e => { if (!active) (e.currentTarget).style.color = '#aaa' }}
-              onMouseLeave={e => { if (!active) (e.currentTarget).style.color = '#555' }}
-            >
-              {label}
-            </button>
-          ))}
+          <button
+            onClick={() => setShowFrontier(v => !v)}
+            style={{
+              background: showFrontier ? 'rgba(255,255,255,0.06)' : 'transparent',
+              border: `1px solid ${showFrontier ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+              borderRadius: 4,
+              padding: '4px 10px',
+              fontSize: 11,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.08em',
+              color: showFrontier ? '#fff' : '#555',
+              cursor: 'pointer',
+              textTransform: 'uppercase' as const,
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap' as const,
+            }}
+            onMouseEnter={e => { if (!showFrontier) (e.currentTarget).style.color = '#aaa' }}
+            onMouseLeave={e => { if (!showFrontier) (e.currentTarget).style.color = '#555' }}
+          >
+            FRONTIER
+          </button>
+          <button
+            onClick={() => { if (!showCalmar) setShowCML(v => !v) }}
+            style={{
+              background: showCML && !showCalmar ? 'rgba(255,255,255,0.06)' : 'transparent',
+              border: `1px solid ${showCML && !showCalmar ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+              borderRadius: 4,
+              padding: '4px 10px',
+              fontSize: 11,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.08em',
+              color: showCalmar ? '#333' : (showCML ? '#fff' : '#555'),
+              cursor: showCalmar ? 'not-allowed' : 'pointer',
+              textTransform: 'uppercase' as const,
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap' as const,
+              opacity: showCalmar ? 0.5 : 1,
+            }}
+            onMouseEnter={e => { if (!showCML && !showCalmar) (e.currentTarget).style.color = '#aaa' }}
+            onMouseLeave={e => { if (!showCML && !showCalmar) (e.currentTarget).style.color = '#555' }}
+          >
+            CML
+          </button>
+          <button
+            onClick={() => {
+              setShowCalmar(v => {
+                const next = !v
+                if (next) setShowCML(false)
+                return next
+              })
+            }}
+            style={{
+              background: showCalmar ? 'rgba(255,255,255,0.06)' : 'transparent',
+              border: `1px solid ${showCalmar ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+              borderRadius: 4,
+              padding: '4px 10px',
+              fontSize: 11,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.08em',
+              color: showCalmar ? '#fff' : '#555',
+              cursor: 'pointer',
+              textTransform: 'uppercase' as const,
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap' as const,
+            }}
+            onMouseEnter={e => { if (!showCalmar) (e.currentTarget).style.color = '#aaa' }}
+            onMouseLeave={e => { if (!showCalmar) (e.currentTarget).style.color = '#555' }}
+          >
+            CALMAR
+          </button>
         </div>
       </div>
 
@@ -773,7 +853,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               {/* Quadrant background washes */}
               {(() => {
                 const divX = toX(spyVol)
-                const divY = toY(spyRet)
+                const divY = toY(spyYVal)
                 return (
                   <>
                     <rect x={PADDING.left} y={PADDING.top} width={divX - PADDING.left} height={divY - PADDING.top} fill="url(#grad-core)" />
@@ -794,8 +874,8 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 style={{ animation: mounted ? undefined : 'none' }}
               />
               <line
-                x1={PADDING.left} y1={toY(spyRet)}
-                x2={dimensions.width - PADDING.right} y2={toY(spyRet)}
+                x1={PADDING.left} y1={toY(spyYVal)}
+                x2={dimensions.width - PADDING.right} y2={toY(spyYVal)}
                 stroke="#1a1a1e" strokeWidth="1"
                 strokeDasharray="6,4"
               />
@@ -803,13 +883,13 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               {/* SPY crosshair labels */}
               <text
                 x={dimensions.width - PADDING.right - 4}
-                y={toY(spyRet) - 6}
+                y={toY(spyYVal) - 6}
                 fill="#444"
                 fontSize="9"
                 fontFamily="'JetBrains Mono', monospace"
                 textAnchor="end"
               >
-                SPY {(spyRet * 100).toFixed(1)}%
+                {showCalmar ? `SPY ${spyYVal.toFixed(1)}` : `SPY ${(spyRet * 100).toFixed(1)}%`}
               </text>
               <text
                 x={toX(spyVol) + 6}
@@ -824,7 +904,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               {/* Quadrant labels */}
               {(() => {
                 const divX = toX(spyVol)
-                const divY = toY(spyRet)
+                const divY = toY(spyYVal)
                 const labels: { text: string; x: number; y: number; color: string }[] = [
                   { text: 'CORE', x: PADDING.left + 10, y: PADDING.top + 18, color: '#22c55e' },
                   { text: 'VOLATILE', x: dimensions.width - PADDING.right - 10, y: PADDING.top + 18, color: '#f59e0b' },
@@ -878,9 +958,16 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               {/* Y-axis ticks */}
               {(() => {
                 const ticks: number[] = []
-                const step = 0.1
-                let v = Math.ceil(yMin / step) * step
-                while (v <= yMax) { ticks.push(v); v += step }
+                if (showCalmar) {
+                  const range = yMax - yMin
+                  const step = range > 20 ? 5 : range > 10 ? 2 : 1
+                  let v = Math.ceil(yMin / step) * step
+                  while (v <= yMax) { ticks.push(v); v += step }
+                } else {
+                  const step = 0.1
+                  let v = Math.ceil(yMin / step) * step
+                  while (v <= yMax) { ticks.push(v); v += step }
+                }
                 return ticks.map(r => (
                   <text
                     key={`yt-${r}`}
@@ -888,7 +975,9 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                     fill="#444" fontSize="10" textAnchor="end"
                     fontFamily="'JetBrains Mono', monospace"
                   >
-                    {Math.abs(r) < 0.001 ? '0' : (r * 100).toFixed(0)}%
+                    {showCalmar
+                      ? (Math.abs(r) < 0.001 ? '0' : r.toFixed(1))
+                      : (Math.abs(r) < 0.001 ? '0' : `${(r * 100).toFixed(0)}%`)}
                   </text>
                 ))
               })()}
@@ -899,7 +988,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 letterSpacing="0.12em"
                 transform={`rotate(-90, 14, ${dimensions.height / 2})`}
               >
-                RETURN
+                {showCalmar ? 'CALMAR RATIO' : 'RETURN'}
               </text>
 
               {/* Efficient frontier line */}
@@ -941,72 +1030,77 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 </g>
               )}
 
-              {/* Trajectory arrows — behind dots */}
-              {showTrails && data.stocks.map(s => {
-                const prevVolVal = volMetric === 'downside' ? s.prevDownsideVol : s.prevVol
-                if (s.prevRet == null || prevVolVal == null) return null
 
-                const fromX = toX(prevVolVal)
-                const fromY = toY(s.prevRet)
-                const curX = toX(getVol(s))
-                const curY = toY(s.ret)
-
-                // Skip if arrow is too short (<2px)
-                const dx = curX - fromX
-                const dy = curY - fromY
-                const dist = Math.sqrt(dx * dx + dy * dy)
-                if (dist < 2) return null
-
-                const color = getStockColor(s)
-                const isHovered = activeSymbol === s.symbol
-                const isOtherHovered = activeSymbol != null && activeSymbol !== s.symbol && !activeSymbol.startsWith('BENCH_')
-
-                // Filtering
-                const isFiltered = colorMode === 'sector' && sectorFilter
-                  ? s.sector !== sectorFilter
-                  : false
-                if (isFiltered) return null
-
-                const lineOpacity = isHovered ? 0.6 : isOtherHovered ? 0.08 : 0.25
-                const headOpacity = isHovered ? 0.8 : isOtherHovered ? 0.12 : 0.4
-                const ghostOpacity = isHovered ? 0.5 : isOtherHovered ? 0.06 : 0.2
-
-                return (
-                  <g key={`trail-${s.symbol}`} style={{ pointerEvents: 'none' }}>
-                    {/* Arrow line */}
-                    <line
-                      x1={fromX} y1={fromY} x2={curX} y2={curY}
-                      stroke={color} strokeWidth={1.5}
-                      opacity={lineOpacity}
-                      style={{ transition: 'opacity 0.2s ease' }}
-                    />
-                    {/* Arrowhead */}
-                    <polygon
-                      points={getArrowheadPoints(fromX, fromY, curX, curY, 6)}
-                      fill={color}
-                      opacity={headOpacity}
-                      style={{ transition: 'opacity 0.2s ease' }}
-                    />
-                    {/* Ghost dot at previous position */}
-                    <circle
-                      cx={fromX} cy={fromY} r={3}
-                      fill="none" stroke={color} strokeWidth={1}
-                      opacity={ghostOpacity}
-                      style={{ transition: 'opacity 0.2s ease' }}
-                    />
-                  </g>
-                )
-              })}
+              {/* Capital Market Line */}
+              {cmlLine && (
+                <g>
+                  {/* Invisible hit area */}
+                  <line
+                    x1={cmlLine.x1} y1={cmlLine.y1}
+                    x2={cmlLine.x2} y2={cmlLine.y2}
+                    stroke="transparent"
+                    strokeWidth={12}
+                    style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
+                    onMouseEnter={() => setHoveredCML(true)}
+                    onMouseLeave={() => setHoveredCML(false)}
+                  />
+                  {/* Visible line */}
+                  <line
+                    x1={cmlLine.x1} y1={cmlLine.y1}
+                    x2={cmlLine.x2} y2={cmlLine.y2}
+                    stroke="#60a5fa"
+                    strokeWidth={1.5}
+                    opacity={hoveredCML ? 0.4 : 0.2}
+                    style={{ pointerEvents: 'none', transition: 'opacity 0.2s ease' }}
+                  />
+                  {/* Rf label at y-intercept */}
+                  <text
+                    x={cmlLine.x1 + 4}
+                    y={cmlLine.y1 - 6}
+                    fill="#60a5fa"
+                    opacity={0.35}
+                    fontSize="8"
+                    fontFamily="'JetBrains Mono', monospace"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {cmlLine.rfLabel}
+                  </text>
+                  {/* Tangency diamond */}
+                  <rect
+                    x={cmlLine.tangencyX - 4} y={cmlLine.tangencyY - 4}
+                    width={8} height={8}
+                    fill="none" stroke="#60a5fa" strokeWidth={1}
+                    opacity={0.3}
+                    transform={`rotate(45, ${cmlLine.tangencyX}, ${cmlLine.tangencyY})`}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  {/* Tangency label */}
+                  <text
+                    x={cmlLine.tangencyX}
+                    y={cmlLine.tangencyY - 14}
+                    fill="#60a5fa"
+                    opacity={0.3}
+                    fontSize="8"
+                    fontFamily="'JetBrains Mono', monospace"
+                    textAnchor="middle"
+                    letterSpacing="0.1em"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    TANGENCY
+                  </text>
+                </g>
+              )}
 
               {/* Stock dots — shapes layer */}
               {data.stocks.map((s, i) => {
                 const sVol = getVol(s)
                 const color = getStockColor(s)
-                const quad = getQuadrant(s.ret, sVol, spyRet, spyVol)
+                const yVal = getYVal(s)
+                const quad = getQuadrant(yVal, sVol, spyYVal, spyVol)
                 const r = dotRadius(s.mcap, allMcaps)
                 const isActive = activeSymbol === s.symbol
                 const cx = toX(sVol)
-                const cy = toY(s.ret)
+                const cy = toY(yVal)
 
                 // Filtering: fade non-matching stocks
                 const isFiltered = colorMode === 'sector' && sectorFilter
@@ -1077,7 +1171,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               {/* Benchmark diamonds — shapes layer */}
               {data.benchmarks.map((bench, bi) => {
                 const bx = toX(getVol(bench))
-                const by = toY(bench.ret)
+                const by = toY(getYVal(bench))
                 const benchKey = `BENCH_${bench.symbol}`
                 return (
                   <g
@@ -1108,7 +1202,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 const r = dotRadius(s.mcap, allMcaps)
                 const isActive = activeSymbol === s.symbol
                 const cx = toX(sVol)
-                const cy = toY(s.ret)
+                const cy = toY(getYVal(s))
 
                 const isFiltered = colorMode === 'sector' && sectorFilter
                   ? s.sector !== sectorFilter
@@ -1137,7 +1231,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               {/* Benchmark labels — on top */}
               {data.benchmarks.map(bench => {
                 const bx = toX(getVol(bench))
-                const by = toY(bench.ret)
+                const by = toY(getYVal(bench))
                 const benchKey = `BENCH_${bench.symbol}`
                 const isActive = activeSymbol === benchKey
                 return isActive ? (
@@ -1162,16 +1256,17 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               if (!item) return null
 
               const vol = getVol(item)
+              const yVal = getYVal(item)
               const ret = item.ret
               const px = toX(vol)
-              const py = toY(ret)
+              const py = toY(yVal)
 
               // Flip tooltip to left side if near right edge
               const flipLeft = px > dimensions.width * 0.65
               const tooltipLeft = flipLeft ? px - 200 : px + 20
               const tooltipTop = Math.max(PADDING.top, Math.min(py - 40, dimensions.height - PADDING.bottom - 140))
 
-              const quad = getQuadrant(ret, vol, spyRet, spyVol)
+              const quad = getQuadrant(yVal, vol, spyYVal, spyVol)
               const qColor = QUADRANT_CONFIG[quad].color
               const sharpeColor = item.sharpe >= 1 ? '#22c55e' : item.sharpe >= 0.5 ? '#f59e0b' : item.sharpe >= 0 ? '#888' : '#ef4444'
 
@@ -1240,6 +1335,18 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                         {item.sharpe.toFixed(1)}
                       </span>
                     </div>
+                    {(() => {
+                      const calmar = computeCalmar(item.ret, item.maxDrawdown)
+                      const calmarColor = calmar >= 3.0 ? '#22c55e' : calmar >= 1.0 ? '#f59e0b' : '#ef4444'
+                      return (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>CALMAR</span>
+                          <span style={{ fontSize: 10, color: calmarColor, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>
+                            {calmar >= 50 ? '>50' : calmar <= -50 ? '<-50' : calmar.toFixed(2)}
+                          </span>
+                        </div>
+                      )
+                    })()}
                     {stock && (
                       <>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1283,7 +1390,34 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                   fontFamily: "'JetBrains Mono', monospace",
                   lineHeight: 1.5,
                 }}>
-                  Efficient frontier — upper bound of return for given volatility across displayed holdings
+                  Efficient frontier — upper bound of {showCalmar ? 'Calmar ratio' : 'return'} for given volatility across displayed holdings
+                </div>
+              </div>
+            )}
+
+            {/* CML tooltip */}
+            {hoveredCML && cmlLine && (
+              <div style={{
+                position: 'absolute',
+                left: dimensions.width / 2 - 130,
+                top: PADDING.top + 10,
+                width: 260,
+                background: '#0a0a10',
+                border: '1px solid #1a1a1a',
+                borderLeft: '2px solid rgba(96,165,250,0.2)',
+                borderRadius: 6,
+                padding: '12px 14px',
+                pointerEvents: 'none',
+                zIndex: 50,
+                animation: 'fadeIn 0.15s ease',
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  color: '#888',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  lineHeight: 1.5,
+                }}>
+                  Capital Market Line — stocks above this line outperform a T-bill + {cmlLine.tangencySymbol} mix
                 </div>
               </div>
             )}
