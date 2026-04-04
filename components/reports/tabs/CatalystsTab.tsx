@@ -1,4 +1,10 @@
-import { SectionTitle, Badge, glassCard } from '../ReportUI'
+'use client'
+
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  ResponsiveContainer, Tooltip,
+} from 'recharts'
+import { SectionTitle, Badge, CTooltip, glassCard } from '../ReportUI'
 import type { StockReport } from '@/types/report'
 
 const severityColor: Record<string, 'red' | 'yellow' | 'blue' | 'green'> = {
@@ -13,6 +19,12 @@ const severityBorder: Record<string, string> = {
   HIGH: '#eab308',
   MEDIUM: '#60a5fa',
   LOW: '#4ade80',
+}
+
+const timeframeColor: Record<string, 'green' | 'blue' | 'yellow'> = {
+  NEAR: 'green',
+  MEDIUM: 'blue',
+  LONG: 'yellow',
 }
 
 function impactColor(impact: string): string {
@@ -35,7 +47,7 @@ export default function CatalystsTab({ catalysts }: { catalysts: StockReport['ca
             }}>
               <thead>
                 <tr>
-                  {['Timeline', 'Catalyst', 'Impact', 'Probability'].map((h, i) => (
+                  {['Timeline', 'Catalyst', 'Impact', 'Probability', 'Timeframe', 'Conviction'].map((h, i) => (
                     <th key={i} style={{
                       padding: '10px 12px', textAlign: 'left',
                       color: '#5a6475', fontSize: 10, fontWeight: 600,
@@ -69,6 +81,17 @@ export default function CatalystsTab({ catalysts }: { catalysts: StockReport['ca
                       padding: '10px 12px', color: '#8b95a5',
                       borderBottom: '1px solid rgba(255,255,255,0.04)', whiteSpace: 'nowrap',
                     }}>{row.probability}</td>
+                    <td style={{
+                      padding: '10px 12px',
+                      borderBottom: '1px solid rgba(255,255,255,0.04)', whiteSpace: 'nowrap',
+                    }}>
+                      {row.timeframe && <Badge text={row.timeframe} variant={timeframeColor[row.timeframe] || 'gray'} />}
+                    </td>
+                    <td style={{
+                      padding: '10px 12px', color: '#e8ecf1',
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: 12,
+                      borderBottom: '1px solid rgba(255,255,255,0.04)', whiteSpace: 'nowrap',
+                    }}>{row.conviction != null ? `${row.conviction}/100` : ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -89,13 +112,17 @@ export default function CatalystsTab({ catalysts }: { catalysts: StockReport['ca
               }}>
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  marginBottom: 10,
+                  marginBottom: 10, gap: 8, flexWrap: 'wrap',
                 }}>
                   <span style={{
                     fontSize: 14, fontWeight: 700, color: '#e8ecf1',
                     fontFamily: "'Instrument Serif', serif",
                   }}>{risk.risk}</span>
-                  <Badge text={risk.severity} variant={severityColor[risk.severity] || 'blue'} />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Badge text={risk.severity} variant={severityColor[risk.severity] || 'blue'} />
+                    {risk.likelihood && <Badge text={`${risk.likelihood} likelihood`} variant={risk.likelihood === 'HIGH' ? 'red' : risk.likelihood === 'MEDIUM' ? 'yellow' : 'green'} />}
+                    {risk.timeframe && <Badge text={risk.timeframe} variant={timeframeColor[risk.timeframe] || 'gray'} />}
+                  </div>
                 </div>
                 <p style={{
                   fontSize: 13, color: '#8b95a5', lineHeight: 1.7,
@@ -103,6 +130,70 @@ export default function CatalystsTab({ catalysts }: { catalysts: StockReport['ca
                 }}>{risk.description}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {catalysts.recommendationTrend?.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <SectionTitle>Analyst Recommendation Trend</SectionTitle>
+          <div style={{ ...glassCard, padding: '16px 8px 10px' }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={catalysts.recommendationTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="month" tick={{ fill: '#5a6475', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#5a6475', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CTooltip />} />
+                <Bar dataKey="buy" name="Buy" stackId="a" fill="rgba(74,222,128,0.7)" />
+                <Bar dataKey="hold" name="Hold" stackId="a" fill="rgba(96,165,250,0.7)" />
+                <Bar dataKey="sell" name="Sell" stackId="a" fill="rgba(248,113,113,0.7)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div style={{ display: 'flex', gap: 16, justifyContent: 'center', paddingBottom: 6 }}>
+              <span style={{ fontSize: 11, color: '#4ade80' }}>&#9632; Buy</span>
+              <span style={{ fontSize: 11, color: '#60a5fa' }}>&#9632; Hold</span>
+              <span style={{ fontSize: 11, color: '#f87171' }}>&#9632; Sell</span>
+            </div>
+            <p style={{ fontSize: 11, color: '#5a6475', textAlign: 'center', margin: '4px 0 0', fontFamily: "'DM Sans', sans-serif" }}>
+              Shifts in buy/hold/sell distribution signal changing analyst sentiment.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {catalysts.insiderTimeline && catalysts.insiderTimeline.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <SectionTitle>Insider Activity</SectionTitle>
+          <div style={{ ...glassCard, padding: '16px 20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {catalysts.insiderTimeline.map((txn, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '8px 0',
+                  borderBottom: i < catalysts.insiderTimeline!.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                    background: txn.type === 'BUY' ? '#4ade80' : '#f87171',
+                  }} />
+                  <span style={{
+                    fontSize: 11, color: '#5a6475', fontFamily: "'JetBrains Mono', monospace",
+                    minWidth: 80,
+                  }}>{txn.date}</span>
+                  <Badge text={txn.type} variant={txn.type === 'BUY' ? 'green' : 'red'} />
+                  <span style={{
+                    fontSize: 12, color: '#e8ecf1', fontFamily: "'JetBrains Mono', monospace",
+                  }}>{txn.shares.toLocaleString()} shares</span>
+                  <span style={{
+                    fontSize: 12, color: '#5a6475', fontFamily: "'JetBrains Mono', monospace",
+                    marginLeft: 'auto',
+                  }}>{txn.value}</span>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: '#5a6475', margin: '12px 0 0', fontFamily: "'DM Sans', sans-serif" }}>
+              Insider buying often signals management confidence; heavy selling may flag concern (or routine diversification).
+            </p>
           </div>
         </div>
       )}
