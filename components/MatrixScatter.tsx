@@ -430,6 +430,32 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
   const toX = useCallback((vol: number) => PADDING.left + ((vol - xMin) / (xMax - xMin)) * chartW, [xMin, xMax, chartW])
   const toY = useCallback((ret: number) => PADDING.top + ((yMax - ret) / (yMax - yMin)) * chartH, [yMin, yMax, chartH])
 
+  // Efficient frontier — upper convex hull of visible stocks
+  const frontierPath = useMemo(() => {
+    if (!showFrontier || !data || data.stocks.length < 3) return null
+
+    const visibleStocks = data.stocks.filter(s => {
+      if (colorMode === 'sector' && sectorFilter && s.sector !== sectorFilter) return false
+      return true
+    })
+    if (visibleStocks.length < 3) return null
+
+    const points = visibleStocks.map(s => ({
+      x: getVol(s),
+      y: s.ret,
+    }))
+
+    const hull = computeConvexHull(points)
+    if (hull.length < 2) return null
+
+    // Convert to screen coordinates
+    const screenPoints = hull.map(p => ({ x: toX(p.x), y: toY(p.y) }))
+    return {
+      d: catmullRomPath(screenPoints),
+      firstPoint: screenPoints[0],
+    }
+  }, [showFrontier, data, colorMode, sectorFilter, getVol, toX, toY])
+
   // Active/hovered symbol
   const activeSymbol = pinnedSymbol ?? hoveredSymbol
 
@@ -876,6 +902,45 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 RETURN
               </text>
 
+              {/* Efficient frontier line */}
+              {frontierPath && (
+                <g>
+                  {/* Invisible hit area */}
+                  <path
+                    d={frontierPath.d}
+                    fill="none"
+                    stroke="transparent"
+                    strokeWidth={12}
+                    style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
+                    onMouseEnter={() => setHoveredFrontier(true)}
+                    onMouseLeave={() => setHoveredFrontier(false)}
+                  />
+                  {/* Visible line */}
+                  <path
+                    d={frontierPath.d}
+                    fill="none"
+                    stroke="rgba(255,255,255,1)"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 6"
+                    opacity={hoveredFrontier ? 0.3 : 0.12}
+                    style={{ pointerEvents: 'none', transition: 'opacity 0.2s ease' }}
+                  />
+                  {/* Label at leftmost point */}
+                  <text
+                    x={frontierPath.firstPoint.x - 4}
+                    y={frontierPath.firstPoint.y - 8}
+                    fill="rgba(255,255,255,0.2)"
+                    fontSize="8"
+                    fontFamily="'JetBrains Mono', monospace"
+                    textAnchor="end"
+                    letterSpacing="0.1em"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    FRONTIER
+                  </text>
+                </g>
+              )}
+
               {/* Trajectory arrows — behind dots */}
               {showTrails && data.stocks.map(s => {
                 const prevVolVal = volMetric === 'downside' ? s.prevDownsideVol : s.prevVol
@@ -1195,6 +1260,33 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 </div>
               )
             })()}
+
+            {/* Frontier tooltip */}
+            {hoveredFrontier && frontierPath && (
+              <div style={{
+                position: 'absolute',
+                left: dimensions.width / 2 - 120,
+                top: PADDING.top + 10,
+                width: 240,
+                background: '#0a0a10',
+                border: '1px solid #1a1a1a',
+                borderLeft: '2px solid rgba(255,255,255,0.2)',
+                borderRadius: 6,
+                padding: '12px 14px',
+                pointerEvents: 'none',
+                zIndex: 50,
+                animation: 'fadeIn 0.15s ease',
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  color: '#888',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  lineHeight: 1.5,
+                }}>
+                  Efficient frontier — upper bound of return for given volatility across displayed holdings
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer: sector legend */}
