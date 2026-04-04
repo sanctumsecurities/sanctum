@@ -331,7 +331,7 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
     // Fetch expanded Yahoo Finance data
     const yahoo = await fetchYahooData(symbol)
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
 
     const yahooContext = yahoo ? `
 MARKET DATA:
