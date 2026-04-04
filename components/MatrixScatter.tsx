@@ -14,6 +14,10 @@ interface MatrixStock {
   mcap: number
   sharpe: number
   price: number
+  sector: string
+  prevRet: number | null
+  prevVol: number | null
+  prevDownsideVol: number | null
 }
 
 interface MatrixBenchmark {
@@ -36,6 +40,7 @@ interface MatrixData {
 type DataSource = 'Reports' | 'Watchlist' | 'Custom'
 type Quadrant = 'CORE' | 'VOLATILE' | 'DEFENSIVE' | 'AT RISK'
 type VolMetric = 'total' | 'downside'
+type ColorMode = 'quadrant' | 'sector'
 type Period = '3m' | '6m' | '12m'
 
 interface MatrixScatterProps {
@@ -54,6 +59,21 @@ const QUADRANT_CONFIG: Record<Quadrant, { color: string; position: 'tl' | 'tr' |
   'VOLATILE': { color: '#f59e0b', position: 'tr' },
   'DEFENSIVE': { color: '#6366f1', position: 'bl' },
   'AT RISK': { color: '#ef4444', position: 'br' },
+}
+
+const SECTOR_COLORS: Record<string, string> = {
+  'Technology':              '#60a5fa',
+  'Healthcare':              '#4ade80',
+  'Financial Services':      '#f59e0b',
+  'Energy':                  '#ef4444',
+  'Consumer Cyclical':       '#a78bfa',
+  'Consumer Defensive':      '#2dd4bf',
+  'Communication Services':  '#fb923c',
+  'Industrials':             '#94a3b8',
+  'Real Estate':             '#f472b6',
+  'Basic Materials':         '#a3e635',
+  'Utilities':               '#67e8f9',
+  'Other':                   '#555555',
 }
 
 const PADDING = { top: 30, right: 20, bottom: 44, left: 48 }
@@ -82,6 +102,58 @@ function dotRadius(mcap: number, allMcaps: number[]): number {
   if (range === 0) return 17
   const t = Math.max(0, Math.min(1, (logVal - logMin) / range))
   return 6 + t * 22
+}
+
+function computeConvexHull(points: { x: number; y: number }[]): { x: number; y: number }[] {
+  if (points.length < 3) return [...points]
+  const sorted = [...points].sort((a, b) => a.x - b.x || b.y - a.y)
+  const hull: { x: number; y: number }[] = []
+  for (const p of sorted) {
+    while (hull.length >= 2) {
+      const a = hull[hull.length - 2]
+      const b = hull[hull.length - 1]
+      // Cross product: positive = counter-clockwise (keep), zero or negative = clockwise or collinear (pop)
+      const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
+      if (cross <= 0) hull.pop()
+      else break
+    }
+    hull.push(p)
+  }
+  return hull
+}
+
+function catmullRomPath(points: { x: number; y: number }[], tension: number = 0.5): string {
+  if (points.length < 2) return ''
+  if (points.length === 2) return `M${points[0].x},${points[0].y}L${points[1].x},${points[1].y}`
+
+  const alpha = 1 - tension
+  let d = `M${points[0].x},${points[0].y}`
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[Math.min(points.length - 1, i + 2)]
+
+    const cp1x = p1.x + (p2.x - p0.x) * alpha / 6
+    const cp1y = p1.y + (p2.y - p0.y) * alpha / 6
+    const cp2x = p2.x - (p3.x - p1.x) * alpha / 6
+    const cp2y = p2.y - (p3.y - p1.y) * alpha / 6
+
+    d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`
+  }
+  return d
+}
+
+function getArrowheadPoints(
+  fromX: number, fromY: number, toX: number, toY: number, size: number = 6
+): string {
+  const angle = Math.atan2(toY - fromY, toX - fromX)
+  const x1 = toX - size * Math.cos(angle - Math.PI / 6)
+  const y1 = toY - size * Math.sin(angle - Math.PI / 6)
+  const x2 = toX - size * Math.cos(angle + Math.PI / 6)
+  const y2 = toY - size * Math.sin(angle + Math.PI / 6)
+  return `${toX},${toY} ${x1},${y1} ${x2},${y2}`
 }
 
 // ── Ticker Search for Custom mode ──
@@ -257,6 +329,11 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 })
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [colorMode, setColorMode] = useState<ColorMode>('quadrant')
+  const [showTrails, setShowTrails] = useState(false)
+  const [showFrontier, setShowFrontier] = useState(false)
+  const [sectorFilter, setSectorFilter] = useState<string | null>(null)
+  const [hoveredFrontier, setHoveredFrontier] = useState(false)
 
   // Responsive sizing — fill remaining viewport
   // Re-run when data loads so containerRef is available
@@ -320,6 +397,13 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
 
   const getVol = useCallback((s: { vol: number; downsideVol: number }) =>
     volMetric === 'downside' ? s.downsideVol : s.vol, [volMetric])
+
+  const getStockColor = useCallback((s: MatrixStock) => {
+    if (colorMode === 'sector') return SECTOR_COLORS[s.sector] || SECTOR_COLORS['Other']
+    const sVol = volMetric === 'downside' ? s.downsideVol : s.vol
+    const quad = getQuadrant(s.ret, sVol, spyRet, spyVol)
+    return QUADRANT_CONFIG[quad].color
+  }, [colorMode, volMetric, spyRet, spyVol])
 
   // Axis ranges — computed from data, with some padding
   const { xMin, xMax, yMin, yMax } = useMemo(() => {
