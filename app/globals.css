@@ -21,6 +21,12 @@ body {
   overflow-x: hidden;
 }
 
+.report-card {
+  transition: border-color 0.2s ease;
+}
+.report-card:hover {
+  border-color: #2a2a2a !important;
+}
 .report-card [data-delete-btn] {
   transition: opacity 0.2s ease, transform 0.15s ease, background 0.15s ease;
 }
