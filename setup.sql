@@ -30,3 +30,25 @@ create policy "Authenticated users can insert reports"
 create policy "Authenticated users can delete reports"
   on reports for delete
   using (auth.uid() is not null);
+
+-- ── User Settings ──
+
+create table if not exists user_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  settings jsonb not null default '{}'::jsonb,
+  updated_at timestamp with time zone default now()
+);
+
+alter table user_settings enable row level security;
+
+drop policy if exists "Users can read own settings" on user_settings;
+drop policy if exists "Users can upsert own settings" on user_settings;
+
+create policy "Users can read own settings"
+  on user_settings for select
+  using (auth.uid() = user_id);
+
+create policy "Users can upsert own settings"
+  on user_settings for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

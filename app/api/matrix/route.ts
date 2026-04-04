@@ -69,9 +69,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 function downsideDeviation(dailyReturns: number[]): number {
-  const negatives = dailyReturns.filter(r => r < 0)
-  if (negatives.length < 2) return 0
-  return stddev(negatives) * Math.sqrt(252)
+  if (dailyReturns.length < 2) return 0
+  const sumSqNeg = dailyReturns.reduce((sum, r) => sum + (r < 0 ? r * r : 0), 0)
+  return Math.sqrt(sumSqNeg / dailyReturns.length) * Math.sqrt(252)
 }
 
 function maxDrawdownFromCloses(closes: number[]): number {

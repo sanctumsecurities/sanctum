@@ -270,7 +270,7 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
     { label: 'Gross Margin', val: data.grossMargins * 100, display: fmtPct(data.grossMargins) },
     { label: 'Operating Margin', val: data.operatingMargins * 100, display: fmtPct(data.operatingMargins) },
     { label: 'Net Margin', val: data.profitMargins * 100, display: fmtPct(data.profitMargins) },
-  ].filter(m => m.val > 0)
+  ].filter(m => m.val !== 0)
 
   return (
     <div style={{ minHeight: '100vh', background: '#000000', color: '#e8ecf1', fontFamily: "'DM Sans', sans-serif" }}>

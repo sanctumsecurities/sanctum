@@ -305,6 +305,7 @@ interface TickerBannerProps {
 function TickerBanner({ speed, updateFreq, tickers, hoverPause }: TickerBannerProps) {
   const [items, setItems] = useState<TickerItem[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [stale, setStale] = useState(false)
 
   const tickersKey = tickers.join(',')
 
@@ -312,13 +313,15 @@ function TickerBanner({ speed, updateFreq, tickers, hoverPause }: TickerBannerPr
     try {
       const params = new URLSearchParams({ tickers: tickersKey })
       const res = await fetch(`/api/ticker-band?${params}`)
-      if (!res.ok) return
+      if (!res.ok) { setStale(true); return }
       const data: TickerItem[] = await res.json()
       if (Array.isArray(data) && data.length > 0) {
         setItems(data)
         setLoaded(true)
+        setStale(false)
       }
     } catch (err) {
+      setStale(true)
       if (process.env.NODE_ENV === 'development') console.warn('[TickerBanner] fetch failed:', err)
     }
   }, [tickersKey])
@@ -376,6 +379,8 @@ function TickerBanner({ speed, updateFreq, tickers, hoverPause }: TickerBannerPr
       borderBottom: '1px solid #1a1a1a',
       overflow: 'hidden',
       display: 'flex', alignItems: 'center',
+      opacity: stale ? 0.45 : 1,
+      transition: 'opacity 0.5s ease',
     }}>
       <div
         className={hoverPause ? 'ticker-scroll ticker-hover-pause' : 'ticker-scroll'}
@@ -663,9 +668,9 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const pct = Math.max(0, Math.min(1, x / localW))
           const idx = Math.round(pct * (pts.length - 1))
           const pt = pts[idx]
-          const openPrice = pts[0].price
-          const changeFromOpen = openPrice > 0 ? ((pt.price - openPrice) / openPrice) * 100 : 0
-          const isChartUp = pt.price >= openPrice
+          const refPrice = (selectedPeriod !== '1D' && tickerChart?.chartPreviousClose) ? tickerChart.chartPreviousClose : pts[0].price
+          const changeFromRef = refPrice > 0 ? ((pt.price - refPrice) / refPrice) * 100 : 0
+          const isChartUp = pt.price >= refPrice
 
           const min = Math.min(...pts.map(p => p.price))
           const max = Math.max(...pts.map(p => p.price))
@@ -687,8 +692,8 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
             : selectedPeriod === '5D'
             ? new Date(pt.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
             : new Date(pt.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          const changeStr = `${changeFromOpen >= 0 ? '+' : ''}${changeFromOpen.toFixed(2)}%`
-          const changeColor = changeFromOpen >= 0 ? '#22c55e' : '#f87171'
+          const changeStr = `${changeFromRef >= 0 ? '+' : ''}${changeFromRef.toFixed(2)}%`
+          const changeColor = changeFromRef >= 0 ? '#22c55e' : '#f87171'
 
           tip.innerHTML = `<div style="font-size:10px;color:#555;margin-bottom:2px">${timeStr}</div><div><span style="color:#fff;font-weight:600">$${pt.price.toFixed(2)}</span> <span style="color:${changeColor}">${changeStr}</span></div>`
           tip.style.display = 'block'
@@ -920,6 +925,8 @@ export default function Home() {
   const [watchlist, setWatchlist] = useState<string[]>([])
   const [chartData, setChartData] = useState<Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null; chartPreviousClose: number | null }>>({})
 
+  const [chartRefreshKey, setChartRefreshKey] = useState(0)
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null)
   const [showGenerateModal, setShowGenerateModal] = useState(false)
@@ -1016,7 +1023,16 @@ export default function Home() {
         }
       })
       .catch(err => console.error('[charts] batch fetch failed:', err))
-  }, [savedReports])
+  }, [savedReports, chartRefreshKey])
+
+  // Refresh chart data every 5 minutes
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchedTickersRef.current.clear()
+      setChartRefreshKey(k => k + 1)
+    }, 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
 
   // ── Load watchlist from localStorage ──
   useEffect(() => {
@@ -1218,6 +1234,14 @@ export default function Home() {
     setShowReport(false)
     setTickerSuggestions([])
 
+    const userId = session?.user?.id
+    const userEmail = session?.user?.email ?? null
+    if (!userId) {
+      setError('Session expired. Please sign in again.')
+      setGenerating(false)
+      return
+    }
+
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -1242,8 +1266,8 @@ export default function Home() {
           ticker,
           data,
           ai,
-          created_by: session!.user.id,
-          created_by_email: session!.user.email || null,
+          created_by: userId,
+          created_by_email: userEmail,
         })
         .select()
         .single()
@@ -1255,8 +1279,8 @@ export default function Home() {
         ticker,
         data,
         ai,
-        created_by: session!.user.id,
-        created_by_email: session!.user.email || null,
+        created_by: userId,
+        created_by_email: userEmail,
         created_at: new Date().toISOString(),
       }
 
@@ -1504,17 +1528,24 @@ export default function Home() {
                 {/* Service rows */}
                 {(healthData?.services ?? []).map(svc => {
                   const isOnline = svc.status === 'ok'
+                  const isUnconfigured = svc.status === 'unconfigured'
+                  const statusLabel = isOnline ? 'ONLINE' : isUnconfigured ? 'N/A' : 'OFFLINE'
+                  const statusColor = isOnline ? '#22c55e' : isUnconfigured ? '#555' : '#ef4444'
                   return (
-                    <div key={svc.name} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '8px 0', borderBottom: '1px solid #111',
-                    }}>
-                      <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
-                        {svc.name.toUpperCase()}
-                      </span>
-                      <span style={{ fontSize: 11, color: isOnline ? '#22c55e' : '#ef4444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
-                        {isOnline ? 'ONLINE' : 'OFFLINE'}
-                      </span>
+                    <div key={svc.name} style={{ padding: '8px 0', borderBottom: '1px solid #111' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+                          {svc.name.toUpperCase()}
+                        </span>
+                        <span style={{ fontSize: 11, color: statusColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      {svc.detail && !isOnline && (
+                        <div style={{ fontSize: 9, color: '#333', fontFamily: "'JetBrains Mono', monospace", marginTop: 2, textAlign: 'right' }}>
+                          {svc.detail.slice(0, 50)}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
