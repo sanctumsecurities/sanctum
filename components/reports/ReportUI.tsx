@@ -142,3 +142,89 @@ export function CTooltip({ active, payload, label }: TooltipProps<number, string
     </div>
   )
 }
+
+export function RangeBar({ low, mean, high, current, label, count }: {
+  low: number; mean: number; high: number; current: number; label?: string; count?: number
+}) {
+  const min = Math.min(low, current) * 0.95
+  const max = Math.max(high, current) * 1.05
+  const range = max - min
+  const pct = (v: number) => ((v - min) / range) * 100
+
+  return (
+    <div style={{ padding: '12px 0' }}>
+      {label && (
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
+        }}>
+          <span style={{
+            fontSize: 12, fontWeight: 700, color: '#e8ecf1',
+            fontFamily: "'DM Sans', sans-serif", textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}>{label}</span>
+          {count != null && (
+            <span style={{
+              fontSize: 11, color: '#5a6475',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>{count} analysts</span>
+          )}
+        </div>
+      )}
+      <div style={{
+        position: 'relative', height: 8, borderRadius: 4,
+        background: 'rgba(255,255,255,0.06)',
+      }}>
+        <div style={{
+          position: 'absolute', top: 0, bottom: 0, borderRadius: 4,
+          left: `${pct(low)}%`, width: `${pct(high) - pct(low)}%`,
+          background: 'linear-gradient(90deg, rgba(248,113,113,0.3), rgba(96,165,250,0.3), rgba(74,222,128,0.3))',
+        }} />
+        <div style={{
+          position: 'absolute', top: -4, width: 2, height: 16, borderRadius: 1,
+          left: `${pct(mean)}%`, background: '#60a5fa',
+        }} />
+        <div style={{
+          position: 'absolute', top: -6, width: 3, height: 20, borderRadius: 1.5,
+          left: `${pct(current)}%`, background: '#e8ecf1',
+        }} />
+      </div>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', marginTop: 8,
+        fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
+      }}>
+        <span style={{ color: '#f87171' }}>${low.toFixed(0)}</span>
+        <span style={{ color: '#60a5fa' }}>Mean ${mean.toFixed(0)}</span>
+        <span style={{ color: '#4ade80' }}>${high.toFixed(0)}</span>
+      </div>
+      <div style={{
+        textAlign: 'center', marginTop: 4,
+        fontSize: 10, color: '#5a6475', fontFamily: "'DM Sans', sans-serif",
+      }}>
+        Current: <span style={{ color: '#e8ecf1', fontFamily: "'JetBrains Mono', monospace" }}>${current.toFixed(0)}</span>
+      </div>
+    </div>
+  )
+}
+
+export function ConvictionBadge({ score, size = 'default' }: {
+  score: number; size?: 'default' | 'large'
+}) {
+  const color = score >= 70 ? '#4ade80' : score >= 40 ? '#f59e0b' : '#f87171'
+  const isLarge = size === 'large'
+
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: isLarge ? 10 : 6,
+    }}>
+      <span style={{
+        fontSize: isLarge ? 36 : 16, fontWeight: 700, color,
+        fontFamily: "'JetBrains Mono', monospace", lineHeight: 1,
+      }}>{score}</span>
+      <span style={{
+        fontSize: isLarge ? 13 : 10, color: '#5a6475',
+        fontFamily: "'DM Sans', sans-serif", textTransform: 'uppercase',
+        letterSpacing: 0.5,
+      }}>/100</span>
+    </div>
+  )
+}
