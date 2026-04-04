@@ -9,7 +9,6 @@ import type { Session } from '@supabase/supabase-js'
 import SettingsModal from '@/components/SettingsModal'
 import FearGreedMeter from '@/components/FearGreedMeter'
 
-const ReportView = dynamic(() => import('@/components/ReportView'), { ssr: false })
 const MatrixScatter = dynamic(() => import('@/components/MatrixScatter'), { ssr: false })
 
 interface SavedReport {
@@ -404,7 +403,6 @@ interface ReportCardProps {
   chartData: { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null; chartPreviousClose: number | null } | undefined
   focusedCardId: string | null
   colIndex: number
-  onOpen: (report: SavedReport) => void
   onDelete: (id: string) => void
   onFocus: (id: string | null) => void
 }
@@ -419,7 +417,7 @@ const etFormatter = new Intl.DateTimeFormat('en-US', {
   hour12: false,
 })
 
-const ReportCard = memo(function ReportCard({ report, chartData: initialChartData, focusedCardId, colIndex, onOpen, onDelete, onFocus }: ReportCardProps) {
+const ReportCard = memo(function ReportCard({ report, chartData: initialChartData, focusedCardId, colIndex, onDelete, onFocus }: ReportCardProps) {
   const router = useRouter()
   const d = report.data || {}
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('1D')
@@ -433,9 +431,11 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
     ? initialChartData
     : (periodCache[selectedPeriod] ?? undefined)
 
-  const sentiment = report.ai?.overview?.sentiment || ''
-  const price = d.price
-  const prevClose = d.previousClose
+  // Support both old format (d.price is number) and new StockReport format (d.currentPrice is "$180.52")
+  const isNewFormat = !!d.companyName
+  const sentiment = isNewFormat ? (d.verdict || '') : (report.ai?.overview?.sentiment || '')
+  const price = isNewFormat ? parseFloat(String(d.currentPrice).replace(/[^0-9.]/g, '')) || null : d.price
+  const prevClose = isNewFormat ? null : d.previousClose
   const dayPriceChange = price && prevClose ? price - prevClose : null
   const dayPriceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
 
@@ -446,8 +446,16 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
   const periodPriceChange = periodRef && periodLast ? periodLast - periodRef : null
   const periodPriceChangePct = periodRef && periodLast ? ((periodLast - periodRef) / periodRef) * 100 : null
 
-  const priceChange = selectedPeriod === '1D' ? dayPriceChange : periodPriceChange
-  const priceChangePct = selectedPeriod === '1D' ? dayPriceChangePct : periodPriceChangePct
+  // For new format on 1D, derive change from chart data since we don't have previousClose
+  const chart1DRef = isNewFormat && selectedPeriod === '1D' && chartPoints && chartPoints.length >= 2
+    ? (tickerChart?.chartPreviousClose ?? chartPoints[0].price) : null
+  const chart1DLast = isNewFormat && selectedPeriod === '1D' && chartPoints && chartPoints.length >= 2
+    ? chartPoints[chartPoints.length - 1].price : null
+  const chart1DChange = chart1DRef && chart1DLast ? chart1DLast - chart1DRef : null
+  const chart1DChangePct = chart1DRef && chart1DLast ? ((chart1DLast - chart1DRef) / chart1DRef) * 100 : null
+
+  const priceChange = selectedPeriod === '1D' ? (isNewFormat ? chart1DChange : dayPriceChange) : periodPriceChange
+  const priceChangePct = selectedPeriod === '1D' ? (isNewFormat ? chart1DChangePct : dayPriceChangePct) : periodPriceChangePct
   const isUp = priceChange !== null && priceChange >= 0
   const ah = selectedPeriod === '1D' ? (tickerChart?.afterHours || null) : null
 
@@ -466,8 +474,8 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
     }
   }, [periodCache, report.ticker])
 
-  const sentimentColor = sentiment === 'Bullish' ? '#22c55e'
-    : sentiment === 'Bearish' ? '#f87171' : '#eab308'
+  const sentimentColor = (sentiment === 'Bullish' || sentiment === 'BUY') ? '#22c55e'
+    : (sentiment === 'Bearish' || sentiment === 'SELL' || sentiment === 'AVOID') ? '#f87171' : '#eab308'
 
   const creatorEmail = report.created_by_email || ''
   const creatorName = creatorEmail ? creatorEmail.split('@')[0] : 'unknown'
@@ -509,7 +517,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             maxWidth: 140,
           }}>
-            {d.name || ''}
+            {d.companyName || d.name || ''}
           </div>
         </div>
         {sentiment && (() => {
@@ -598,12 +606,21 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
         display: 'grid', gridTemplateColumns: '1fr 1fr',
         gap: '8px', marginBottom: 14,
       }}>
-        {[
+        {(isNewFormat ? (() => {
+          const km = d.overview?.keyMetrics || []
+          const find = (s: string) => km.find((k: any) => k.label?.toLowerCase().includes(s))?.value || '—'
+          return [
+            { label: 'MKT CAP', value: d.marketCap || find('market cap') },
+            { label: 'FWD P/E', value: find('p/e') },
+            { label: 'ADJ EPS', value: find('eps') },
+            { label: 'DIV YIELD', value: find('dividend') },
+          ]
+        })() : [
           { label: 'MKT CAP', value: formatMktCap(d.marketCap) },
           { label: 'P/E', value: d.pe ? d.pe.toFixed(2) : '—' },
           { label: 'BETA', value: d.beta ? d.beta.toFixed(2) : '—' },
           { label: 'DIV YIELD', value: d.dividendYield ? `${(d.dividendYield * 100).toFixed(2)}%` : '—' },
-        ].map((m, i) => (
+        ]).map((m, i) => (
           <div key={i}>
             <div style={{ fontSize: 11, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 4 }}>
               {m.label}
@@ -902,7 +919,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
     </div>
   )
 }, (prev, next) =>
-  // Callbacks (onOpen, onDelete, onFocus) omitted — they are stable refs (useCallback/setState)
+  // Callbacks (onDelete, onFocus) omitted — they are stable refs (useCallback/setState)
   prev.report.id === next.report.id &&
   prev.chartData === next.chartData &&
   prev.focusedCardId === next.focusedCardId &&
@@ -916,12 +933,8 @@ export default function Home() {
 
   const [activeTab, setActiveTab] = useState<'Dashboard' | 'Matrix' | 'Watchlist'>('Dashboard')
   const [searchTicker, setSearchTicker] = useState('')
-  const [generating, setGenerating] = useState(false)
-  const [error, setError] = useState('')
 
-  const [currentReport, setCurrentReport] = useState<SavedReport | null>(null)
   const [savedReports, setSavedReports] = useState<SavedReport[]>([])
-  const [showReport, setShowReport] = useState(false)
 
   const [watchlist, setWatchlist] = useState<string[]>([])
   const [chartData, setChartData] = useState<Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null; chartPreviousClose: number | null }>>({})
@@ -930,7 +943,6 @@ export default function Home() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null)
-  const [showGenerateModal, setShowGenerateModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
 
@@ -1104,7 +1116,6 @@ export default function Home() {
   const handleTickerSearch = (value: string) => {
     const upper = value.toUpperCase()
     setSearchTicker(upper)
-    setError('')
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     if (!upper) {
       setTickerSuggestions([])
@@ -1221,80 +1232,9 @@ export default function Home() {
     setSavedReports(prev => prev.filter(r => r.id !== id))
   }, [])
 
-  const handleOpenReport = useCallback((report: SavedReport) => {
-    setCurrentReport(report)
-    setShowReport(true)
-  }, [])
-
-  // ── Generate Report ──
-  const generateReport = async (tickerOverride?: string) => {
-    const resolvedTicker = (tickerOverride || searchTicker).trim().toUpperCase()
-    if (!resolvedTicker) return
-    setShowGenerateModal(false)
-    setSearchTicker('')
-    setTickerSuggestions([])
-
-    const userId = session?.user?.id
-    const userEmail = session?.user?.email ?? null
-    if (!userId) {
-      setError('Session expired. Please sign in again.')
-      setGenerating(false)
-      return
-    }
-
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker: resolvedTicker }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Failed to generate report')
-      }
-
-      const { data, ai } = await res.json()
-      const ticker = resolvedTicker
-
-      // Delete any existing reports for this ticker globally
-      await supabase.from('reports').delete().eq('ticker', ticker)
-
-      const { data: inserted, error: insertError } = await supabase
-        .from('reports')
-        .insert({
-          ticker,
-          data,
-          ai,
-          created_by: userId,
-          created_by_email: userEmail,
-        })
-        .select()
-        .single()
-
-      if (insertError) console.error('Save error:', insertError)
-
-      const report: SavedReport = inserted || {
-        id: crypto.randomUUID(),
-        ticker,
-        data,
-        ai,
-        created_by: userId,
-        created_by_email: userEmail,
-        created_at: new Date().toISOString(),
-      }
-
-      setCurrentReport(report)
-      setShowReport(true)
-      setShowGenerateModal(false)
-      setSearchTicker('')
-      loadReports()
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate report')
-    } finally {
-      setGenerating(false)
-    }
-  }
+  const openReport = useCallback((ticker: string) => {
+    router.push(`/reports/${ticker.trim().toUpperCase()}`)
+  }, [router])
 
   // ── Loading ──
   if (loading) {
@@ -1314,57 +1254,6 @@ export default function Home() {
   }
 
   if (!session) return <Auth />
-
-  // ── Viewing a report ──
-  if (showReport && currentReport) {
-    return (
-      <div>
-        <div style={{
-          position: 'sticky', top: 84, zIndex: 50,
-          background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid #1a1a1a',
-          padding: '0 40px',
-        }}>
-          <div style={{
-            maxWidth: 1400, margin: '0 auto', width: '100%',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            height: 56,
-          }}>
-            <button
-              onClick={() => setShowReport(false)}
-              style={{
-                background: 'none', border: '1px solid #2a2a2a', borderRadius: 4,
-                color: '#888', fontSize: 12, padding: '8px 16px', cursor: 'pointer',
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.05em',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={e => { (e.currentTarget).style.borderColor = '#444'; (e.currentTarget).style.color = '#fff' }}
-              onMouseLeave={e => { (e.currentTarget).style.borderColor = '#2a2a2a'; (e.currentTarget).style.color = '#888' }}
-            >
-              &larr; BACK
-            </button>
-            <button
-              onClick={() => addToWatchlist(currentReport.ticker)}
-              style={{
-                background: watchlist.includes(currentReport.ticker) ? 'rgba(34,197,94,0.08)' : 'transparent',
-                border: `1px solid ${watchlist.includes(currentReport.ticker) ? 'rgba(34,197,94,0.4)' : '#2a2a2a'}`,
-                borderRadius: 4,
-                color: watchlist.includes(currentReport.ticker) ? '#22c55e' : '#888',
-                fontSize: 12, padding: '8px 16px', cursor: 'pointer',
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.05em',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              {watchlist.includes(currentReport.ticker) ? 'ON WATCHLIST' : '+ WATCHLIST'}
-            </button>
-          </div>
-        </div>
-        <ReportView data={currentReport.data} ai={currentReport.ai} ticker={currentReport.ticker} />
-      </div>
-    )
-  }
 
   // ── Main Shell ──
   const statusColor = healthData?.overallStatus === 'down' ? '#ef4444'
@@ -1773,16 +1662,7 @@ export default function Home() {
                   background: 'transparent',
                 }}
               >
-                {generating ? (
-                  <div style={{
-                    width: 10, height: 10, borderRadius: '50%',
-                    border: '1.5px solid #333',
-                    borderTopColor: '#fff',
-                    animation: 'spin 0.8s linear infinite',
-                    flexShrink: 0,
-                  }} />
-                ) : (
-                  <span style={{
+                <span style={{
                     fontSize: 12, color: searchFocused ? '#fff' : '#444',
                     fontFamily: "'JetBrains Mono', monospace",
                     flexShrink: 0, userSelect: 'none',
@@ -1790,16 +1670,14 @@ export default function Home() {
                   }}>
                     &gt;
                   </span>
-                )}
                 <input
                   ref={searchInputRef}
                   type="text"
-                  value={generating ? `ANALYZING ${searchTicker}...` : searchTicker}
-                  onChange={e => !generating && handleTickerSearch(e.target.value)}
+                  value={searchTicker}
+                  onChange={e => handleTickerSearch(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
                   onKeyDown={e => {
-                    if (generating) return
                     if (e.key === 'ArrowDown') {
                       e.preventDefault()
                       setHighlightedIdx(prev => Math.min(prev + 1, tickerSuggestions.length - 1))
@@ -1809,13 +1687,13 @@ export default function Home() {
                     } else if (e.key === 'Enter') {
                       if (highlightedIdx >= 0 && tickerSuggestions[highlightedIdx]) {
                         const t = tickerSuggestions[highlightedIdx]
-                        setSearchTicker(t.symbol)
+                        setSearchTicker('')
                         setTickerSuggestions([])
                         setHighlightedIdx(-1)
-                        generateReport(t.symbol)
+                        openReport(t.symbol)
                       } else if (searchTicker.trim()) {
                         setTickerSuggestions([])
-                        generateReport()
+                        openReport(searchTicker)
                       }
                     } else if (e.key === 'Escape') {
                       setTickerSuggestions([])
@@ -1823,17 +1701,16 @@ export default function Home() {
                     }
                   }}
                   placeholder="ENTER TICKER TO GENERATE REPORT"
-                  disabled={generating}
                   style={{
                     flex: 1,
                     background: 'transparent',
                     border: 'none',
-                    color: generating ? '#555' : '#fff',
+                    color: '#fff',
                     fontSize: 12,
                     fontFamily: "'JetBrains Mono', monospace",
                     letterSpacing: '0.05em',
                     outline: 'none',
-                    cursor: generating ? 'default' : 'text',
+                    cursor: 'text',
                   }}
                 />
               </div>
@@ -1841,7 +1718,7 @@ export default function Home() {
               <div className={`shimmer-underline${searchFocused ? ' active' : ''}`} />
 
               {/* Autocomplete suggestions */}
-              {!generating && tickerSuggestions.length > 0 && (
+              {tickerSuggestions.length > 0 && (
                 <div style={{
                   position: 'absolute', top: '100%', left: 0, right: 0,
                   background: '#0a0a0a',
@@ -1856,10 +1733,10 @@ export default function Home() {
                       key={t.symbol}
                       onMouseDown={e => {
                         e.preventDefault()
-                        setSearchTicker(t.symbol)
+                        setSearchTicker('')
                         setTickerSuggestions([])
                         setHighlightedIdx(-1)
-                        generateReport(t.symbol)
+                        openReport(t.symbol)
                       }}
                       onMouseEnter={() => setHighlightedIdx(i)}
                       onMouseLeave={() => setHighlightedIdx(-1)}
@@ -1898,17 +1775,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Inline error */}
-              {error && !generating && (
-                <div style={{
-                  marginTop: 8,
-                  fontSize: 12, color: '#f87171',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '0.03em',
-                }}>
-                  ERROR: {error}
-                </div>
-              )}
             </div>
 
             {/* Content: empty state or reports list */}
@@ -1961,7 +1827,6 @@ export default function Home() {
                       chartData={chartData[report.ticker]}
                       focusedCardId={focusedCardId}
                       colIndex={index % 4}
-                      onOpen={handleOpenReport}
                       onDelete={deleteReport}
                       onFocus={setFocusedCardId}
                     />
@@ -2029,7 +1894,6 @@ export default function Home() {
                     chartData={chartData[matrixReport.ticker]}
                     focusedCardId={null}
                     colIndex={0}
-                    onOpen={handleOpenReport}
                     onDelete={deleteReport}
                     onFocus={() => {}}
                   />
@@ -2058,11 +1922,7 @@ export default function Home() {
                     No report for {matrixSelectedTicker}.
                   </p>
                   <button
-                    onClick={() => {
-                      setSearchTicker(matrixSelectedTicker)
-                      setActiveTab('Dashboard')
-                      setTimeout(() => generateReport(matrixSelectedTicker), 100)
-                    }}
+                    onClick={() => openReport(matrixSelectedTicker)}
                     style={{
                       marginTop: 16,
                       background: 'rgba(255,255,255,0.06)',
@@ -2152,12 +2012,7 @@ export default function Home() {
                     </span>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        onClick={() => {
-                          setSearchTicker(ticker)
-                          setActiveTab('Dashboard')
-                          setShowGenerateModal(true)
-                          setError('')
-                        }}
+                        onClick={() => openReport(ticker)}
                         style={{
                           background: 'transparent', border: '1px solid #2a2a2a',
                           borderRadius: 4, color: '#888', fontSize: 12,
@@ -2194,147 +2049,6 @@ export default function Home() {
           </div>
         )}
       </main>
-
-      {/* ── Generate Report Modal ── */}
-      {showGenerateModal && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            background: 'rgba(0,0,0,0.7)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            animation: 'fadeIn 0.15s ease',
-          }}
-          onClick={e => {
-            if (e.target === e.currentTarget && !generating) {
-              setShowGenerateModal(false)
-              setError('')
-              setSearchTicker('')
-            }
-          }}
-        >
-          <div style={{
-            background: '#0a0a0a',
-            border: '1px solid #1a1a1a',
-            borderRadius: 4,
-            padding: 32,
-            width: '100%', maxWidth: 420,
-            margin: '0 20px',
-          }}>
-            <div style={{
-              fontSize: 11, color: '#555',
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: '0.15em',
-              marginBottom: 24,
-            }}>
-              GENERATE REPORT
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{
-                fontSize: 14, color: '#fff',
-                fontFamily: "'JetBrains Mono', monospace",
-              }}>
-                &gt;
-              </span>
-              <input
-                type="text"
-                value={searchTicker}
-                onChange={e => setSearchTicker(e.target.value.toUpperCase())}
-                onKeyDown={e => e.key === 'Enter' && !generating && searchTicker.trim() && generateReport()}
-                placeholder="ENTER TICKER"
-                disabled={generating}
-                autoFocus
-                style={{
-                  flex: 1, padding: '10px 0',
-                  fontSize: 14, background: 'transparent',
-                  border: 'none', borderBottom: '1px solid #1a1a1a',
-                  color: '#fff', outline: 'none',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '0.05em',
-                }}
-              />
-            </div>
-
-            {error && (
-              <div style={{
-                fontSize: 12, color: '#f87171',
-                fontFamily: "'JetBrains Mono', monospace",
-                marginTop: 16, padding: '8px 0',
-              }}>
-                ERROR: {error}
-              </div>
-            )}
-
-            {generating && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                marginTop: 16,
-              }}>
-                <div style={{
-                  width: 12, height: 12, borderRadius: '50%',
-                  border: '2px solid #1a1a1a',
-                  borderTopColor: '#fff',
-                  animation: 'spin 0.8s linear infinite',
-                }} />
-                <span style={{
-                  fontSize: 12, color: '#fff',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  animation: 'pulse 1.5s ease-in-out infinite',
-                }}>
-                  ANALYZING {searchTicker}...
-                </span>
-              </div>
-            )}
-
-            <div style={{
-              display: 'flex', justifyContent: 'flex-end', gap: 12,
-              marginTop: 24,
-            }}>
-              <button
-                onClick={() => {
-                  if (!generating) {
-                    setShowGenerateModal(false)
-                    setError('')
-                    setSearchTicker('')
-                  }
-                }}
-                disabled={generating}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #1a1a1a',
-                  borderRadius: 4, color: '#555',
-                  fontSize: 12, padding: '8px 20px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '0.05em',
-                  cursor: generating ? 'default' : 'pointer',
-                  opacity: generating ? 0.4 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                CANCEL
-              </button>
-              <button
-                onClick={() => generateReport()}
-                disabled={generating || !searchTicker.trim()}
-                style={{
-                  background: generating || !searchTicker.trim() ? 'transparent' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${generating || !searchTicker.trim() ? '#1a1a1a' : 'rgba(255,255,255,0.3)'}`,
-                  borderRadius: 4,
-                  color: generating || !searchTicker.trim() ? '#555' : '#fff',
-                  fontSize: 12, padding: '8px 20px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '0.05em',
-                  cursor: generating || !searchTicker.trim() ? 'default' : 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {generating ? 'GENERATING...' : 'GENERATE'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Settings Modal ── */}
       {showSettings && (

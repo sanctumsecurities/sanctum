@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { generateReport } from '@/app/actions/generateReport'
+import { supabase } from '@/lib/supabase'
 import { Badge } from './ReportUI'
 import OverviewTab from './tabs/OverviewTab'
 import FinancialsTab from './tabs/FinancialsTab'
@@ -72,13 +73,45 @@ export default function StockReport({ ticker }: { ticker: string }) {
     setLoading(true)
     setError(null)
     setReport(null)
+
+    // Check Supabase for existing saved report
+    const { data: existing } = await supabase
+      .from('reports')
+      .select('data')
+      .eq('ticker', ticker)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (existing?.data?.companyName) {
+      setReport(existing.data as StockReportType)
+      setLoading(false)
+      return
+    }
+
+    // No saved report — generate a new one
     const result = await generateReport(ticker)
     if ('error' in result) {
       setError(result.error)
-    } else {
-      setReport(result)
+      setLoading(false)
+      return
     }
+
+    setReport(result)
     setLoading(false)
+
+    // Save to Supabase in background
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      await supabase.from('reports').delete().eq('ticker', ticker)
+      await supabase.from('reports').insert({
+        ticker,
+        data: result,
+        ai: {},
+        created_by: session.user.id,
+        created_by_email: session.user.email ?? null,
+      })
+    }
   }, [ticker])
 
   useEffect(() => {
