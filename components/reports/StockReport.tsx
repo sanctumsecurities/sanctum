@@ -50,6 +50,7 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
 
   useEffect(() => {
     abortRef.current = false
+    phrasesRef.current = LOADING_PHRASES.map(p => p.replace('{TICKER}', ticker.toUpperCase()))
     const phrases = phrasesRef.current
 
     const sleep = (ms: number) => new Promise<void>((resolve, reject) => {
