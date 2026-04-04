@@ -131,22 +131,25 @@ async function fetchChart(symbol: string, period: string) {
     }
 
     // If 1D window has no/minimal data (market hasn't opened or closed holiday),
-    // fall back to the previous trading day using a full 4 AM–8 PM ET window
+    // fall back to the most recent trading day (try up to 5 days back for long weekends/holidays)
     if (period === '1D' && points.length <= 2) {
       const { period1: p1 } = getChartParams('1D')
-      // p1 = etMidnightMs + 4h, so work back to prev day's midnight
       const etMidnightMs = p1.getTime() - 4 * 60 * 60 * 1000
-      const prevMidnightMs = etMidnightMs - 24 * 60 * 60 * 1000
-      const prevResult = await yahooFinance.chart(symbol, {
-        period1: new Date(prevMidnightMs + 4 * 60 * 60 * 1000),
-        period2: new Date(prevMidnightMs + 20 * 60 * 60 * 1000),
-        interval: '5m' as any,
-      })
-      const prevPoints = (prevResult.quotes || [])
-        .filter((q: any) => q.close != null && q.date != null)
-        .map((q: any) => ({ time: new Date(q.date).toISOString(), price: q.close as number }))
-      const prevChartPreviousClose: number | null = (prevResult.meta as any)?.chartPreviousClose ?? null
-      return { ticker: symbol, points: prevPoints, afterHours, chartPreviousClose: prevChartPreviousClose }
+      for (let daysBack = 1; daysBack <= 5; daysBack++) {
+        const prevMidnightMs = etMidnightMs - daysBack * DAY
+        const prevResult = await yahooFinance.chart(symbol, {
+          period1: new Date(prevMidnightMs + 4 * 60 * 60 * 1000),
+          period2: new Date(prevMidnightMs + 20 * 60 * 60 * 1000),
+          interval: '5m' as any,
+        })
+        const prevPoints = (prevResult.quotes || [])
+          .filter((q: any) => q.close != null && q.date != null)
+          .map((q: any) => ({ time: new Date(q.date).toISOString(), price: q.close as number }))
+        if (prevPoints.length > 2) {
+          const prevChartPreviousClose: number | null = (prevResult.meta as any)?.chartPreviousClose ?? null
+          return { ticker: symbol, points: prevPoints, afterHours, chartPreviousClose: prevChartPreviousClose }
+        }
+      }
     }
 
     return { ticker: symbol, points, afterHours, chartPreviousClose }
