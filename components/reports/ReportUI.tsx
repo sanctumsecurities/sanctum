@@ -215,14 +215,18 @@ export function RangeBar({ low, mean, high, current, label, count }: {
       <div style={{ position: 'relative', height: 20, marginTop: 8, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
         <span style={{ position: 'absolute', left: 0, color: '#f87171' }}>${low.toFixed(0)}</span>
         <span style={{
-          position: 'absolute', left: `${pct(mean)}%`, transform: 'translateX(-50%)',
+          position: 'absolute',
+          left: `clamp(0%, ${pct(mean)}%, 100%)`,
+          transform: `translateX(${pct(mean) < 15 ? '0%' : pct(mean) > 85 ? '-100%' : '-50%'})`,
           color: '#60a5fa', whiteSpace: 'nowrap',
         }}>Mean ${mean.toFixed(0)}</span>
         <span style={{ position: 'absolute', right: 0, color: '#4ade80' }}>${high.toFixed(0)}</span>
       </div>
       <div style={{ position: 'relative', height: 18, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
         <span style={{
-          position: 'absolute', left: `${pct(current)}%`, transform: 'translateX(-50%)',
+          position: 'absolute',
+          left: `clamp(0%, ${pct(current)}%, 100%)`,
+          transform: `translateX(${pct(current) < 15 ? '0%' : pct(current) > 85 ? '-100%' : '-50%'})`,
           whiteSpace: 'nowrap', color: '#5a6475',
         }}>now <span style={{ color: '#e8ecf1' }}>${current.toFixed(0)}</span></span>
       </div>

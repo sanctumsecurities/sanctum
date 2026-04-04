@@ -376,6 +376,8 @@ export default function StockReport({ ticker }: { ticker: string }) {
     if (existing?.data?.companyName) {
       setReport(existing.data as StockReportType)
       setReportReady(true)
+      setLoading(false)
+      setShowReport(true)
       return
     }
 
