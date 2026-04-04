@@ -2,9 +2,9 @@
 
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
-  ResponsiveContainer, Tooltip,
+  ReferenceLine, ResponsiveContainer, Tooltip,
 } from 'recharts'
-import { SectionTitle, DataTable, Badge, CTooltip, glassCard } from '../ReportUI'
+import { SectionTitle, DataTable, Badge, ConvictionBadge, CTooltip, glassCard } from '../ReportUI'
 import type { StockReport } from '@/types/report'
 
 const ratingColor: Record<string, 'green' | 'red' | 'blue'> = {
@@ -27,6 +27,30 @@ export default function VerdictTab({ verdictDetails, verdict }: {
 
   return (
     <div>
+      {/* Conviction Score */}
+      {verdictDetails.convictionScore != null && (
+        <div style={{
+          ...glassCard,
+          display: 'flex', alignItems: 'center', gap: 20,
+          padding: '20px 24px', marginBottom: 32,
+        }}>
+          <ConvictionBadge score={verdictDetails.convictionScore} size="large" />
+          <div>
+            <div style={{
+              fontSize: 12, fontWeight: 700, color: '#5a6475',
+              fontFamily: "'DM Sans', sans-serif", textTransform: 'uppercase',
+              letterSpacing: 1, marginBottom: 4,
+            }}>CONVICTION SCORE</div>
+            {verdictDetails.convictionDrivers && (
+              <p style={{
+                fontSize: 13, color: '#b8c4d4', lineHeight: 1.6,
+                fontFamily: "'DM Sans', sans-serif", margin: 0,
+              }}>{verdictDetails.convictionDrivers}</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Three Scenario Cards */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
@@ -39,6 +63,9 @@ export default function VerdictTab({ verdictDetails, verdict }: {
         ]).map(({ key, label, border, emoji }) => {
           const scenario = verdictDetails[key]
           if (!scenario) return null
+          const matrixEntry = verdictDetails.scenarioMatrix?.find(
+            s => s.scenario.toLowerCase().includes(key.replace('Case', '').toLowerCase())
+          )
           return (
             <div key={key} style={{
               ...glassCard,
@@ -62,6 +89,23 @@ export default function VerdictTab({ verdictDetails, verdict }: {
                 fontSize: 12, color: '#8b95a5', lineHeight: 1.7,
                 fontFamily: "'DM Sans', sans-serif", margin: 0,
               }}>{scenario.description}</p>
+              {(matrixEntry?.keyAssumptions?.length ?? 0) > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{
+                    fontSize: 10, fontWeight: 600, color: '#5a6475',
+                    fontFamily: "'DM Sans', sans-serif", textTransform: 'uppercase',
+                    letterSpacing: 1, marginBottom: 6,
+                  }}>Key Assumptions</div>
+                  <ul style={{ margin: 0, paddingLeft: 16 }}>
+                    {matrixEntry?.keyAssumptions?.map((a, ai) => (
+                      <li key={ai} style={{
+                        fontSize: 11, color: '#8b95a5', lineHeight: 1.6,
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}>{a}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )
         })}
@@ -90,11 +134,11 @@ export default function VerdictTab({ verdictDetails, verdict }: {
           <SectionTitle>Multi-Year Projections</SectionTitle>
           <div style={{ ...glassCard, padding: '4px 0', overflow: 'hidden' }}>
             <DataTable
-              headers={['Horizon', 'Bear Case', 'Base Case', 'Bull Case', 'Commentary']}
+              headers={['Horizon', 'Bear Case', 'Base Case', 'Bull Case', 'Implied CAGR', 'Commentary']}
               rows={verdictDetails.multiYearProjections.map(r => [
-                r.horizon, r.bearCase, r.baseCase, r.bullCase, r.commentary,
+                r.horizon, r.bearCase, r.baseCase, r.bullCase, r.impliedCagr || 'N/A', r.commentary,
               ])}
-              numericCols={[1, 2, 3]}
+              numericCols={[1, 2, 3, 4]}
             />
           </div>
         </div>
@@ -133,12 +177,18 @@ export default function VerdictTab({ verdictDetails, verdict }: {
                   stroke="#f87171" fill="rgba(248,113,113,0.08)" strokeWidth={2}
                   strokeDasharray="5 3"
                 />
+                <Line
+                  type="monotone" dataKey="analystMean" name="Analyst Mean"
+                  stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="6 3"
+                  dot={false}
+                />
               </ComposedChart>
             </ResponsiveContainer>
             <div style={{ display: 'flex', gap: 16, justifyContent: 'center', paddingBottom: 6 }}>
               <span style={{ fontSize: 11, color: '#4ade80' }}>&#9650; Bull</span>
               <span style={{ fontSize: 11, color: '#60a5fa' }}>&#9679; Base</span>
               <span style={{ fontSize: 11, color: '#f87171' }}>&#9660; Bear</span>
+              <span style={{ fontSize: 11, color: '#f59e0b' }}>- - Analyst Mean</span>
             </div>
           </div>
         </div>
@@ -155,6 +205,7 @@ export default function VerdictTab({ verdictDetails, verdict }: {
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8, flexWrap: 'wrap' }}>
               <Badge text={sv.rating} variant={ratingColor[sv.rating] || 'blue'} />
+              <ConvictionBadge score={verdictDetails.convictionScore} />
               <span style={{
                 fontSize: 16, fontWeight: 700, color: '#e8ecf1',
                 fontFamily: "'Instrument Serif', serif",
