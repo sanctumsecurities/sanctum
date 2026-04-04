@@ -8,6 +8,8 @@ interface MatrixStock {
   name: string
   ret: number
   vol: number
+  downsideVol: number
+  maxDrawdown: number
   mcap: number
   sharpe: number
   price: number
@@ -18,17 +20,19 @@ interface MatrixBenchmark {
   name: string
   ret: number
   vol: number
+  downsideVol: number
+  maxDrawdown: number
   sharpe: number
 }
 
 interface CacheEntry {
-  data: { stocks: MatrixStock[]; benchmark: MatrixBenchmark }
+  data: { stocks: MatrixStock[]; benchmarks: MatrixBenchmark[]; riskFreeRate: number; period: string }
   ts: number
 }
 
 const CACHE = new Map<string, CacheEntry>()
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-const RISK_FREE_RATE = 0.05
+const PERIOD_DAYS: Record<string, number> = { '3m': 90, '6m': 180, '12m': 365 }
 const PER_TICKER_TIMEOUT = 15_000
 
 function stddev(arr: number[]): number {
@@ -48,15 +52,33 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]).finally(() => clearTimeout(timer))
 }
 
-async function fetchTickerData(symbol: string): Promise<MatrixStock | null> {
+function downsideDeviation(dailyReturns: number[]): number {
+  const negatives = dailyReturns.filter(r => r < 0)
+  if (negatives.length < 2) return 0
+  return stddev(negatives) * Math.sqrt(252)
+}
+
+function maxDrawdownFromCloses(closes: number[]): number {
+  if (closes.length < 2) return 0
+  let peak = closes[0]
+  let maxDD = 0
+  for (let i = 1; i < closes.length; i++) {
+    if (closes[i] > peak) peak = closes[i]
+    const dd = (peak - closes[i]) / peak
+    if (dd > maxDD) maxDD = dd
+  }
+  return maxDD
+}
+
+async function fetchTickerData(symbol: string, periodDays: number, riskFreeRate: number): Promise<MatrixStock | null> {
   try {
     const now = new Date()
-    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+    const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
 
     const [chartResult, quoteResult] = await withTimeout(
       Promise.all([
         yahooFinance.chart(symbol, {
-          period1: oneYearAgo,
+          period1: periodStart,
           period2: now,
           interval: '1d' as any,
         }),
@@ -72,7 +94,6 @@ async function fetchTickerData(symbol: string): Promise<MatrixStock | null> {
 
     if (closes.length < 10) return null
 
-    // Daily returns
     const dailyReturns: number[] = []
     for (let i = 1; i < closes.length; i++) {
       dailyReturns.push((closes[i] - closes[i - 1]) / closes[i - 1])
@@ -82,14 +103,9 @@ async function fetchTickerData(symbol: string): Promise<MatrixStock | null> {
     const firstClose = closes[0]
     const lastClose = closes[closes.length - 1]
 
-    // Geometric annualized return
     const annualizedReturn = Math.pow(lastClose / firstClose, 252 / tradingDays) - 1
-
-    // Annualized volatility
     const annualizedVol = stddev(dailyReturns) * Math.sqrt(252)
-
-    // Sharpe ratio
-    const sharpe = annualizedVol > 0 ? (annualizedReturn - RISK_FREE_RATE) / annualizedVol : 0
+    const sharpe = annualizedVol > 0 ? (annualizedReturn - riskFreeRate) / annualizedVol : 0
 
     const q = quoteResult as any
     return {
@@ -97,6 +113,8 @@ async function fetchTickerData(symbol: string): Promise<MatrixStock | null> {
       name: q.shortName || q.longName || symbol,
       ret: annualizedReturn,
       vol: annualizedVol,
+      downsideVol: downsideDeviation(dailyReturns),
+      maxDrawdown: maxDrawdownFromCloses(closes),
       mcap: q.marketCap || 0,
       sharpe,
       price: q.regularMarketPrice || lastClose,
@@ -107,14 +125,19 @@ async function fetchTickerData(symbol: string): Promise<MatrixStock | null> {
   }
 }
 
-async function fetchBenchmark(): Promise<MatrixBenchmark> {
+const BENCHMARKS = [
+  { symbol: 'SPY', name: 'S&P 500' },
+  { symbol: 'QQQ', name: 'Nasdaq 100' },
+]
+
+async function fetchBenchmark(symbol: string, name: string, periodDays: number, riskFreeRate: number): Promise<MatrixBenchmark> {
   try {
     const now = new Date()
-    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+    const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
 
     const chartResult = await withTimeout(
-      yahooFinance.chart('SPY', {
-        period1: oneYearAgo,
+      yahooFinance.chart(symbol, {
+        period1: periodStart,
         period2: now,
         interval: '1d' as any,
       }),
@@ -127,7 +150,7 @@ async function fetchBenchmark(): Promise<MatrixBenchmark> {
       .filter((c: number | null): c is number => c != null)
 
     if (closes.length < 10) {
-      return { symbol: 'SPY', name: 'S&P 500', ret: 0, vol: 0, sharpe: 0 }
+      return { symbol, name, ret: 0, vol: 0, downsideVol: 0, maxDrawdown: 0, sharpe: 0 }
     }
 
     const dailyReturns: number[] = []
@@ -138,12 +161,20 @@ async function fetchBenchmark(): Promise<MatrixBenchmark> {
     const tradingDays = closes.length
     const annualizedReturn = Math.pow(closes[closes.length - 1] / closes[0], 252 / tradingDays) - 1
     const annualizedVol = stddev(dailyReturns) * Math.sqrt(252)
-    const sharpe = annualizedVol > 0 ? (annualizedReturn - RISK_FREE_RATE) / annualizedVol : 0
+    const sharpe = annualizedVol > 0 ? (annualizedReturn - riskFreeRate) / annualizedVol : 0
 
-    return { symbol: 'SPY', name: 'S&P 500', ret: annualizedReturn, vol: annualizedVol, sharpe }
+    return {
+      symbol,
+      name,
+      ret: annualizedReturn,
+      vol: annualizedVol,
+      downsideVol: downsideDeviation(dailyReturns),
+      maxDrawdown: maxDrawdownFromCloses(closes),
+      sharpe,
+    }
   } catch (err) {
-    console.error('[matrix] SPY benchmark failed:', err instanceof Error ? err.message : err)
-    return { symbol: 'SPY', name: 'S&P 500', ret: 0, vol: 0, sharpe: 0 }
+    console.error(`[matrix] ${symbol} benchmark failed:`, err instanceof Error ? err.message : err)
+    return { symbol, name, ret: 0, vol: 0, downsideVol: 0, maxDrawdown: 0, sharpe: 0 }
   }
 }
 
@@ -154,32 +185,50 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'tickers param required' }, { status: 400 })
     }
 
+    const period = req.nextUrl.searchParams.get('period') || '12m'
+    const periodDays = PERIOD_DAYS[period] || 365
+
     const tickers = tickersParam
       .split(',')
       .filter(Boolean)
       .map(t => t.trim().toUpperCase())
       .slice(0, 30)
 
-    const cacheKey = [...tickers].sort().join(',')
+    const cacheKey = `${period}:${[...tickers].sort().join(',')}`
     const cached = CACHE.get(cacheKey)
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       return NextResponse.json(cached.data)
     }
 
-    // Fetch benchmark in parallel with stock data
-    // Process stocks in batches of 5 to avoid overwhelming Yahoo
-    const benchmarkPromise = fetchBenchmark()
+    // Start IRX concurrently — benchmarks kick off immediately after using the fallback
+    // rate (0.05); stock batches await IRX so they get the live rate.
+    const irxPromise = withTimeout(yahooFinance.quote('^IRX'), PER_TICKER_TIMEOUT).catch(() => null)
+
+    // Benchmarks start in parallel with IRX (they use fallback 0.05 if IRX hasn't resolved)
+    const benchmarkPromises = BENCHMARKS.map(b => fetchBenchmark(b.symbol, b.name, periodDays, 0.05))
+
+    // Await IRX before stock batches so they get the live risk-free rate
+    let riskFreeRate = 0.05
+    try {
+      const irx = await irxPromise
+      const irxPrice = (irx as any)?.regularMarketPrice
+      if (typeof irxPrice === 'number' && irxPrice > 0) {
+        riskFreeRate = irxPrice / 100
+      }
+    } catch {
+      // fall back to 0.05
+    }
     const stocks: (MatrixStock | null)[] = []
     for (let i = 0; i < tickers.length; i += 5) {
       const batch = tickers.slice(i, i + 5)
-      const results = await Promise.all(batch.map(fetchTickerData))
+      const results = await Promise.all(batch.map(t => fetchTickerData(t, periodDays, riskFreeRate)))
       stocks.push(...results)
     }
-    const benchmark = await benchmarkPromise
+    const benchmarks = await Promise.all(benchmarkPromises)
 
     const validStocks = stocks.filter((s): s is MatrixStock => s !== null)
 
-    const result = { stocks: validStocks, benchmark }
+    const result = { stocks: validStocks, benchmarks, riskFreeRate, period }
     CACHE.set(cacheKey, { data: result, ts: Date.now() })
 
     return NextResponse.json(result)
