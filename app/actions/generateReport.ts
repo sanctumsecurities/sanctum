@@ -2,7 +2,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { StockReport } from '@/types/report'
-import yahooFinance from 'yahoo-finance2'
+import YahooFinance from 'yahoo-finance2'
+const yahooFinance = new YahooFinance()
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
