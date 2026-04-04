@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
+export const dynamic = 'force-dynamic'
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
 // ── In-memory cache (5-minute TTL) ──
@@ -54,7 +56,7 @@ export async function POST(req: NextRequest) {
     const incomeHistory = result.incomeStatementHistory?.incomeStatementHistory || []
     const earningsData = result.earnings || {}
 
-    const sharesOutstanding = safeNum(keyStats.sharesOutstanding) || safeNum(price.sharesOutstanding) || 1
+    const sharesOutstanding = safeNum(keyStats.sharesOutstanding) || safeNum(price.sharesOutstanding)
 
     // Sort income history once (ascending by date)
     const sortedIncome = [...incomeHistory].sort(
@@ -69,15 +71,15 @@ export async function POST(req: NextRequest) {
     }))
 
     // Build EPS history from income / shares
-    const eps = sortedIncome.map((stmt: any) => ({
+    const eps = sharesOutstanding > 0 ? sortedIncome.map((stmt: any) => ({
         year: new Date(stmt.endDate).getFullYear().toString(),
         eps: parseFloat((safeNum(stmt.netIncome) / sharesOutstanding).toFixed(2)),
-      }))
+      })) : []
 
     // If earnings module has yearly data, prefer that for EPS
     const yearlyEarnings = earningsData?.financialsChart?.yearly
     let epsFromEarnings = eps
-    if (yearlyEarnings && yearlyEarnings.length > 0) {
+    if (yearlyEarnings && yearlyEarnings.length > 0 && sharesOutstanding > 0) {
       epsFromEarnings = yearlyEarnings.map((y: any) => ({
         year: y.date.toString(),
         eps: parseFloat((safeNum(y.earnings) / sharesOutstanding).toFixed(2)),
@@ -99,7 +101,7 @@ export async function POST(req: NextRequest) {
       forwardPe: safeNum(summary.forwardPE) || safeNum(keyStats.forwardPE),
       pegRatio: safeNum(keyStats.pegRatio),
       beta: safeNum(summary.beta) || safeNum(keyStats.beta),
-      dividendYield: safeNum(summary.dividendYield),
+      dividendYield: (() => { const v = safeNum(summary.dividendYield); return v > 1 ? v / 100 : v })(),
       dividendPerShare: safeNum(summary.dividendRate),
       epsTrailing: safeNum(keyStats.trailingEps),
       evToEbitda: safeNum(keyStats.enterpriseToEbitda),

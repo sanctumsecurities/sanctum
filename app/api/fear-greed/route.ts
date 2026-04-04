@@ -28,6 +28,9 @@ export async function GET() {
     )
     if (!res.ok) throw new Error(`CNN API responded ${res.status}`)
     const data = await res.json()
+    if (!data?.fear_and_greed || typeof data.fear_and_greed.score !== 'number') {
+      throw new Error('unexpected response shape')
+    }
     const { score, rating } = data.fear_and_greed
     return NextResponse.json({ score: Math.round(score), rating })
   } catch (err) {

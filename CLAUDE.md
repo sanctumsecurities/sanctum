@@ -29,6 +29,7 @@ User enters a ticker → `app/page.tsx` calls `/api/analyze` → server fetches 
 | `/api/charts` | Multi-period chart data with ET timezone handling; supports 1D, 5D, 1M, 6M, 1Y, 5Y periods |
 | `/api/ticker-band` | Multi-ticker price feed; polled every 60s by TickerBanner |
 | `/api/ticker-search` | Yahoo Finance autocomplete search; returns up to 7 EQUITY/ETF/INDEX/MUTUALFUND matches |
+| `/api/matrix` | Risk/return scatter data for ~50 stocks; computes annualized return, vol, downside vol, max drawdown, Sharpe, sector; 5-min in-memory cache |
 | `/api/fear-greed` | CNN Fear & Greed index proxy; polled every 5 minutes by FearGreedMeter |
 | `/api/health` | Service health check (Yahoo, Gemini, Supabase, SPY price) |
 
@@ -36,7 +37,8 @@ All routes use `force-dynamic` to disable caching. External API calls have 5-sec
 
 ### Key Files
 
-- **`app/page.tsx`** — Large monolithic client component: tab system (Dashboard/Watchlist), auth state, TickerBanner integration, settings, and report saving. All main state lives here.
+- **`app/page.tsx`** — Large monolithic client component: tab system (Dashboard/Watchlist/Matrix), auth state, TickerBanner integration, settings, and report saving. All main state lives here.
+- **`components/MatrixScatter.tsx`** — Interactive risk/return scatter plot with sector coloring, efficient frontier, CML overlay, Calmar ratio mode, drawdown rings, and SPY-relative quadrant classification.
 - **`components/ReportView.tsx`** — Renders financial metrics + Recharts visualizations from `/api/analyze` response. Dynamically imported for code-splitting.
 - **`components/FearGreedMeter.tsx`** — CNN Fear & Greed gauge; polls `/api/fear-greed` every 5 minutes, renders a semicircular dial with color-coded zones.
 - **`components/SettingsModal.tsx`** — Vertical-tab settings UI; user preferences (theme, banner speed, tickers) persisted to Supabase.

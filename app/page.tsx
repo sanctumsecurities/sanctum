@@ -10,6 +10,7 @@ import SettingsModal from '@/components/SettingsModal'
 import FearGreedMeter from '@/components/FearGreedMeter'
 
 const ReportView = dynamic(() => import('@/components/ReportView'), { ssr: false })
+const MatrixScatter = dynamic(() => import('@/components/MatrixScatter'), { ssr: false })
 
 interface SavedReport {
   id: string
@@ -284,12 +285,13 @@ const BANNER_LABEL_MAP: Record<string, string> = Object.fromEntries(
 const BANNER_SPEED_SECS = { fast: 45, regular: 60, slow: 75 } as const
 
 const DEFAULT_SETTINGS = {
-  defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist',
+  defaultTab: 'Dashboard' as 'Dashboard' | 'Matrix' | 'Watchlist',
   clockFormat: '12h' as '12h' | '24h',
   bannerSpeed: 'regular' as 'fast' | 'regular' | 'slow',
   bannerUpdateFreq: 60_000,
   bannerTickers: DEFAULT_BANNER_TICKERS,
   bannerHoverPause: true,
+  matrixCustomTickers: [] as string[],
 }
 
 export type AppSettings = typeof DEFAULT_SETTINGS
@@ -304,6 +306,7 @@ interface TickerBannerProps {
 function TickerBanner({ speed, updateFreq, tickers, hoverPause }: TickerBannerProps) {
   const [items, setItems] = useState<TickerItem[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [stale, setStale] = useState(false)
 
   const tickersKey = tickers.join(',')
 
@@ -311,13 +314,15 @@ function TickerBanner({ speed, updateFreq, tickers, hoverPause }: TickerBannerPr
     try {
       const params = new URLSearchParams({ tickers: tickersKey })
       const res = await fetch(`/api/ticker-band?${params}`)
-      if (!res.ok) return
+      if (!res.ok) { setStale(true); return }
       const data: TickerItem[] = await res.json()
       if (Array.isArray(data) && data.length > 0) {
         setItems(data)
         setLoaded(true)
+        setStale(false)
       }
     } catch (err) {
+      setStale(true)
       if (process.env.NODE_ENV === 'development') console.warn('[TickerBanner] fetch failed:', err)
     }
   }, [tickersKey])
@@ -375,6 +380,8 @@ function TickerBanner({ speed, updateFreq, tickers, hoverPause }: TickerBannerPr
       borderBottom: '1px solid #1a1a1a',
       overflow: 'hidden',
       display: 'flex', alignItems: 'center',
+      opacity: stale ? 0.45 : 1,
+      transition: 'opacity 0.5s ease',
     }}>
       <div
         className={hoverPause ? 'ticker-scroll ticker-hover-pause' : 'ticker-scroll'}
@@ -661,9 +668,9 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const pct = Math.max(0, Math.min(1, x / localW))
           const idx = Math.round(pct * (pts.length - 1))
           const pt = pts[idx]
-          const openPrice = pts[0].price
-          const changeFromOpen = openPrice > 0 ? ((pt.price - openPrice) / openPrice) * 100 : 0
-          const isChartUp = pt.price >= openPrice
+          const refPrice = (selectedPeriod !== '1D' && tickerChart?.chartPreviousClose) ? tickerChart.chartPreviousClose : pts[0].price
+          const changeFromRef = refPrice > 0 ? ((pt.price - refPrice) / refPrice) * 100 : 0
+          const isChartUp = pt.price >= refPrice
 
           const min = Math.min(...pts.map(p => p.price))
           const max = Math.max(...pts.map(p => p.price))
@@ -685,8 +692,8 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
             : selectedPeriod === '5D'
             ? new Date(pt.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + new Date(pt.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
             : new Date(pt.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          const changeStr = `${changeFromOpen >= 0 ? '+' : ''}${changeFromOpen.toFixed(2)}%`
-          const changeColor = changeFromOpen >= 0 ? '#22c55e' : '#f87171'
+          const changeStr = `${changeFromRef >= 0 ? '+' : ''}${changeFromRef.toFixed(2)}%`
+          const changeColor = changeFromRef >= 0 ? '#22c55e' : '#f87171'
 
           tip.innerHTML = `<div style="font-size:10px;color:#555;margin-bottom:2px">${timeStr}</div><div><span style="color:#fff;font-weight:600">$${pt.price.toFixed(2)}</span> <span style="color:${changeColor}">${changeStr}</span></div>`
           tip.style.display = 'block'
@@ -907,7 +914,7 @@ export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Watchlist'>('Dashboard')
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Matrix' | 'Watchlist'>('Dashboard')
   const [searchTicker, setSearchTicker] = useState('')
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
@@ -918,6 +925,8 @@ export default function Home() {
 
   const [watchlist, setWatchlist] = useState<string[]>([])
   const [chartData, setChartData] = useState<Record<string, { points: { time: string; price: number }[]; afterHours: { price: number; change: number; changePct: number; label: string } | null; chartPreviousClose: number | null }>>({})
+
+  const [chartRefreshKey, setChartRefreshKey] = useState(0)
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null)
@@ -933,6 +942,9 @@ export default function Home() {
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [titleWidth, setTitleWidth] = useState<number | undefined>(undefined)
+  const matrixTitleRef = useRef<HTMLHeadingElement>(null)
+  const [matrixTitleWidth, setMatrixTitleWidth] = useState<number | undefined>(undefined)
+  const [matrixSelectedTicker, setMatrixSelectedTicker] = useState<string | null>(null)
 
   // ── Health popup ──
   const [healthData, setHealthData] = useState<HealthData | null>(null)
@@ -1012,7 +1024,16 @@ export default function Home() {
         }
       })
       .catch(err => console.error('[charts] batch fetch failed:', err))
-  }, [savedReports])
+  }, [savedReports, chartRefreshKey])
+
+  // Refresh chart data every 5 minutes
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchedTickersRef.current.clear()
+      setChartRefreshKey(k => k + 1)
+    }, 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
 
   // ── Load watchlist from localStorage ──
   useEffect(() => {
@@ -1048,17 +1069,18 @@ export default function Home() {
     })
   }, [session?.user?.id])
 
-  // ── Measure title width for search bar ──
+  // ── Measure title widths for search bars ──
   useEffect(() => {
     if (loading) return
     const measure = () => {
       if (titleRef.current) setTitleWidth(titleRef.current.offsetWidth)
+      if (matrixTitleRef.current) setMatrixTitleWidth(matrixTitleRef.current.offsetWidth)
     }
     measure()
     document.fonts.ready.then(measure)
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [loading])
+  }, [loading, activeTab])
 
   // ── Cleanup search debounce on unmount ──
   useEffect(() => {
@@ -1211,7 +1233,67 @@ export default function Home() {
     setShowGenerateModal(false)
     setSearchTicker('')
     setTickerSuggestions([])
-    router.push(`/reports/${resolvedTicker}`)
+
+    const userId = session?.user?.id
+    const userEmail = session?.user?.email ?? null
+    if (!userId) {
+      setError('Session expired. Please sign in again.')
+      setGenerating(false)
+      return
+    }
+
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker: resolvedTicker }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to generate report')
+      }
+
+      const { data, ai } = await res.json()
+      const ticker = resolvedTicker
+
+      // Delete any existing reports for this ticker globally
+      await supabase.from('reports').delete().eq('ticker', ticker)
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('reports')
+        .insert({
+          ticker,
+          data,
+          ai,
+          created_by: userId,
+          created_by_email: userEmail,
+        })
+        .select()
+        .single()
+
+      if (insertError) console.error('Save error:', insertError)
+
+      const report: SavedReport = inserted || {
+        id: crypto.randomUUID(),
+        ticker,
+        data,
+        ai,
+        created_by: userId,
+        created_by_email: userEmail,
+        created_at: new Date().toISOString(),
+      }
+
+      setCurrentReport(report)
+      setShowReport(true)
+      setShowGenerateModal(false)
+      setSearchTicker('')
+      loadReports()
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate report')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   // ── Loading ──
@@ -1446,17 +1528,24 @@ export default function Home() {
                 {/* Service rows */}
                 {(healthData?.services ?? []).map(svc => {
                   const isOnline = svc.status === 'ok'
+                  const isUnconfigured = svc.status === 'unconfigured'
+                  const statusLabel = isOnline ? 'ONLINE' : isUnconfigured ? 'N/A' : 'OFFLINE'
+                  const statusColor = isOnline ? '#22c55e' : isUnconfigured ? '#555' : '#ef4444'
                   return (
-                    <div key={svc.name} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '8px 0', borderBottom: '1px solid #111',
-                    }}>
-                      <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
-                        {svc.name.toUpperCase()}
-                      </span>
-                      <span style={{ fontSize: 11, color: isOnline ? '#22c55e' : '#ef4444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
-                        {isOnline ? 'ONLINE' : 'OFFLINE'}
-                      </span>
+                    <div key={svc.name} style={{ padding: '8px 0', borderBottom: '1px solid #111' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+                          {svc.name.toUpperCase()}
+                        </span>
+                        <span style={{ fontSize: 11, color: statusColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      {svc.detail && !isOnline && (
+                        <div style={{ fontSize: 9, color: '#333', fontFamily: "'JetBrains Mono', monospace", marginTop: 2, textAlign: 'right' }}>
+                          {svc.detail.slice(0, 50)}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -1517,7 +1606,7 @@ export default function Home() {
             position: 'absolute', left: '50%', transform: 'translateX(-50%)',
             display: 'flex', gap: 32,
           }}>
-            {(['Dashboard', 'Watchlist'] as const).map(tab => {
+            {(['Dashboard', 'Matrix', 'Watchlist'] as const).map(tab => {
               const isActive = tab === activeTab
               return (
                 <button
@@ -1623,7 +1712,7 @@ export default function Home() {
             padding: '8px 20px 16px',
             display: 'flex', flexDirection: 'column', gap: 0,
           }}>
-            {(['Dashboard', 'Watchlist'] as const).map(tab => (
+            {(['Dashboard', 'Matrix', 'Watchlist'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setMobileMenuOpen(false) }}
@@ -1882,6 +1971,121 @@ export default function Home() {
             )}
           </div>
         )}
+
+        {/* ══ MATRIX ══ */}
+        {activeTab === 'Matrix' && (() => {
+          const matrixReport = matrixSelectedTicker
+            ? savedReports.find(r => r.ticker === matrixSelectedTicker) ?? null
+            : null
+          return (
+            <div className="main-content" style={{
+              display: 'flex',
+              gap: 0,
+              padding: '40px 40px 0',
+              maxWidth: '100%',
+              animation: 'fadeIn 0.3s ease',
+              boxSizing: 'border-box',
+              overflowX: 'hidden',
+              height: 'calc(100vh - 140px)',
+            }}>
+              {/* Left: Chart */}
+              <div style={{
+                flex: '0 0 65%',
+                minWidth: 0,
+                borderRight: '1px solid #1a1a1a',
+                paddingRight: 24,
+              }}>
+                <h1 ref={matrixTitleRef} className="hero-title" style={{
+                  fontSize: 64, fontWeight: 700, color: '#fff',
+                  letterSpacing: '0.08em',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  margin: 0, lineHeight: 1,
+                  width: 'fit-content',
+                }}>
+                  MATRIX
+                </h1>
+                <MatrixScatter
+                  savedReports={savedReports}
+                  watchlist={watchlist}
+                  titleWidth={matrixTitleWidth}
+                  onSelectStock={setMatrixSelectedTicker}
+                  customTickers={settings.matrixCustomTickers}
+                  onCustomTickersChange={(tickers) => updateSettings({ matrixCustomTickers: tickers })}
+                />
+              </div>
+
+              {/* Right: Report card */}
+              {matrixReport && (
+                <div style={{
+                  flex: '0 0 35%',
+                  minWidth: 0,
+                  paddingLeft: 32,
+                  borderLeft: '1px solid #1a1a1a',
+                  overflowY: 'auto',
+                  animation: 'fadeIn 0.3s ease',
+                }}>
+                  <ReportCard
+                    report={matrixReport}
+                    chartData={chartData[matrixReport.ticker]}
+                    focusedCardId={null}
+                    colIndex={0}
+                    onOpen={handleOpenReport}
+                    onDelete={deleteReport}
+                    onFocus={() => {}}
+                  />
+                </div>
+              )}
+
+              {/* Right: Empty state when ticker has no report */}
+              {matrixSelectedTicker && !matrixReport && (
+                <div style={{
+                  flex: '0 0 35%',
+                  minWidth: 0,
+                  paddingLeft: 32,
+                  borderLeft: '1px solid #1a1a1a',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  animation: 'fadeIn 0.3s ease',
+                }}>
+                  <p style={{
+                    fontSize: 12, color: '#555',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    letterSpacing: '0.08em',
+                    textAlign: 'center',
+                  }}>
+                    No report for {matrixSelectedTicker}.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSearchTicker(matrixSelectedTicker)
+                      setActiveTab('Dashboard')
+                      setTimeout(() => generateReport(matrixSelectedTicker), 100)
+                    }}
+                    style={{
+                      marginTop: 16,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 4,
+                      padding: '8px 20px',
+                      fontSize: 11,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      letterSpacing: '0.08em',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                  >
+                    GENERATE REPORT
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* ══ WATCHLIST ══ */}
         {activeTab === 'Watchlist' && (

@@ -18,7 +18,7 @@ const DEFAULT_LABEL_MAP: Record<string, string> = Object.fromEntries(
 )
 
 // ── In-memory cache (15s TTL) ──
-let cache: { data: any; ts: number; key: string } | null = null
+const cache = new Map<string, { data: any; ts: number }>()
 const CACHE_TTL = 15_000
 
 function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
@@ -45,8 +45,9 @@ export async function GET(request: NextRequest) {
     const cacheKey = symbols.join(',')
 
     // Return cached data if still fresh
-    if (cache && cache.key === cacheKey && Date.now() - cache.ts < CACHE_TTL) {
-      return NextResponse.json(cache.data, { headers: { 'Cache-Control': 'no-store' } })
+    const cached = cache.get(cacheKey)
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      return NextResponse.json(cached.data, { headers: { 'Cache-Control': 'no-store' } })
     }
 
     // Use quoteCombine for automatic request batching
@@ -73,7 +74,10 @@ export async function GET(request: NextRequest) {
       .filter((r): r is NonNullable<typeof r> => r !== null)
 
     // Update cache
-    cache = { data: items, ts: Date.now(), key: cacheKey }
+    cache.set(cacheKey, { data: items, ts: Date.now() })
+    for (const [key, entry] of cache) {
+      if (Date.now() - entry.ts > CACHE_TTL * 2) cache.delete(key)
+    }
 
     return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err: any) {

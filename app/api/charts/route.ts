@@ -28,17 +28,26 @@ function getChartParams(period: string): { period1: Date; period2: Date; interva
   const now = Date.now()
   const offsetMs = getEtOffset()
 
+  const DAY = 24 * 60 * 60 * 1000
+
+  // Yahoo daily candles timestamp at market open (13:30 UTC). To ensure the
+  // target start date's candle is included, compute today's date in ET then
+  // subtract the period + 1 day buffer, anchored to midnight UTC.
+  const etMs = now - offsetMs
+  const etD = new Date(etMs)
+  const todayMidnightUTC = Date.UTC(etD.getUTCFullYear(), etD.getUTCMonth(), etD.getUTCDate())
+
   switch (period) {
     case '5D':
-      return { period1: new Date(now - 7 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1h' }
+      return { period1: new Date(todayMidnightUTC - 8 * DAY), period2: new Date(now), interval: '1h' }
     case '1M':
-      return { period1: new Date(now - 30 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1d' }
+      return { period1: new Date(todayMidnightUTC - 32 * DAY), period2: new Date(now), interval: '1d' }
     case '3M':
-      return { period1: new Date(now - 90 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1d' }
+      return { period1: new Date(todayMidnightUTC - 91 * DAY), period2: new Date(now), interval: '1d' }
     case '6M':
-      return { period1: new Date(now - 180 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1d' }
+      return { period1: new Date(todayMidnightUTC - 183 * DAY), period2: new Date(now), interval: '1d' }
     case '1Y':
-      return { period1: new Date(now - 365 * 24 * 60 * 60 * 1000), period2: new Date(now), interval: '1d' }
+      return { period1: new Date(todayMidnightUTC - 366 * DAY), period2: new Date(now), interval: '1d' }
     case 'YTD': {
       const etYear = new Intl.DateTimeFormat('en-US', {
         timeZone: 'America/New_York', year: 'numeric',
@@ -53,6 +62,15 @@ function getChartParams(period: string): { period1: Date; period2: Date; interva
         etDate.getUTCFullYear(), etDate.getUTCMonth(), etDate.getUTCDate()
       )
       const etMidnightMs = etMidnightFakeUtc + offsetMs
+      // Before 4 AM ET: use previous day's full window
+      if (now < etMidnightMs + 4 * 60 * 60 * 1000) {
+        const prevMidnight = etMidnightMs - DAY
+        return {
+          period1: new Date(prevMidnight + 4 * 60 * 60 * 1000),
+          period2: new Date(prevMidnight + 20 * 60 * 60 * 1000),
+          interval: '5m',
+        }
+      }
       return {
         period1: new Date(etMidnightMs + 4 * 60 * 60 * 1000),
         period2: new Date(Math.min(etMidnightMs + 20 * 60 * 60 * 1000, now)),
@@ -69,12 +87,24 @@ async function fetchChart(symbol: string, period: string) {
     const quotePromise = period === '1D' ? yahooFinance.quote(symbol) : Promise.resolve(null)
     const [chartResult, quoteResult] = await Promise.all([chartPromise, quotePromise])
 
-    const points = (chartResult.quotes || [])
+    let rawQuotes = (chartResult.quotes || [])
       .filter((q: any) => q.close != null && q.date != null)
-      .map((q: any) => ({
-        time: new Date(q.date).toISOString(),
-        price: q.close as number,
-      }))
+
+    // 5D: filter to regular market hours only (9:30 AM – 4 PM ET)
+    if (period === '5D') {
+      const etOff = getEtOffset()
+      rawQuotes = rawQuotes.filter((q: any) => {
+        const etMs = new Date(q.date).getTime() - etOff
+        const etMinutes = Math.round((etMs % (24 * 60 * 60 * 1000)) / 60000)
+        return etMinutes >= 569 && etMinutes < 960 // 9:29 buffer to 4:00 PM
+      })
+    }
+
+    const points = rawQuotes.map((q: any, i: number) => ({
+      time: new Date(q.date).toISOString(),
+      // First point uses open price so the chart starts at the day's open
+      price: (i === 0 && q.open != null) ? q.open as number : q.close as number,
+    }))
 
     // chartPreviousClose is the close of the last session before the period starts —
     // the correct reference price for computing period % change (matches Yahoo's calculation)
