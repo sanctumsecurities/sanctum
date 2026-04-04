@@ -455,8 +455,8 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
         TRAILING {period.toUpperCase()}
       </div>
 
-      {/* Control row: source buttons left, toggles right */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 16 }}>
+      {/* Row 1: Data selection — source left, period right */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 8 }}>
         {/* Source buttons — left */}
         <div style={{ display: 'flex', gap: 8, width: titleWidth ?? 420, flexShrink: 0 }}>
           {sourceButtons.map(({ label, flex }) => {
@@ -488,68 +488,133 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
           })}
         </div>
 
-        {/* Right side: vol toggle + period selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
-          {/* Vol metric toggle */}
-          <div style={{ display: 'flex', gap: 4 }}>
-            {(['total', 'downside'] as const).map(v => {
-              const isActive = volMetric === v
-              return (
-                <button
-                  key={v}
-                  onClick={() => setVolMetric(v)}
-                  style={{
-                    background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                    border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-                    borderRadius: 4,
-                    padding: '4px 10px',
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    letterSpacing: '0.08em',
-                    color: isActive ? '#fff' : '#555',
-                    cursor: 'pointer',
-                    textTransform: 'uppercase' as const,
-                    transition: 'all 0.2s ease',
-                    whiteSpace: 'nowrap' as const,
-                  }}
-                  onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
-                  onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
-                >
-                  {v === 'total' ? 'TOTAL VOL' : 'DOWNSIDE VOL'}
-                </button>
-              )
-            })}
-          </div>
+        {/* Period selector — right */}
+        <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+          {(['3m', '6m', '12m'] as const).map(p => {
+            const isActive = period === p
+            return (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                style={{
+                  background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+                  borderRadius: 4,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.08em',
+                  color: isActive ? '#fff' : '#555',
+                  cursor: 'pointer',
+                  textTransform: 'uppercase' as const,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
+                onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+              >
+                {p.toUpperCase()}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
-          {/* Period selector */}
-          <div style={{ display: 'flex', gap: 4 }}>
-            {(['3m', '6m', '12m'] as const).map(p => {
-              const isActive = period === p
-              return (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  style={{
-                    background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                    border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-                    borderRadius: 4,
-                    padding: '4px 10px',
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    letterSpacing: '0.08em',
-                    color: isActive ? '#fff' : '#555',
-                    cursor: 'pointer',
-                    textTransform: 'uppercase' as const,
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
-                  onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
-                >
-                  {p.toUpperCase()}
-                </button>
-              )
-            })}
-          </div>
+      {/* Row 2: View options — metrics left, overlays right */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        {/* Vol metric toggle */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['total', 'downside'] as const).map(v => {
+            const isActive = volMetric === v
+            return (
+              <button
+                key={v}
+                onClick={() => setVolMetric(v)}
+                style={{
+                  background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+                  borderRadius: 4,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.08em',
+                  color: isActive ? '#fff' : '#555',
+                  cursor: 'pointer',
+                  textTransform: 'uppercase' as const,
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap' as const,
+                }}
+                onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
+                onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+              >
+                {v === 'total' ? 'TOTAL VOL' : 'DOWNSIDE VOL'}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Color mode toggle */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['quadrant', 'sector'] as const).map(m => {
+            const isActive = colorMode === m
+            return (
+              <button
+                key={m}
+                onClick={() => {
+                  setColorMode(m)
+                  setSectorFilter(null) // clear filter on mode switch
+                }}
+                style={{
+                  background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+                  borderRadius: 4,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.08em',
+                  color: isActive ? '#fff' : '#555',
+                  cursor: 'pointer',
+                  textTransform: 'uppercase' as const,
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap' as const,
+                }}
+                onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
+                onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+              >
+                {m.toUpperCase()}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Overlay toggles — right */}
+        <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+          {([
+            { key: 'trails', label: 'TRAILS', active: showTrails, toggle: () => setShowTrails(v => !v) },
+            { key: 'frontier', label: 'FRONTIER', active: showFrontier, toggle: () => setShowFrontier(v => !v) },
+          ] as const).map(({ key, label, active, toggle }) => (
+            <button
+              key={key}
+              onClick={toggle}
+              style={{
+                background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
+                border: `1px solid ${active ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+                borderRadius: 4,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.08em',
+                color: active ? '#fff' : '#555',
+                cursor: 'pointer',
+                textTransform: 'uppercase' as const,
+                transition: 'all 0.2s ease',
+                whiteSpace: 'nowrap' as const,
+              }}
+              onMouseEnter={e => { if (!active) (e.currentTarget).style.color = '#aaa' }}
+              onMouseLeave={e => { if (!active) (e.currentTarget).style.color = '#555' }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
