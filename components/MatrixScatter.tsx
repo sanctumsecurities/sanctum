@@ -879,12 +879,18 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               {/* Stock dots — shapes layer */}
               {data.stocks.map((s, i) => {
                 const sVol = getVol(s)
+                const color = getStockColor(s)
                 const quad = getQuadrant(s.ret, sVol, spyRet, spyVol)
-                const color = QUADRANT_CONFIG[quad].color
                 const r = dotRadius(s.mcap, allMcaps)
                 const isActive = activeSymbol === s.symbol
                 const cx = toX(sVol)
                 const cy = toY(s.ret)
+
+                // Filtering: fade non-matching stocks
+                const isFiltered = colorMode === 'sector' && sectorFilter
+                  ? s.sector !== sectorFilter
+                  : false
+                const groupOpacity = isFiltered ? 0.06 : 1
 
                 // Drawdown border ring
                 const dd = s.maxDrawdown
@@ -899,7 +905,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 return (
                   <g
                     key={s.symbol}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', opacity: groupOpacity, transition: 'opacity 0.3s ease' }}
                     onMouseEnter={() => setHoveredSymbol(s.symbol)}
                     onMouseLeave={() => setHoveredSymbol(null)}
                     onClick={() => {
@@ -976,19 +982,22 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               {/* Labels layer — rendered last so they appear on top of all shapes */}
               {data.stocks.map(s => {
                 const sVol = getVol(s)
-                const quad = getQuadrant(s.ret, sVol, spyRet, spyVol)
-                const color = QUADRANT_CONFIG[quad].color
+                const color = getStockColor(s)
                 const r = dotRadius(s.mcap, allMcaps)
                 const isActive = activeSymbol === s.symbol
                 const cx = toX(sVol)
                 const cy = toY(s.ret)
+
+                const isFiltered = colorMode === 'sector' && sectorFilter
+                  ? s.sector !== sectorFilter
+                  : false
 
                 return (
                   <text
                     key={`label-${s.symbol}`}
                     x={cx} y={cy - r - 6}
                     fill={isActive ? '#fff' : color}
-                    opacity={isActive ? 1 : 0.65}
+                    opacity={isFiltered ? 0.06 : (isActive ? 1 : 0.65)}
                     fontSize="10"
                     fontFamily="'JetBrains Mono', monospace"
                     fontWeight={isActive ? 700 : 500}
@@ -1052,7 +1061,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                   width: 180,
                   background: '#0a0a10',
                   border: '1px solid #1a1a1a',
-                  borderLeft: `2px solid ${qColor}`,
+                  borderLeft: `2px solid ${stock ? getStockColor(stock) : qColor}`,
                   borderRadius: 6,
                   padding: '12px 14px',
                   pointerEvents: 'none',
@@ -1063,8 +1072,19 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                     {item.symbol}
                   </div>
                   {'name' in item && (
-                    <div style={{ fontSize: 10, color: '#555', fontFamily: "'DM Sans', sans-serif", marginBottom: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 10, color: '#555', fontFamily: "'DM Sans', sans-serif", marginBottom: colorMode === 'sector' && stock ? 2 : 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.name}
+                    </div>
+                  )}
+                  {stock && colorMode === 'sector' && (
+                    <div style={{
+                      fontSize: 9,
+                      color: getStockColor(stock),
+                      fontFamily: "'JetBrains Mono', monospace",
+                      marginBottom: 10,
+                      letterSpacing: '0.05em',
+                    }}>
+                      {stock.sector}
                     </div>
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
