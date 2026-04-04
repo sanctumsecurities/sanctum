@@ -13,6 +13,7 @@ interface MatrixStock {
   mcap: number
   sharpe: number
   price: number
+  sector: string
 }
 
 interface MatrixBenchmark {
@@ -107,6 +108,19 @@ async function fetchTickerData(symbol: string, periodDays: number, riskFreeRate:
     const annualizedVol = stddev(dailyReturns) * Math.sqrt(252)
     const sharpe = annualizedVol > 0 ? (annualizedReturn - riskFreeRate) / annualizedVol : 0
 
+    // Fetch sector — separate call so a failure doesn't kill the whole ticker
+    let sector = 'Other'
+    try {
+      const summary = await withTimeout(
+        yahooFinance.quoteSummary(symbol, { modules: ['summaryProfile'] }),
+        5000
+      )
+      const sp = (summary as any)?.summaryProfile
+      if (sp?.sector) sector = sp.sector
+    } catch {
+      // sector stays 'Other'
+    }
+
     const q = quoteResult as any
     return {
       symbol: symbol.toUpperCase(),
@@ -118,6 +132,7 @@ async function fetchTickerData(symbol: string, periodDays: number, riskFreeRate:
       mcap: q.marketCap || 0,
       sharpe,
       price: q.regularMarketPrice || lastClose,
+      sector,
     }
   } catch (err) {
     console.error(`[matrix] ${symbol} failed:`, err instanceof Error ? err.message : err)
