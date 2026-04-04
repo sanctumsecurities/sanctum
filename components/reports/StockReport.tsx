@@ -33,6 +33,101 @@ const LOADING_PHRASES = [
   'IDENTIFYING MISPRICING SIGNALS...',
 ]
 
+function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => void) {
+  const [displayText, setDisplayText] = useState('')
+  const [caretMode, setCaretMode] = useState<'blink' | 'solid' | 'hidden'>('hidden')
+  const [progress, setProgress] = useState(0)
+  const abortRef = useRef(false)
+  const phrasesRef = useRef(
+    LOADING_PHRASES.map(p => p.replace('{TICKER}', ticker.toUpperCase()))
+  )
+
+  const reportReadyRef = useRef(reportReady)
+  useEffect(() => { reportReadyRef.current = reportReady }, [reportReady])
+
+  const onCompleteRef = useRef(onComplete)
+  useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
+
+  useEffect(() => {
+    abortRef.current = false
+    const phrases = phrasesRef.current
+
+    const sleep = (ms: number) => new Promise<void>((resolve, reject) => {
+      const id = setTimeout(resolve, ms)
+      const check = setInterval(() => {
+        if (abortRef.current) { clearTimeout(id); clearInterval(check); reject('aborted') }
+      }, 50)
+      setTimeout(() => clearInterval(check), ms + 100)
+    })
+
+    const typeDelay = () => 27 + Math.random() * 45
+    const deleteDelay = () => 20 + Math.random() * 33
+
+    const run = async () => {
+      try {
+        setCaretMode('blink')
+        await sleep(500)
+
+        let phraseIdx = 0
+        while (!abortRef.current) {
+          const phrase = phrases[phraseIdx % phrases.length]
+
+          setCaretMode('blink')
+          const blinks = 2 + Math.round(Math.random())
+          await sleep(blinks * 1000)
+
+          for (let i = 0; i < phrase.length; i++) {
+            if (abortRef.current) return
+            setDisplayText(phrase.slice(0, i + 1))
+            setCaretMode('solid')
+            await sleep(typeDelay())
+          }
+
+          const progressPerPhrase = 88 / phrases.length
+          setProgress(Math.min(90, (phraseIdx + 1) * progressPerPhrase))
+
+          if (reportReadyRef.current) {
+            setProgress(100)
+            setCaretMode('blink')
+            await sleep(1200)
+            onCompleteRef.current()
+            return
+          }
+
+          setCaretMode('blink')
+          await sleep(3000)
+
+          if (reportReadyRef.current) {
+            setProgress(100)
+            await sleep(1200)
+            onCompleteRef.current()
+            return
+          }
+
+          setCaretMode('solid')
+          const text = phrase
+          for (let i = text.length; i >= 0; i--) {
+            if (abortRef.current) return
+            setDisplayText(text.slice(0, i))
+            setCaretMode('solid')
+            await sleep(deleteDelay())
+          }
+
+          phraseIdx++
+        }
+      } catch (e) {
+        if (e !== 'aborted') console.error(e)
+      }
+    }
+
+    run()
+
+    return () => { abortRef.current = true }
+  }, [ticker])
+
+  return { displayText, caretMode, progress }
+}
+
 function CompanyLogo({ ticker, website }: { ticker: string; website?: string }) {
   const [attempt, setAttempt] = useState(0)
   const domain = website ? website.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : null
