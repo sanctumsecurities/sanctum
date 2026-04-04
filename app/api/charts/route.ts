@@ -24,11 +24,11 @@ function getEtOffset(): number {
  * 1D: 4 AM ET today → 8 PM ET today (capped at now).
  * All others: rolling window from now.
  */
+const DAY = 24 * 60 * 60 * 1000
+
 function getChartParams(period: string): { period1: Date; period2: Date; interval: string } {
   const now = Date.now()
   const offsetMs = getEtOffset()
-
-  const DAY = 24 * 60 * 60 * 1000
 
   // Yahoo daily candles timestamp at market open (13:30 UTC). To ensure the
   // target start date's candle is included, compute today's date in ET then
