@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 2: AI Generation ──
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
     const financialContext = JSON.stringify({
       ticker: symbol,

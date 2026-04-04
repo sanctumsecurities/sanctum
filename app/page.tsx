@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Auth from '@/components/Auth'
 import dynamic from 'next/dynamic'
@@ -419,6 +420,7 @@ const etFormatter = new Intl.DateTimeFormat('en-US', {
 })
 
 const ReportCard = memo(function ReportCard({ report, chartData: initialChartData, focusedCardId, colIndex, onOpen, onDelete, onFocus }: ReportCardProps) {
+  const router = useRouter()
   const d = report.data || {}
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('1D')
   const [periodCache, setPeriodCache] = useState<
@@ -485,9 +487,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
         transformOrigin: colIndex === 0 ? 'left center' : colIndex === 3 ? 'right center' : 'center center',
       }}
       onClick={() => {
-        if (focusedCardId === report.id) {
-          onOpen(report)
-        }
+        router.push(`/reports/${report.ticker}`)
       }}
       onTouchStart={() => {
         onFocus(focusedCardId === report.id ? null : report.id)
@@ -910,6 +910,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
 )
 
 export default function Home() {
+  const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -1229,9 +1230,8 @@ export default function Home() {
   const generateReport = async (tickerOverride?: string) => {
     const resolvedTicker = (tickerOverride || searchTicker).trim().toUpperCase()
     if (!resolvedTicker) return
-    setGenerating(true)
-    setError('')
-    setShowReport(false)
+    setShowGenerateModal(false)
+    setSearchTicker('')
     setTickerSuggestions([])
 
     const userId = session?.user?.id
