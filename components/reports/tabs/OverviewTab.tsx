@@ -247,9 +247,12 @@ export default function OverviewTab({ overview, currentPrice }: {
           const notable = overview.insiderActivity?.notable?.toLowerCase() ?? ''
           const signals: { text: string; positive: boolean }[] = []
 
+          // — Insider base score —
           let insiderBase = 0
           if (netBuys > 0) {
+            // Volume tiers (superlinear)
             insiderBase += netBuys >= 5 ? 5 : netBuys >= 3 ? 3 : 1
+            // Rank bonus
             if (/\bceo\b/.test(notable)) {
               insiderBase += 3
               signals.push({ text: 'CEO buying', positive: true })
@@ -262,6 +265,7 @@ export default function OverviewTab({ overview, currentPrice }: {
             } else {
               signals.push({ text: `+${netBuys} insider buy${netBuys > 1 ? 's' : ''}`, positive: true })
             }
+            // Dollar size
             const dm = notable.match(/\$(\d+(?:\.\d+)?)\s*(m(?:illion)?|k)\b/i)
             if (dm) {
               const val = parseFloat(dm[1]) * (/^m/i.test(dm[2]) ? 1_000_000 : 1_000)
@@ -279,6 +283,7 @@ export default function OverviewTab({ overview, currentPrice }: {
             signals.push({ text: `${sellers} insider sell${sellers > 1 ? 's' : ''}`, positive: false })
           }
 
+          // — Context multiplier (price position relative to range) —
           let contextMult = 1.0
           if (/near\s+(52.?week\s+)?low|multi.?year\s+low|year.?to.?date\s+low/.test(notable)) {
             contextMult = 1.5
@@ -288,6 +293,7 @@ export default function OverviewTab({ overview, currentPrice }: {
             signals.push({ text: 'near highs ×0.7', positive: false })
           }
 
+          // — Recency multiplier —
           let recencyMult = 0.8
           if (/\b(\d+\s+days?\s+ago|this\s+week|last\s+week|\d+\s+days?\s+old)\b/.test(notable) ||
               /within\s+(the\s+)?(past\s+)?(7|seven)\s+days/.test(notable)) {
@@ -301,6 +307,7 @@ export default function OverviewTab({ overview, currentPrice }: {
             signals.push({ text: '>30d ×0.8', positive: false })
           }
 
+          // — Institutional score —
           let instScore = 0
           if (!isNaN(instPct)) {
             if (instPct >= 85) {
@@ -321,6 +328,7 @@ export default function OverviewTab({ overview, currentPrice }: {
             }
           }
 
+          // Final Score = (insiderBase × context × recency) + institutional
           const totalScore = Math.round((insiderBase * contextMult * recencyMult) + instScore)
 
           const sentiment = totalScore >= 12
