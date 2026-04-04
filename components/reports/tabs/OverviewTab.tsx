@@ -14,11 +14,11 @@ export default function OverviewTab({ overview }: { overview: StockReport['overv
     <div>
       {overview.keyMetrics?.length > 0 && (
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 12, marginBottom: 32,
         }}>
           {overview.keyMetrics.map((m, i) => (
-            <MetricCard key={i} label={m.label} value={m.value} subtitle={m.subtitle} color={m.color} />
+            <MetricCard key={i} label={m.label} value={m.value} subtitle={m.subtitle} color={m.color} yoyChange={m.yoyChange} />
           ))}
         </div>
       )}

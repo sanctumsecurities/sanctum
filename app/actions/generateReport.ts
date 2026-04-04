@@ -360,7 +360,7 @@ Schema:
   "badges": ["string — contextual badges like 'DOJ Investigation', 'Buffett Bought', 'Mkt Cap ~$256B'"],
   "overview": {
     "keyMetrics": [
-      { "label": "string", "value": "string", "subtitle": "string or omit", "color": "string hex or omit" }
+      { "label": "string", "value": "string", "subtitle": "string or omit", "color": "string hex or omit", "yoyChange": "string like '+12.3%' or '-5.1%' — year-over-year change, omit if not applicable" }
     ],
     "businessSummary": "string — 3 paragraphs separated by \\n\\n",
     "whatHasGoneWrong": "string or null — if company is under stress, explain what went wrong",
@@ -437,7 +437,7 @@ Schema:
 }
 
 Requirements:
-- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Adj EPS, Forward P/E, Op Cash Flow, Dividend/Yield (or Institutional Ownership if no dividend)
+- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Adj EPS, Forward P/E, Op Cash Flow, Dividend/Yield (or Institutional Ownership if no dividend). Each must include yoyChange (e.g. "+12.3%", "-5.1%") showing the year-over-year change where applicable. For CAGR metrics, use the CAGR itself as yoyChange. For ratios like P/E, show the change vs prior year.
 - overview.moatScores: exactly 6 items scoring competitive advantages on 0-100 scale
 - overview.sectorMoatScores: exactly 6 items matching the same metrics as moatScores, representing sector median scores
 - overview.segmentBreakdown: 3-8 revenue segments that sum close to 100

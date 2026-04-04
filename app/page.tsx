@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Auth from '@/components/Auth'
 import dynamic from 'next/dynamic'
@@ -412,6 +413,7 @@ const etFormatter = new Intl.DateTimeFormat('en-US', {
 })
 
 const ReportCard = memo(function ReportCard({ report, chartData: initialChartData, focusedCardId, colIndex, onOpen, onDelete, onFocus }: ReportCardProps) {
+  const router = useRouter()
   const d = report.data || {}
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('1D')
   const [periodCache, setPeriodCache] = useState<
@@ -478,9 +480,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
         transformOrigin: colIndex === 0 ? 'left center' : colIndex === 3 ? 'right center' : 'center center',
       }}
       onClick={() => {
-        if (focusedCardId === report.id) {
-          onOpen(report)
-        }
+        router.push(`/reports/${report.ticker}`)
       }}
       onTouchStart={() => {
         onFocus(focusedCardId === report.id ? null : report.id)
@@ -903,6 +903,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
 )
 
 export default function Home() {
+  const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -1207,63 +1208,10 @@ export default function Home() {
   const generateReport = async (tickerOverride?: string) => {
     const resolvedTicker = (tickerOverride || searchTicker).trim().toUpperCase()
     if (!resolvedTicker) return
-    setGenerating(true)
-    setError('')
-    setShowReport(false)
+    setShowGenerateModal(false)
+    setSearchTicker('')
     setTickerSuggestions([])
-
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker: resolvedTicker }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Failed to generate report')
-      }
-
-      const { data, ai } = await res.json()
-      const ticker = resolvedTicker
-
-      // Delete any existing reports for this ticker globally
-      await supabase.from('reports').delete().eq('ticker', ticker)
-
-      const { data: inserted, error: insertError } = await supabase
-        .from('reports')
-        .insert({
-          ticker,
-          data,
-          ai,
-          created_by: session!.user.id,
-          created_by_email: session!.user.email || null,
-        })
-        .select()
-        .single()
-
-      if (insertError) console.error('Save error:', insertError)
-
-      const report: SavedReport = inserted || {
-        id: crypto.randomUUID(),
-        ticker,
-        data,
-        ai,
-        created_by: session!.user.id,
-        created_by_email: session!.user.email || null,
-        created_at: new Date().toISOString(),
-      }
-
-      setCurrentReport(report)
-      setShowReport(true)
-      setShowGenerateModal(false)
-      setSearchTicker('')
-      loadReports()
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate report')
-    } finally {
-      setGenerating(false)
-    }
+    router.push(`/reports/${resolvedTicker}`)
   }
 
   // ── Loading ──

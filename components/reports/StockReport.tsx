@@ -181,7 +181,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#e8ecf1', fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{
         padding: '28px 20px 24px',
-        background: 'linear-gradient(180deg, rgba(24,48,120,0.18) 0%, transparent 100%)',
+        background: 'transparent',
         borderBottom: '1px solid rgba(255,255,255,0.07)',
       }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>

@@ -15,7 +15,7 @@ export interface StockReport {
   convictionScore: number // 0-100, AI-generated
 
   overview: {
-    keyMetrics: { label: string; value: string; subtitle?: string; color?: string }[]
+    keyMetrics: { label: string; value: string; subtitle?: string; color?: string; yoyChange?: string }[]
     businessSummary: string
     whatHasGoneWrong: string | null
     segmentBreakdown: { name: string; percentage: number }[]

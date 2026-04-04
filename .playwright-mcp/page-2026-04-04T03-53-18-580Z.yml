@@ -1,0 +1,9 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - button "← BACK" [ref=e5] [cursor=pointer]
+    - generic [ref=e7]:
+      - generic [ref=e8]: ">INITIALIZING SANCTUM AI ENGINE..."
+      - generic [ref=e9]: ">FETCHING INSTITUTIONAL DATA FOR AAPL..."
+      - generic [ref=e10]: ">RUNNING VALUATION MODELS..."
+      - generic [ref=e11]: ">GENERATING SYNDICATE REPORT..."
+  - alert [ref=e13]

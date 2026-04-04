@@ -67,6 +67,7 @@ export interface StockReport {
   currentPrice: string
   priceVsATH: string
   marketCap: string
+  website: string
   verdict: 'BUY' | 'SELL' | 'HOLD' | 'AVOID'
   verdictSubtitle: string
   badges: string[]
@@ -171,7 +172,7 @@ All components use existing design tokens only.
 
 ## Page Header (in StockReport.tsx, always visible above tabs)
 
-- **Ticker logo box**: 2-3 letter ticker initials in a small rounded box, styled like dashboard cards (`#0f0f0f` bg, `#1a1a1a` border, JetBrains Mono bold)
+- **Company logo**: Attempts to fetch from Clearbit (`logo.clearbit.com/{domain}`) using `report.website`. Extracts domain from URL, renders in a small rounded box (white bg, 54x54, rounded 15px). On image load error or missing website, falls back to 2-3 letter ticker initials in a styled box (`#0f0f0f` bg, `#1a1a1a` border, JetBrains Mono bold). Same pattern as existing `CompanyLogo` in `ReportView.tsx`.
 - **Company name + exchange**: e.g. "UnitedHealth Group · NYSE" (Instrument Serif for name, DM Sans muted for exchange)
 - **Current price**: Large monospace (JetBrains Mono 36px bold) + price vs ATH in muted text (e.g. "-55% from ATH $627")
 - **Verdict badge**: Large Badge with rating-based color (BUY=green, SELL=red, HOLD=blue, AVOID=red) + one-line `verdictSubtitle` text

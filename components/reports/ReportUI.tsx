@@ -7,25 +7,42 @@ export const glassCard: React.CSSProperties = {
   boxShadow: '0 2px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
 }
 
-export function MetricCard({ label, value, subtitle, color }: {
-  label: string; value: string; subtitle?: string; color?: string
+export function MetricCard({ label, value, subtitle, color, yoyChange }: {
+  label: string; value: string; subtitle?: string; color?: string; yoyChange?: string
 }) {
+  const changeColor = yoyChange?.startsWith('+') ? '#4ade80'
+    : yoyChange?.startsWith('-') ? '#f87171'
+    : '#5a6475'
+
   return (
-    <div style={{ ...glassCard, padding: '18px 16px', minWidth: 0 }}>
+    <div style={{
+      ...glassCard, padding: '18px 16px', minWidth: 0,
+      height: '100%', boxSizing: 'border-box',
+      display: 'flex', flexDirection: 'column',
+    }}>
       <div style={{
         fontSize: 10, letterSpacing: 1.4, color: '#5a6475',
         textTransform: 'uppercase', fontFamily: "'DM Sans', sans-serif", marginBottom: 8,
+        minHeight: 14,
       }}>{label}</div>
       <div style={{
-        fontSize: 22, fontWeight: 700, color: color || '#e8ecf1',
-        fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.1,
-      }}>{value}</div>
+        display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+      }}>
+        <div style={{
+          fontSize: 22, fontWeight: 700, color: color || '#e8ecf1',
+          fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.1,
+        }}>{value}</div>
+        {yoyChange && (
+          <span style={{
+            fontSize: 11, fontWeight: 600, color: changeColor,
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>{yoyChange}</span>
+        )}
+      </div>
       {subtitle && (
         <div style={{
-          fontSize: 11, marginTop: 5, fontFamily: "'DM Sans', sans-serif",
-          color: subtitle.startsWith('+') ? '#4ade80'
-            : subtitle.startsWith('-') ? '#f87171'
-            : '#5a6475',
+          fontSize: 11, marginTop: 'auto', paddingTop: 8, fontFamily: "'DM Sans', sans-serif",
+          color: '#5a6475',
         }}>{subtitle}</div>
       )}
     </div>
