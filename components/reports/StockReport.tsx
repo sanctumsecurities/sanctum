@@ -129,6 +129,18 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
   return { displayText, caretMode, progress }
 }
 
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false)
+  useEffect(() => {
+    const mql = window.matchMedia(query)
+    setMatches(mql.matches)
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [query])
+  return matches
+}
+
 function ReportLoadingScreen({
   ticker,
   reportReady,
@@ -356,6 +368,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
   const [showCRT, setShowCRT] = useState(false)
   const [reportReady, setReportReady] = useState(false)
   const [showReport, setShowReport] = useState(false)
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
 
   const fetchReport = useCallback(async () => {
     setLoading(true)
@@ -478,11 +491,11 @@ export default function StockReport({ ticker }: { ticker: string }) {
         }
       `}</style>
       <div style={{
-        padding: '28px 20px 24px',
+        padding: isDesktop ? '28px 40px 24px' : '28px 20px 24px',
         background: 'transparent',
         borderBottom: '1px solid #1a1a1a',
       }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ maxWidth: isDesktop ? 1400 : 900, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
             <CompanyLogo ticker={report.ticker} website={report.website} />
             <div style={{ minWidth: 0 }}>
@@ -550,8 +563,8 @@ export default function StockReport({ ticker }: { ticker: string }) {
 
       <div style={{ borderBottom: '1px solid #1a1a1a', overflowX: 'auto' }}>
         <div style={{
-          maxWidth: 900, margin: '0 auto',
-          padding: '0 20px', display: 'flex', gap: 0,
+          maxWidth: isDesktop ? 1400 : 900, margin: '0 auto',
+          padding: isDesktop ? '0 40px' : '0 20px', display: 'flex', gap: 0,
         }}>
           {TABS.map(t => (
             <button
@@ -574,7 +587,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
       </div>
 
       <div style={{
-        maxWidth: 900, margin: '0 auto', padding: '28px 20px 72px',
+        maxWidth: isDesktop ? 1400 : 900, margin: '0 auto', padding: isDesktop ? '28px 40px 72px' : '28px 20px 72px',
         opacity: animating ? 0 : 1,
         transform: animating ? 'translateY(6px)' : 'translateY(0)',
         transition: 'opacity 0.2s ease, transform 0.2s ease',
