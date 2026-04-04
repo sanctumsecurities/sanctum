@@ -33,7 +33,22 @@ interface CacheEntry {
 
 const CACHE = new Map<string, CacheEntry>()
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-const PERIOD_DAYS: Record<string, number> = { '3m': 90, '6m': 180, '12m': 365 }
+const CACHE_MAX_SIZE = 50
+
+function evictStaleCache() {
+  if (CACHE.size <= CACHE_MAX_SIZE) return
+  const now = Date.now()
+  for (const [key, entry] of CACHE) {
+    if (now - entry.ts > CACHE_TTL * 2) CACHE.delete(key)
+  }
+  // If still over limit, drop oldest entries
+  if (CACHE.size > CACHE_MAX_SIZE) {
+    const sorted = [...CACHE.entries()].sort((a, b) => a[1].ts - b[1].ts)
+    const toRemove = sorted.slice(0, CACHE.size - CACHE_MAX_SIZE)
+    for (const [key] of toRemove) CACHE.delete(key)
+  }
+}
+const PERIOD_DAYS: Record<string, number> = { '3m': 91, '6m': 183, '12m': 366 }
 const PER_TICKER_TIMEOUT = 15_000
 
 function stddev(arr: number[]): number {
@@ -71,10 +86,16 @@ function maxDrawdownFromCloses(closes: number[]): number {
   return maxDD
 }
 
+function getPeriodStart(periodDays: number): Date {
+  const now = new Date()
+  now.setUTCHours(0, 0, 0, 0)
+  return new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
+}
+
 async function fetchTickerData(symbol: string, periodDays: number, riskFreeRate: number): Promise<MatrixStock | null> {
   try {
     const now = new Date()
-    const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
+    const periodStart = getPeriodStart(periodDays)
 
     const [chartResult, quoteResult] = await withTimeout(
       Promise.all([
@@ -100,11 +121,24 @@ async function fetchTickerData(symbol: string, periodDays: number, riskFreeRate:
       dailyReturns.push((closes[i] - closes[i - 1]) / closes[i - 1])
     }
 
-    const tradingDays = closes.length
-    const firstClose = closes[0]
+    // Use Yahoo's chartPreviousClose as reference price (the close before the period starts)
+    // This matches how Yahoo computes period % change on their site
+    const meta = (chartResult as any).meta || {}
+    const chartPrevClose: number | null = meta.chartPreviousClose ?? null
+    const referencePrice = chartPrevClose ?? closes[0]
     const lastClose = closes[closes.length - 1]
 
-    const annualizedReturn = Math.pow(lastClose / firstClose, 252 / tradingDays) - 1
+    // Simple period return (matches Yahoo's display)
+    const periodReturn = lastClose / referencePrice - 1
+
+    // Annualized return for Sharpe — use actual elapsed calendar time
+    const firstQuote = quotes.find((q: any) => q.close != null)
+    const lastQuote = [...quotes].reverse().find((q: any) => q.close != null)
+    const elapsedMs = firstQuote && lastQuote
+      ? new Date(lastQuote.date).getTime() - new Date(firstQuote.date).getTime()
+      : periodDays * 24 * 60 * 60 * 1000
+    const elapsedYears = Math.max(elapsedMs / (365.25 * 24 * 60 * 60 * 1000), 1 / 365.25)
+    const annualizedReturn = Math.pow(lastClose / referencePrice, 1 / elapsedYears) - 1
     const annualizedVol = stddev(dailyReturns) * Math.sqrt(252)
     const sharpe = annualizedVol > 0 ? (annualizedReturn - riskFreeRate) / annualizedVol : 0
 
@@ -125,7 +159,7 @@ async function fetchTickerData(symbol: string, periodDays: number, riskFreeRate:
     return {
       symbol: symbol.toUpperCase(),
       name: q.shortName || q.longName || symbol,
-      ret: annualizedReturn,
+      ret: periodReturn,
       vol: annualizedVol,
       downsideVol: downsideDeviation(dailyReturns),
       maxDrawdown: maxDrawdownFromCloses(closes),
@@ -148,7 +182,7 @@ const BENCHMARKS = [
 async function fetchBenchmark(symbol: string, name: string, periodDays: number, riskFreeRate: number): Promise<MatrixBenchmark> {
   try {
     const now = new Date()
-    const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
+    const periodStart = getPeriodStart(periodDays)
 
     const chartResult = await withTimeout(
       yahooFinance.chart(symbol, {
@@ -173,15 +207,27 @@ async function fetchBenchmark(symbol: string, name: string, periodDays: number, 
       dailyReturns.push((closes[i] - closes[i - 1]) / closes[i - 1])
     }
 
-    const tradingDays = closes.length
-    const annualizedReturn = Math.pow(closes[closes.length - 1] / closes[0], 252 / tradingDays) - 1
+    const meta = (chartResult as any).meta || {}
+    const chartPrevClose: number | null = meta.chartPreviousClose ?? null
+    const referencePrice = chartPrevClose ?? closes[0]
+    const lastClose = closes[closes.length - 1]
+
+    const periodReturn = lastClose / referencePrice - 1
+
+    const firstQuote = quotes.find((q: any) => q.close != null)
+    const lastQuote = [...quotes].reverse().find((q: any) => q.close != null)
+    const elapsedMs = firstQuote && lastQuote
+      ? new Date(lastQuote.date).getTime() - new Date(firstQuote.date).getTime()
+      : periodDays * 24 * 60 * 60 * 1000
+    const elapsedYears = Math.max(elapsedMs / (365.25 * 24 * 60 * 60 * 1000), 1 / 365.25)
+    const annualizedReturn = Math.pow(lastClose / referencePrice, 1 / elapsedYears) - 1
     const annualizedVol = stddev(dailyReturns) * Math.sqrt(252)
     const sharpe = annualizedVol > 0 ? (annualizedReturn - riskFreeRate) / annualizedVol : 0
 
     return {
       symbol,
       name,
-      ret: annualizedReturn,
+      ret: periodReturn,
       vol: annualizedVol,
       downsideVol: downsideDeviation(dailyReturns),
       maxDrawdown: maxDrawdownFromCloses(closes),
@@ -215,17 +261,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(cached.data)
     }
 
-    // Start IRX concurrently — benchmarks kick off immediately after using the fallback
-    // rate (0.05); stock batches await IRX so they get the live rate.
-    const irxPromise = withTimeout(yahooFinance.quote('^IRX'), PER_TICKER_TIMEOUT).catch(() => null)
-
-    // Benchmarks start in parallel with IRX (they use fallback 0.05 if IRX hasn't resolved)
-    const benchmarkPromises = BENCHMARKS.map(b => fetchBenchmark(b.symbol, b.name, periodDays, 0.05))
-
-    // Await IRX before stock batches so they get the live risk-free rate
+    // Fetch live risk-free rate first so all Sharpe ratios are consistent
     let riskFreeRate = 0.05
     try {
-      const irx = await irxPromise
+      const irx = await withTimeout(yahooFinance.quote('^IRX'), PER_TICKER_TIMEOUT).catch(() => null)
       const irxPrice = (irx as any)?.regularMarketPrice
       if (typeof irxPrice === 'number' && irxPrice > 0) {
         riskFreeRate = irxPrice / 100
@@ -233,6 +272,9 @@ export async function GET(req: NextRequest) {
     } catch {
       // fall back to 0.05
     }
+
+    // Start benchmarks and first stock batch concurrently
+    const benchmarkPromises = BENCHMARKS.map(b => fetchBenchmark(b.symbol, b.name, periodDays, riskFreeRate))
     const stocks: (MatrixStock | null)[] = []
     for (let i = 0; i < tickers.length; i += 5) {
       const batch = tickers.slice(i, i + 5)
@@ -244,6 +286,7 @@ export async function GET(req: NextRequest) {
     const validStocks = stocks.filter((s): s is MatrixStock => s !== null)
 
     const result = { stocks: validStocks, benchmarks, riskFreeRate, period }
+    evictStaleCache()
     CACHE.set(cacheKey, { data: result, ts: Date.now() })
 
     return NextResponse.json(result)

@@ -327,6 +327,20 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
   const [showCML, setShowCML] = useState(false)
   const [showCalmar, setShowCalmar] = useState(false)
   const [hoveredCML, setHoveredCML] = useState(false)
+  const [showOverflowPills, setShowOverflowPills] = useState(false)
+  const overflowRef = useRef<HTMLDivElement>(null)
+
+  // Close overflow dropdown on outside click
+  useEffect(() => {
+    if (!showOverflowPills) return
+    const handler = (e: MouseEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setShowOverflowPills(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showOverflowPills])
 
   // Responsive sizing — fill remaining viewport
   // Re-run when data loads so containerRef is available
@@ -471,7 +485,9 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
       if (s.sharpe > tangencyStock.sharpe) tangencyStock = s
     }
 
-    const rf = data.riskFreeRate
+    // Convert annualized risk-free rate to period-equivalent simple return
+    const periodMonths = data.period === '3m' ? 3 : data.period === '6m' ? 6 : 12
+    const rf = Math.pow(1 + data.riskFreeRate, periodMonths / 12) - 1
     const tVol = getVol(tangencyStock)
     const tRet = tangencyStock.ret
 
@@ -497,6 +513,26 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
   const activeSymbol = pinnedSymbol ?? hoveredSymbol
 
   // ── Render ──
+
+  const btnStyle = (isActive: boolean, extra?: React.CSSProperties): React.CSSProperties => ({
+    background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+    border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+    borderRadius: 4,
+    padding: '4px 10px',
+    fontSize: 11,
+    fontFamily: "'JetBrains Mono', monospace",
+    letterSpacing: '0.08em',
+    color: isActive ? '#fff' : '#555',
+    cursor: 'pointer',
+    textTransform: 'uppercase' as const,
+    transition: 'all 0.2s ease',
+    ...extra,
+  })
+
+  const btnHover = (isActive: boolean) => ({
+    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => { if (!isActive) e.currentTarget.style.color = '#aaa' },
+    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => { if (!isActive) e.currentTarget.style.color = '#555' },
+  })
 
   const sourceButtons: { label: DataSource; flex: number }[] = [
     { label: 'Reports', flex: 0.9 },
@@ -528,22 +564,8 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               <button
                 key={label}
                 onClick={() => { setSource(label); setPinnedSymbol(null); onSelectStock?.(null) }}
-                style={{
-                  flex,
-                  background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-                  borderRadius: 4,
-                  padding: '6px 0',
-                  fontSize: 12,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '0.08em',
-                  color: isActive ? '#fff' : '#555',
-                  cursor: 'pointer',
-                  textTransform: 'uppercase' as const,
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
-                onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+                style={btnStyle(isActive, { flex, padding: '6px 0', fontSize: 12 })}
+                {...btnHover(isActive)}
               >
                 {label}
               </button>
@@ -559,21 +581,8 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                style={{
-                  background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-                  borderRadius: 4,
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '0.08em',
-                  color: isActive ? '#fff' : '#555',
-                  cursor: 'pointer',
-                  textTransform: 'uppercase' as const,
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
-                onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+                style={btnStyle(isActive)}
+                {...btnHover(isActive)}
               >
                 {p.toUpperCase()}
               </button>
@@ -592,22 +601,8 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               <button
                 key={v}
                 onClick={() => setVolMetric(v)}
-                style={{
-                  background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-                  borderRadius: 4,
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '0.08em',
-                  color: isActive ? '#fff' : '#555',
-                  cursor: 'pointer',
-                  textTransform: 'uppercase' as const,
-                  transition: 'all 0.2s ease',
-                  whiteSpace: 'nowrap' as const,
-                }}
-                onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
-                onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+                style={btnStyle(isActive, { whiteSpace: 'nowrap' as const })}
+                {...btnHover(isActive)}
               >
                 {v === 'total' ? 'TOTAL VOL' : 'DOWNSIDE VOL'}
               </button>
@@ -624,24 +619,10 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 key={m}
                 onClick={() => {
                   setColorMode(m)
-                  setSectorFilter(null) // clear filter on mode switch
+                  setSectorFilter(null)
                 }}
-                style={{
-                  background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-                  borderRadius: 4,
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '0.08em',
-                  color: isActive ? '#fff' : '#555',
-                  cursor: 'pointer',
-                  textTransform: 'uppercase' as const,
-                  transition: 'all 0.2s ease',
-                  whiteSpace: 'nowrap' as const,
-                }}
-                onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
-                onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+                style={btnStyle(isActive, { whiteSpace: 'nowrap' as const })}
+                {...btnHover(isActive)}
               >
                 {m.toUpperCase()}
               </button>
@@ -653,44 +634,21 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
           <button
             onClick={() => setShowFrontier(v => !v)}
-            style={{
-              background: showFrontier ? 'rgba(255,255,255,0.06)' : 'transparent',
-              border: `1px solid ${showFrontier ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-              borderRadius: 4,
-              padding: '4px 10px',
-              fontSize: 11,
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: '0.08em',
-              color: showFrontier ? '#fff' : '#555',
-              cursor: 'pointer',
-              textTransform: 'uppercase' as const,
-              transition: 'all 0.2s ease',
-              whiteSpace: 'nowrap' as const,
-            }}
-            onMouseEnter={e => { if (!showFrontier) (e.currentTarget).style.color = '#aaa' }}
-            onMouseLeave={e => { if (!showFrontier) (e.currentTarget).style.color = '#555' }}
+            style={btnStyle(showFrontier, { whiteSpace: 'nowrap' as const })}
+            {...btnHover(showFrontier)}
           >
             FRONTIER
           </button>
           <button
             onClick={() => { if (!showCalmar) setShowCML(v => !v) }}
-            style={{
-              background: showCML && !showCalmar ? 'rgba(255,255,255,0.06)' : 'transparent',
-              border: `1px solid ${showCML && !showCalmar ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-              borderRadius: 4,
-              padding: '4px 10px',
-              fontSize: 11,
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: '0.08em',
+            style={btnStyle(showCML && !showCalmar, {
+              whiteSpace: 'nowrap' as const,
               color: showCalmar ? '#333' : (showCML ? '#fff' : '#555'),
               cursor: showCalmar ? 'not-allowed' : 'pointer',
-              textTransform: 'uppercase' as const,
-              transition: 'all 0.2s ease',
-              whiteSpace: 'nowrap' as const,
               opacity: showCalmar ? 0.5 : 1,
-            }}
-            onMouseEnter={e => { if (!showCML && !showCalmar) (e.currentTarget).style.color = '#aaa' }}
-            onMouseLeave={e => { if (!showCML && !showCalmar) (e.currentTarget).style.color = '#555' }}
+            })}
+            onMouseEnter={e => { if (!showCML && !showCalmar) e.currentTarget.style.color = '#aaa' }}
+            onMouseLeave={e => { if (!showCML && !showCalmar) e.currentTarget.style.color = '#555' }}
           >
             CML
           </button>
@@ -702,22 +660,8 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 return next
               })
             }}
-            style={{
-              background: showCalmar ? 'rgba(255,255,255,0.06)' : 'transparent',
-              border: `1px solid ${showCalmar ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-              borderRadius: 4,
-              padding: '4px 10px',
-              fontSize: 11,
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: '0.08em',
-              color: showCalmar ? '#fff' : '#555',
-              cursor: 'pointer',
-              textTransform: 'uppercase' as const,
-              transition: 'all 0.2s ease',
-              whiteSpace: 'nowrap' as const,
-            }}
-            onMouseEnter={e => { if (!showCalmar) (e.currentTarget).style.color = '#aaa' }}
-            onMouseLeave={e => { if (!showCalmar) (e.currentTarget).style.color = '#555' }}
+            style={btnStyle(showCalmar, { whiteSpace: 'nowrap' as const })}
+            {...btnHover(showCalmar)}
           >
             CALMAR
           </button>
@@ -732,7 +676,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               if (!customTickers.includes(sym)) onCustomTickersChange([...customTickers, sym])
             }} />
           </div>
-          {customTickers.length > 0 && customTickers.map(t => (
+          {customTickers.length > 0 && customTickers.slice(0, 9).map(t => (
             <div key={t} style={{
               display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
               background: 'rgba(255,255,255,0.04)',
@@ -754,6 +698,57 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               </button>
             </div>
           ))}
+          {customTickers.length > 9 && (
+            <div ref={overflowRef} style={{ position: 'relative', flexShrink: 0 }}>
+              <button
+                onClick={() => setShowOverflowPills(v => !v)}
+                style={btnStyle(showOverflowPills, { fontSize: 11, padding: '4px 8px' })}
+                {...btnHover(showOverflowPills)}
+              >
+                +{customTickers.length - 9}
+              </button>
+              {showOverflowPills && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: 4,
+                  background: '#0a0a10',
+                  border: '1px solid #1a1a1a',
+                  borderRadius: 6,
+                  padding: 6,
+                  zIndex: 60,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 6,
+                  maxWidth: 360,
+                }}>
+                  {customTickers.slice(9).map(t => (
+                    <div key={t} style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid #1a1a1a',
+                      borderRadius: 4, padding: '4px 10px',
+                    }}>
+                      <span style={{ fontSize: 11, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }}>{t}</span>
+                      <button
+                        onClick={() => onCustomTickersChange(customTickers.filter(x => x !== t))}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: '#444', fontSize: 14, lineHeight: 1, padding: 0,
+                          transition: 'color 0.2s ease',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#444'}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1317,12 +1312,21 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                         {(vol * 100).toFixed(1)}%
                       </span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>DOWNSIDE VOL</span>
-                      <span style={{ fontSize: 10, color: '#ccc', fontFamily: "'JetBrains Mono', monospace" }}>
-                        {(item.downsideVol * 100).toFixed(1)}%
-                      </span>
-                    </div>
+                    {volMetric === 'downside' ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>TOTAL VOL</span>
+                        <span style={{ fontSize: 10, color: '#ccc', fontFamily: "'JetBrains Mono', monospace" }}>
+                          {(item.vol * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>DOWNSIDE VOL</span>
+                        <span style={{ fontSize: 10, color: '#ccc', fontFamily: "'JetBrains Mono', monospace" }}>
+                          {(item.downsideVol * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>MAX DD</span>
                       <span style={{ fontSize: 10, color: '#ef4444', fontFamily: "'JetBrains Mono', monospace" }}>
