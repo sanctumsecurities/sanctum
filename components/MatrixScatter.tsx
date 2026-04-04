@@ -876,6 +876,63 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                 RETURN
               </text>
 
+              {/* Trajectory arrows — behind dots */}
+              {showTrails && data.stocks.map(s => {
+                const prevVolVal = volMetric === 'downside' ? s.prevDownsideVol : s.prevVol
+                if (s.prevRet == null || prevVolVal == null) return null
+
+                const fromX = toX(prevVolVal)
+                const fromY = toY(s.prevRet)
+                const curX = toX(getVol(s))
+                const curY = toY(s.ret)
+
+                // Skip if arrow is too short (<2px)
+                const dx = curX - fromX
+                const dy = curY - fromY
+                const dist = Math.sqrt(dx * dx + dy * dy)
+                if (dist < 2) return null
+
+                const color = getStockColor(s)
+                const isHovered = activeSymbol === s.symbol
+                const isOtherHovered = activeSymbol != null && activeSymbol !== s.symbol && !activeSymbol.startsWith('BENCH_')
+
+                // Filtering
+                const isFiltered = colorMode === 'sector' && sectorFilter
+                  ? s.sector !== sectorFilter
+                  : false
+                if (isFiltered) return null
+
+                const lineOpacity = isHovered ? 0.6 : isOtherHovered ? 0.08 : 0.25
+                const headOpacity = isHovered ? 0.8 : isOtherHovered ? 0.12 : 0.4
+                const ghostOpacity = isHovered ? 0.5 : isOtherHovered ? 0.06 : 0.2
+
+                return (
+                  <g key={`trail-${s.symbol}`} style={{ pointerEvents: 'none' }}>
+                    {/* Arrow line */}
+                    <line
+                      x1={fromX} y1={fromY} x2={curX} y2={curY}
+                      stroke={color} strokeWidth={1.5}
+                      opacity={lineOpacity}
+                      style={{ transition: 'opacity 0.2s ease' }}
+                    />
+                    {/* Arrowhead */}
+                    <polygon
+                      points={getArrowheadPoints(fromX, fromY, curX, curY, 6)}
+                      fill={color}
+                      opacity={headOpacity}
+                      style={{ transition: 'opacity 0.2s ease' }}
+                    />
+                    {/* Ghost dot at previous position */}
+                    <circle
+                      cx={fromX} cy={fromY} r={3}
+                      fill="none" stroke={color} strokeWidth={1}
+                      opacity={ghostOpacity}
+                      style={{ transition: 'opacity 0.2s ease' }}
+                    />
+                  </g>
+                )
+              })}
+
               {/* Stock dots — shapes layer */}
               {data.stocks.map((s, i) => {
                 const sVol = getVol(s)
