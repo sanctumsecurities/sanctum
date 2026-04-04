@@ -14,6 +14,9 @@ interface MatrixStock {
   sharpe: number
   price: number
   sector: string
+  prevRet: number | null
+  prevVol: number | null
+  prevDownsideVol: number | null
 }
 
 interface MatrixBenchmark {
@@ -34,6 +37,7 @@ interface CacheEntry {
 const CACHE = new Map<string, CacheEntry>()
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 const PERIOD_DAYS: Record<string, number> = { '3m': 90, '6m': 180, '12m': 365 }
+const TRAJECTORY_OFFSET: Record<string, number> = { '12m': 63, '6m': 42 }
 const PER_TICKER_TIMEOUT = 15_000
 
 function stddev(arr: number[]): number {
@@ -121,6 +125,27 @@ async function fetchTickerData(symbol: string, periodDays: number, riskFreeRate:
       // sector stays 'Other'
     }
 
+    // Trajectory: compute where this stock would have plotted ~3m ago (12m period) or ~2m ago (6m period)
+    const periodKey = periodDays === 365 ? '12m' : periodDays === 180 ? '6m' : '3m'
+    const trajOffset = TRAJECTORY_OFFSET[periodKey]
+    let prevRet: number | null = null
+    let prevVol: number | null = null
+    let prevDownsideVol: number | null = null
+
+    if (trajOffset && closes.length >= trajOffset + 20) {
+      const prevCloses = closes.slice(0, closes.length - trajOffset)
+      const prevDailyReturns: number[] = []
+      for (let i = 1; i < prevCloses.length; i++) {
+        prevDailyReturns.push((prevCloses[i] - prevCloses[i - 1]) / prevCloses[i - 1])
+      }
+      const prevTradingDays = prevCloses.length
+      const prevFirst = prevCloses[0]
+      const prevLast = prevCloses[prevCloses.length - 1]
+      prevRet = Math.pow(prevLast / prevFirst, 252 / prevTradingDays) - 1
+      prevVol = stddev(prevDailyReturns) * Math.sqrt(252)
+      prevDownsideVol = downsideDeviation(prevDailyReturns)
+    }
+
     const q = quoteResult as any
     return {
       symbol: symbol.toUpperCase(),
@@ -133,6 +158,9 @@ async function fetchTickerData(symbol: string, periodDays: number, riskFreeRate:
       sharpe,
       price: q.regularMarketPrice || lastClose,
       sector,
+      prevRet,
+      prevVol,
+      prevDownsideVol,
     }
   } catch (err) {
     console.error(`[matrix] ${symbol} failed:`, err instanceof Error ? err.message : err)
