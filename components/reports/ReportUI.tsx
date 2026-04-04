@@ -1,18 +1,22 @@
 import type { TooltipProps } from 'recharts'
 
 export const glassCard: React.CSSProperties = {
-  background: 'linear-gradient(160deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.025) 100%)',
-  borderRadius: 18,
-  border: '1px solid rgba(255,255,255,0.10)',
-  boxShadow: '0 2px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
+  background: '#0d0d0d',
+  borderRadius: 8,
+  border: '1px solid #1a1a1a',
+  boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
 }
 
-export function MetricCard({ label, value, subtitle, color, yoyChange }: {
+export function MetricCard({ label, value, subtitle, yoyChange }: {
   label: string; value: string; subtitle?: string; color?: string; yoyChange?: string
 }) {
   const changeColor = yoyChange?.startsWith('+') ? '#4ade80'
     : yoyChange?.startsWith('-') ? '#f87171'
     : '#5a6475'
+
+  const valueColor = value.startsWith('+') ? '#4ade80'
+    : value.startsWith('-') ? '#f87171'
+    : '#e8ecf1'
 
   return (
     <div style={{
@@ -22,14 +26,14 @@ export function MetricCard({ label, value, subtitle, color, yoyChange }: {
     }}>
       <div style={{
         fontSize: 10, letterSpacing: 1.4, color: '#5a6475',
-        textTransform: 'uppercase', fontFamily: "'DM Sans', sans-serif", marginBottom: 8,
+        textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8,
         minHeight: 14,
       }}>{label}</div>
       <div style={{
         display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
       }}>
         <div style={{
-          fontSize: 22, fontWeight: 700, color: color || '#e8ecf1',
+          fontSize: 22, fontWeight: 700, color: valueColor,
           fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.1,
         }}>{value}</div>
         {yoyChange && (
@@ -41,7 +45,7 @@ export function MetricCard({ label, value, subtitle, color, yoyChange }: {
       </div>
       {subtitle && (
         <div style={{
-          fontSize: 11, marginTop: 'auto', paddingTop: 8, fontFamily: "'DM Sans', sans-serif",
+          fontSize: 11, marginTop: 'auto', paddingTop: 8, fontFamily: "'JetBrains Mono', monospace",
           color: '#5a6475',
         }}>{subtitle}</div>
       )}
@@ -61,10 +65,10 @@ export function Badge({ text, variant = 'gray' }: { text: string; variant?: 'gre
   const c = badgeColors[variant] || badgeColors.gray
   return (
     <span style={{
-      display: 'inline-block', padding: '3px 10px', borderRadius: 9999,
+      display: 'inline-block', padding: '3px 10px', borderRadius: 4,
       fontSize: 10, fontWeight: 600,
       background: c.bg, color: c.color, border: `1px solid ${c.border}`,
-      fontFamily: "'DM Sans', sans-serif", letterSpacing: 0.5,
+      fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5,
       whiteSpace: 'nowrap',
     }}>{text}</span>
   )
@@ -73,10 +77,11 @@ export function Badge({ text, variant = 'gray' }: { text: string; variant?: 'gre
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h2 style={{
-      fontSize: 17, fontWeight: 700, color: '#e8ecf1',
-      fontFamily: "'Instrument Serif', serif",
+      fontSize: 13, fontWeight: 700, color: '#e8ecf1',
+      fontFamily: "'JetBrains Mono', monospace",
+      letterSpacing: '0.05em', textTransform: 'uppercase',
       marginBottom: 14, paddingBottom: 10,
-      borderBottom: '1px solid rgba(255,255,255,0.07)',
+      borderBottom: '1px solid #1a1a1a',
       marginTop: 0,
     }}>{children}</h2>
   )
@@ -98,7 +103,7 @@ export function DataTable({ headers, rows, numericCols, boldLastRow }: {
     <div style={{ overflowX: 'auto' }}>
       <table style={{
         width: '100%', borderCollapse: 'collapse',
-        fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+        fontSize: 12, fontFamily: "'JetBrains Mono', monospace",
       }}>
         <thead>
           <tr>
@@ -108,8 +113,8 @@ export function DataTable({ headers, rows, numericCols, boldLastRow }: {
                 textAlign: isNumeric(i) ? 'right' : 'left',
                 color: '#5a6475', fontSize: 10, fontWeight: 600,
                 letterSpacing: 1, textTransform: 'uppercase',
-                borderBottom: '1px solid rgba(255,255,255,0.07)',
-                fontFamily: "'DM Sans', sans-serif",
+                borderBottom: '1px solid #1a1a1a',
+                fontFamily: "'JetBrains Mono', monospace",
                 whiteSpace: 'nowrap',
               }}>{h}</th>
             ))}
@@ -120,16 +125,16 @@ export function DataTable({ headers, rows, numericCols, boldLastRow }: {
             const isLast = boldLastRow && ri === rows.length - 1
             return (
               <tr key={ri} style={{
-                background: ri % 2 === 1 ? 'rgba(255,255,255,0.03)' : 'transparent',
+                background: ri % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent',
               }}>
                 {row.map((cell, ci) => (
                   <td key={ci} style={{
                     padding: '10px 12px',
                     textAlign: isNumeric(ci) ? 'right' : 'left',
-                    fontFamily: isNumeric(ci) ? "'JetBrains Mono', monospace" : "'DM Sans', sans-serif",
+                    fontFamily: "'JetBrains Mono', monospace",
                     color: isNegative(cell) ? '#f87171' : '#e8ecf1',
                     fontWeight: isLast ? 700 : 400,
-                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    borderBottom: '1px solid #111',
                     whiteSpace: 'nowrap',
                   }}>{cell}</td>
                 ))}
@@ -163,10 +168,8 @@ export function CTooltip({ active, payload, label }: TooltipProps<number, string
 export function RangeBar({ low, mean, high, current, label, count }: {
   low: number; mean: number; high: number; current: number; label?: string; count?: number
 }) {
-  const min = Math.min(low, current) * 0.95
-  const max = Math.max(high, current) * 1.05
-  const range = max - min
-  const pct = (v: number) => ((v - min) / range) * 100
+  const range = high - low
+  const pct = (v: number) => range > 0 ? Math.min(100, Math.max(0, ((v - low) / range) * 100)) : 50
 
   return (
     <div style={{ padding: '12px 0' }}>
@@ -175,9 +178,9 @@ export function RangeBar({ low, mean, high, current, label, count }: {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
         }}>
           <span style={{
-            fontSize: 12, fontWeight: 700, color: '#e8ecf1',
-            fontFamily: "'DM Sans', sans-serif", textTransform: 'uppercase',
-            letterSpacing: 0.5,
+            fontSize: 10, fontWeight: 600, color: '#5a6475',
+            fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase',
+            letterSpacing: 1,
           }}>{label}</span>
           {count != null && (
             <span style={{
@@ -188,36 +191,40 @@ export function RangeBar({ low, mean, high, current, label, count }: {
         </div>
       )}
       <div style={{
-        position: 'relative', height: 8, borderRadius: 4,
+        position: 'relative', height: 6, borderRadius: 2,
         background: 'rgba(255,255,255,0.06)',
       }}>
+        {/* Gradient fill spanning full track (low → high) */}
         <div style={{
-          position: 'absolute', top: 0, bottom: 0, borderRadius: 4,
-          left: `${pct(low)}%`, width: `${pct(high) - pct(low)}%`,
-          background: 'linear-gradient(90deg, rgba(248,113,113,0.3), rgba(96,165,250,0.3), rgba(74,222,128,0.3))',
+          position: 'absolute', inset: 0, borderRadius: 2,
+          background: 'linear-gradient(90deg, rgba(248,113,113,0.4), rgba(96,165,250,0.3), rgba(74,222,128,0.4))',
         }} />
+        {/* Mean marker */}
         <div style={{
-          position: 'absolute', top: -4, width: 2, height: 16, borderRadius: 1,
+          position: 'absolute', top: -3, width: 2, height: 12, borderRadius: 1,
           left: `${pct(mean)}%`, background: '#60a5fa',
+          transform: 'translateX(-50%)',
         }} />
+        {/* Current price marker */}
         <div style={{
-          position: 'absolute', top: -6, width: 3, height: 20, borderRadius: 1.5,
-          left: `${pct(current)}%`, background: '#e8ecf1',
+          position: 'absolute', top: -5, width: 3, height: 16, borderRadius: 1,
+          left: `${pct(current)}%`, background: '#ffffff',
+          transform: 'translateX(-50%)',
         }} />
       </div>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', marginTop: 8,
-        fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
-      }}>
-        <span style={{ color: '#f87171' }}>${low.toFixed(0)}</span>
-        <span style={{ color: '#60a5fa' }}>Mean ${mean.toFixed(0)}</span>
-        <span style={{ color: '#4ade80' }}>${high.toFixed(0)}</span>
+      <div style={{ position: 'relative', height: 20, marginTop: 8, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
+        <span style={{ position: 'absolute', left: 0, color: '#f87171' }}>${low.toFixed(0)}</span>
+        <span style={{
+          position: 'absolute', left: `${pct(mean)}%`, transform: 'translateX(-50%)',
+          color: '#60a5fa', whiteSpace: 'nowrap',
+        }}>Mean ${mean.toFixed(0)}</span>
+        <span style={{ position: 'absolute', right: 0, color: '#4ade80' }}>${high.toFixed(0)}</span>
       </div>
-      <div style={{
-        textAlign: 'center', marginTop: 4,
-        fontSize: 10, color: '#5a6475', fontFamily: "'DM Sans', sans-serif",
-      }}>
-        Current: <span style={{ color: '#e8ecf1', fontFamily: "'JetBrains Mono', monospace" }}>${current.toFixed(0)}</span>
+      <div style={{ position: 'relative', height: 18, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>
+        <span style={{
+          position: 'absolute', left: `${pct(current)}%`, transform: 'translateX(-50%)',
+          whiteSpace: 'nowrap', color: '#5a6475',
+        }}>now <span style={{ color: '#e8ecf1' }}>${current.toFixed(0)}</span></span>
       </div>
     </div>
   )

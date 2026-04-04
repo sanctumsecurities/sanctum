@@ -26,21 +26,24 @@ const LOADING_LINES = [
 ]
 
 function CompanyLogo({ ticker, website }: { ticker: string; website?: string }) {
-  const [imgError, setImgError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const domain = website ? website.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : null
-  const logoUrl = domain ? `https://logo.clearbit.com/${domain}` : null
+  const clearbitUrl = domain ? `https://logo.clearbit.com/${domain}` : null
+  const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null
 
-  if (logoUrl && !imgError) {
+  const logoUrl = attempt === 0 ? clearbitUrl : attempt === 1 ? faviconUrl : null
+
+  if (logoUrl) {
     return (
       <div style={{
-        width: 54, height: 54, borderRadius: 15, overflow: 'hidden',
+        width: 54, height: 54, borderRadius: 10, overflow: 'hidden',
         background: '#ffffff', flexShrink: 0,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
       }}>
         <Image
           src={logoUrl} alt={ticker} width={54} height={54}
           style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }}
-          onError={() => setImgError(true)}
+          onError={() => setAttempt(a => a + 1)}
           unoptimized
         />
       </div>
@@ -49,10 +52,10 @@ function CompanyLogo({ ticker, website }: { ticker: string; website?: string }) 
 
   return (
     <div style={{
-      width: 54, height: 54, borderRadius: 15, flexShrink: 0,
+      width: 54, height: 54, borderRadius: 10, flexShrink: 0,
       background: '#0f0f0f', border: '1px solid #1a1a1a',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 16, fontWeight: 700, color: '#e8ecf1',
+      fontSize: 14, fontWeight: 700, color: '#e8ecf1',
       fontFamily: "'JetBrains Mono', monospace",
       letterSpacing: '0.05em',
     }}>
@@ -211,23 +214,32 @@ export default function StockReport({ ticker }: { ticker: string }) {
   if (!report) return null
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#e8ecf1', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#e8ecf1', fontFamily: "'JetBrains Mono', monospace" }}>
       <div style={{
         padding: '28px 20px 24px',
         background: 'transparent',
-        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        borderBottom: '1px solid #1a1a1a',
       }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
             <CompanyLogo ticker={report.ticker} website={report.website} />
             <div style={{ minWidth: 0 }}>
               <div style={{
-                fontSize: 20, fontWeight: 700, color: '#ffffff',
-                fontFamily: "'Instrument Serif', serif", lineHeight: 1.2,
+                fontSize: 18, fontWeight: 600, color: '#ffffff',
+                fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.2,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{report.companyName}</div>
-              <div style={{ fontSize: 11, color: '#5a6475', marginTop: 3, letterSpacing: 0.3 }}>
-                {report.exchange} &middot; {report.ticker}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginTop: 9, flexWrap: 'wrap',
+              }}>
+                <span style={{
+                  fontSize: 11, color: '#5a6475', letterSpacing: 0.5,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}>
+                  {report.exchange} &middot; {report.ticker}
+                </span>
+                <span style={{ color: '#5a6475', fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>&middot;</span>
+                <Badge text={report.verdict} variant={verdictBadgeColor[report.verdict] || 'blue'} />
               </div>
             </div>
           </div>
@@ -237,25 +249,36 @@ export default function StockReport({ ticker }: { ticker: string }) {
               fontSize: 36, fontWeight: 700,
               fontFamily: "'JetBrains Mono', monospace", color: '#ffffff', lineHeight: 1,
             }}>{report.currentPrice}</span>
-            {report.priceVsATH && (
-              <span style={{
-                fontSize: 13, color: '#5a6475', paddingBottom: 4,
-                fontFamily: "'JetBrains Mono', monospace",
-              }}>{report.priceVsATH}</span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-            <Badge text={report.verdict} variant={verdictBadgeColor[report.verdict] || 'blue'} />
-            <span style={{
-              fontSize: 13, color: '#b8c4d4',
-              fontFamily: "'DM Sans', sans-serif",
-            }}>{report.verdictSubtitle}</span>
+            {report.priceVsATH && (() => {
+              const s = report.priceVsATH
+              const dollarIdx = s.lastIndexOf('$')
+              const isNeg = s.startsWith('-')
+              const isPos = s.startsWith('+') || (!isNeg && parseFloat(s) > 0)
+              const athColor = isNeg ? '#f87171' : isPos ? '#4ade80' : '#5a6475'
+              if (dollarIdx > 0) {
+                const labelPart = s.slice(0, dollarIdx).trim()
+                const pricePart = s.slice(dollarIdx)
+                return (
+                  <span style={{ fontSize: 13, paddingBottom: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span style={{ color: athColor }}>{labelPart} </span>
+                    <span style={{ color: '#5a6475' }}>{pricePart}</span>
+                  </span>
+                )
+              }
+              return (
+                <span style={{ fontSize: 13, color: athColor, paddingBottom: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+                  {s}
+                </span>
+              )
+            })()}
           </div>
 
           {report.badges?.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {report.badges.map((b, i) => (
+              {report.badges
+                .filter(b => !b.toLowerCase().includes('52wk') && !b.toLowerCase().includes('52-week') && !b.toLowerCase().includes('52 week'))
+                .slice(0, 6)
+                .map((b, i) => (
                 <Badge key={i} text={b} variant="gray" />
               ))}
             </div>
@@ -263,30 +286,25 @@ export default function StockReport({ ticker }: { ticker: string }) {
         </div>
       </div>
 
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', overflowX: 'auto' }}>
+      <div style={{ borderBottom: '1px solid #1a1a1a', overflowX: 'auto' }}>
         <div style={{
           maxWidth: 900, margin: '0 auto',
-          padding: '10px 20px', display: 'flex', gap: 6,
+          padding: '0 20px', display: 'flex', gap: 0,
         }}>
           {TABS.map(t => (
             <button
               key={t}
               onClick={() => switchTab(t)}
               style={{
-                padding: '8px 18px', borderRadius: 9999, fontSize: 13,
-                fontWeight: activeTab === t ? 600 : 400,
-                color: activeTab === t ? '#ffffff' : 'rgba(255,255,255,0.35)',
-                background: activeTab === t
-                  ? 'linear-gradient(135deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.07) 100%)'
-                  : 'transparent',
-                border: activeTab === t
-                  ? '1px solid rgba(255,255,255,0.13)'
-                  : '1px solid transparent',
-                boxShadow: activeTab === t
-                  ? 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.3)'
-                  : 'none',
-                cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.2s ease',
+                padding: '14px 18px', borderRadius: 0, fontSize: 11,
+                fontWeight: 600,
+                color: activeTab === t ? '#ffffff' : '#5a6475',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === t ? '2px solid #ffffff' : '2px solid transparent',
+                cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+                whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s ease',
+                letterSpacing: '0.08em', textTransform: 'uppercase',
               }}
             >{t}</button>
           ))}
@@ -299,7 +317,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
         transform: animating ? 'translateY(6px)' : 'translateY(0)',
         transition: 'opacity 0.2s ease, transform 0.2s ease',
       }}>
-        {activeTab === 'Overview' && <OverviewTab overview={report.overview} />}
+        {activeTab === 'Overview' && <OverviewTab overview={report.overview} currentPrice={report.currentPrice} />}
         {activeTab === 'Financials' && <FinancialsTab financials={report.financials} />}
         {activeTab === 'Valuation' && <ValuationTab valuation={report.valuation} />}
         {activeTab === 'Catalysts' && <CatalystsTab catalysts={report.catalysts} />}

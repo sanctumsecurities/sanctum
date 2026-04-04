@@ -612,7 +612,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           return [
             { label: 'MKT CAP', value: d.marketCap || find('market cap') },
             { label: 'FWD P/E', value: find('p/e') },
-            { label: 'ADJ EPS', value: find('eps') },
+            { label: 'BETA', value: find('beta') },
             { label: 'DIV YIELD', value: find('dividend') },
           ]
         })() : [

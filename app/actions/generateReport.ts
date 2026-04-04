@@ -237,6 +237,9 @@ async function fetchYahooData(ticker: string) {
     const currentPE = safeNum(summary.trailingPE) || safeNum(keyStats.trailingPE)
     const forwardPE = safeNum(summary.forwardPE) || safeNum(keyStats.forwardPE)
 
+    // ── Beta ──
+    const beta = safeNum(summary.beta) || safeNum(keyStats.beta)
+
     // ── Live price data for header overrides ──
     const livePrice = safeNum(price.regularMarketPrice)
     const prevClose = safeNum(price.regularMarketPreviousClose)
@@ -295,6 +298,7 @@ async function fetchYahooData(ticker: string) {
       insiderTimeline,
       currentPE,
       forwardPE,
+      beta,
     }
   } catch (err) {
     console.error('fetchYahooData failed:', err)
@@ -317,6 +321,7 @@ REAL MARKET DATA — TODAY'S DATE IS 2026-04-03. USE THESE EXACT NUMBERS:
 - *** CURRENT STOCK PRICE: $${yahoo.livePrice.toFixed(2)} *** (use this as currentPrice)
 - Market Cap: ${yahoo.marketCap} (use this as marketCap)
 - Price vs 52-Week High: ${yahoo.priceVsATH}
+- Beta: ${yahoo.beta.toFixed(2)}
 - EPS (Trailing): $${yahoo.epsTrailing.toFixed(2)}
 - Latest Annual Revenue: $${yahoo.latestRevenue.toFixed(1)}B
 - Analyst Targets: Low $${yahoo.analystTargetRange.low.toFixed(2)}, Mean $${yahoo.analystTargetRange.mean.toFixed(2)}, High $${yahoo.analystTargetRange.high.toFixed(2)} (${yahoo.analystTargetRange.numberOfAnalysts} analysts)
@@ -324,7 +329,7 @@ REAL MARKET DATA — TODAY'S DATE IS 2026-04-03. USE THESE EXACT NUMBERS:
 - Recommendation: ${yahoo.analystConsensus.recommendation}
 - Institutional Ownership: ${yahoo.institutionalOwnership}
 - Trailing P/E: ${yahoo.currentPE.toFixed(1)}, Forward P/E: ${yahoo.forwardPE.toFixed(1)}
-- Has Dividend: ${yahoo.dividendData ? 'Yes' : 'No'}
+- Dividend Yield: ${yahoo.dividendData ? yahoo.dividendData.currentYield : '0%'}
 - Revenue vs COGS (annual): ${JSON.stringify(yahoo.revenueVsCogs.map((r: any) => ({ year: r.year, revenue: r.revenue + 'B', cogs: r.cogs + 'B', grossProfit: r.grossProfit + 'B' })))}
 - Margin Trends: ${JSON.stringify(yahoo.marginTrends.map((m: any) => ({ year: m.year, gross: m.gross.toFixed(1) + '%', operating: m.operating.toFixed(1) + '%', net: m.net.toFixed(1) + '%' })))}
 - Revenue CAGR: 5yr ${yahoo.revenueCagr.fiveYear || 'N/A'}
@@ -362,7 +367,7 @@ Schema:
     "keyMetrics": [
       { "label": "string", "value": "string", "subtitle": "string or omit", "color": "string hex or omit", "yoyChange": "string like '+12.3%' or '-5.1%' — year-over-year change, omit if not applicable" }
     ],
-    "businessSummary": "string — 3 paragraphs separated by \\n\\n",
+    "businessSummary": "string — maximum 2 paragraphs separated by \\n\\n, be concise",
     "whatHasGoneWrong": "string or null — if company is under stress, explain what went wrong",
     "segmentBreakdown": [{ "name": "string", "percentage": number }],
     "moatScores": [{ "metric": "string", "score": number 0-100 }],
@@ -437,7 +442,7 @@ Schema:
 }
 
 Requirements:
-- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Adj EPS, Forward P/E, Op Cash Flow, Dividend/Yield (or Institutional Ownership if no dividend). Each must include yoyChange (e.g. "+12.3%", "-5.1%") showing the year-over-year change where applicable. For CAGR metrics, use the CAGR itself as yoyChange. For ratios like P/E, show the change vs prior year.
+- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Beta, Forward P/E, Op Cash Flow, Dividend Yield (show "N/A" if no dividend — do NOT substitute Institutional Ownership here). Each must include yoyChange (e.g. "+12.3%", "-5.1%") showing the year-over-year change where applicable. For CAGR metrics, use the CAGR itself as yoyChange. For ratios like P/E, show the change vs prior year. For Beta use the provided real value — no yoyChange needed.
 - overview.moatScores: exactly 6 items scoring competitive advantages on 0-100 scale
 - overview.sectorMoatScores: exactly 6 items matching the same metrics as moatScores, representing sector median scores
 - overview.segmentBreakdown: 3-8 revenue segments that sum close to 100
@@ -466,7 +471,19 @@ Requirements:
       if (yahoo.marketCap) parsed.marketCap = yahoo.marketCap
       if (yahoo.priceVsATH) parsed.priceVsATH = yahoo.priceVsATH
 
-      // 1. Overview fields
+      // 1. Overview fields — replace EPS card with Beta (match either label)
+      if (yahoo.beta > 0 && parsed.overview.keyMetrics) {
+        const idx = parsed.overview.keyMetrics.findIndex(m => {
+          const l = m.label.toLowerCase()
+          return l.includes('beta') || l.includes('eps')
+        })
+        if (idx !== -1) {
+          parsed.overview.keyMetrics[idx].label = 'Beta'
+          parsed.overview.keyMetrics[idx].value = yahoo.beta.toFixed(2)
+          parsed.overview.keyMetrics[idx].subtitle = 'vs. market volatility'
+          delete (parsed.overview.keyMetrics[idx] as any).yoyChange
+        }
+      }
       parsed.overview.revenueCagr = yahoo.revenueCagr
       parsed.overview.netIncomeCagr = yahoo.netIncomeCagr
       parsed.overview.institutionalOwnership = yahoo.institutionalOwnership
