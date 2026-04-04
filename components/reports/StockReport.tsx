@@ -128,6 +128,181 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
   return { displayText, caretMode, progress }
 }
 
+function ReportLoadingScreen({
+  ticker,
+  reportReady,
+  showCRT,
+  onCRTStart,
+  onCRTDone,
+}: {
+  ticker: string
+  reportReady: boolean
+  showCRT: boolean
+  onCRTStart: () => void
+  onCRTDone: () => void
+}) {
+  const { displayText, caretMode, progress } = useTypewriter(ticker, reportReady, onCRTStart)
+  const loadingRef = useRef<HTMLDivElement>(null)
+  const crtLineRef = useRef<HTMLDivElement>(null)
+  const sweepTopRef = useRef<HTMLDivElement>(null)
+  const sweepBottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showCRT) return
+    const loading = loadingRef.current
+    const crtLine = crtLineRef.current
+    const sweepTop = sweepTopRef.current
+    const sweepBottom = sweepBottomRef.current
+    if (!loading || !crtLine || !sweepTop || !sweepBottom) return
+
+    loading.classList.add('crt-collapsing')
+
+    const t1 = setTimeout(() => {
+      crtLine.classList.add('crt-line-visible')
+    }, 400)
+
+    const t2 = setTimeout(() => {
+      sweepTop.classList.add('crt-sweeping')
+      sweepBottom.classList.add('crt-sweeping')
+      crtLine.style.transition = 'opacity 400ms ease-out'
+      crtLine.style.opacity = '0'
+    }, 700)
+
+    const t3 = setTimeout(() => {
+      onCRTDone()
+    }, 1400)
+
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+  }, [showCRT, onCRTDone])
+
+  const caretStyle: React.CSSProperties = {
+    display: 'inline-block', width: 8, height: 15,
+    background: '#555', verticalAlign: 'middle', marginLeft: 2,
+    ...(caretMode === 'blink' ? { animation: 'loadingBlink 1s step-end infinite' } : {}),
+    ...(caretMode === 'hidden' ? { opacity: 0 } : { opacity: 1 }),
+  }
+
+  return (
+    <div style={{
+      minHeight: 'calc(100vh - 56px)', background: '#0a0a0a',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <style>{`
+        @keyframes loadingBlink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        @keyframes crtCollapse {
+          0%   { transform: scaleY(1) scaleX(1); opacity: 1; filter: brightness(1); }
+          50%  { transform: scaleY(0.008) scaleX(1.02); opacity: 1; filter: brightness(2.5); }
+          100% { transform: scaleY(0) scaleX(0.5); opacity: 0; filter: brightness(3); }
+        }
+        .crt-collapsing {
+          animation: crtCollapse 500ms cubic-bezier(0.4, 0, 1, 1) forwards;
+        }
+        .crt-line-visible {
+          opacity: 1 !important;
+          transition: opacity 150ms ease-out;
+        }
+        @keyframes sweepUpWhite {
+          0%   { height: 0%; opacity: 1; }
+          60%  { height: 50%; opacity: 0.8; }
+          100% { height: 50%; opacity: 0; }
+        }
+        @keyframes sweepDownWhite {
+          0%   { height: 0%; opacity: 1; }
+          60%  { height: 50%; opacity: 0.8; }
+          100% { height: 50%; opacity: 0; }
+        }
+        .crt-sweeping.crt-sweep-top {
+          animation: sweepUpWhite 600ms cubic-bezier(0.25, 0, 0.4, 1) forwards;
+        }
+        .crt-sweeping.crt-sweep-bottom {
+          animation: sweepDownWhite 600ms cubic-bezier(0.25, 0, 0.4, 1) forwards;
+        }
+        @keyframes shimmerSweep {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(250%); }
+        }
+      `}</style>
+
+      {/* Loading content */}
+      <div ref={loadingRef} style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', alignItems: 'center',
+        zIndex: 10,
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 340 }}>
+          {/* Terminal line */}
+          <div style={{
+            fontSize: 13, color: '#555',
+            fontFamily: "'JetBrains Mono', monospace",
+            height: 20, lineHeight: '20px',
+            whiteSpace: 'nowrap', overflow: 'visible',
+            textAlign: 'left', alignSelf: 'flex-start',
+          }}>
+            <span style={{ color: '#444', marginRight: 8 }}>&gt;</span>
+            <span>{displayText}</span>
+            <span style={caretStyle} />
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ width: 340, marginTop: 32 }}>
+            <div style={{
+              width: '100%', height: 1, background: '#1a1a1a',
+              borderRadius: 1, overflow: 'hidden', position: 'relative',
+            }}>
+              <div style={{
+                height: '100%', width: `${progress}%`, background: '#555',
+                borderRadius: 1, transition: 'width 200ms linear',
+              }} />
+              <div style={{
+                position: 'absolute', top: 0, left: 0,
+                width: '100%', height: '100%', overflow: 'hidden',
+              }}>
+                <div style={{
+                  position: 'absolute', top: 0, left: 0,
+                  width: '60%', height: '100%',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 40%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.3) 60%, transparent 100%)',
+                  animation: 'shimmerSweep 2.5s linear infinite',
+                }} />
+              </div>
+            </div>
+            <div style={{
+              fontSize: 10, color: progress >= 100 ? '#555' : '#333',
+              marginTop: 8, textAlign: 'right', letterSpacing: '0.05em',
+              transition: 'color 300ms',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>
+              {Math.round(progress)}%
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CRT transition elements */}
+      <div ref={crtLineRef} style={{
+        position: 'absolute', left: 0, right: 0, top: '50%', zIndex: 15,
+        height: 2, transform: 'translateY(-50%)',
+        background: 'rgba(255,255,255,0.9)',
+        boxShadow: '0 0 30px rgba(255,255,255,0.5), 0 0 80px rgba(255,255,255,0.2)',
+        opacity: 0, pointerEvents: 'none',
+      }} />
+      <div ref={sweepTopRef} className="crt-sweep-top" style={{
+        position: 'absolute', left: 0, right: 0, bottom: '50%', zIndex: 14,
+        background: 'rgba(255,255,255,0.12)',
+        pointerEvents: 'none', height: '0%',
+      }} />
+      <div ref={sweepBottomRef} className="crt-sweep-bottom" style={{
+        position: 'absolute', left: 0, right: 0, top: '50%', zIndex: 14,
+        background: 'rgba(255,255,255,0.12)',
+        pointerEvents: 'none', height: '0%',
+      }} />
+    </div>
+  )
+}
+
 function CompanyLogo({ ticker, website }: { ticker: string; website?: string }) {
   const [attempt, setAttempt] = useState(0)
   const domain = website ? website.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : null
@@ -239,50 +414,15 @@ export default function StockReport({ ticker }: { ticker: string }) {
     }, 200)
   }
 
-  if (loading) {
+  if (loading || showCRT) {
     return (
-      <div style={{
-        minHeight: 'calc(100vh - 56px)', background: '#0a0a0a',
-        display: 'flex', flexDirection: 'column',
-        justifyContent: 'center', alignItems: 'center',
-        padding: 40,
-      }}>
-        <style>{`
-          @keyframes termFadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-          }
-        `}</style>
-        <div style={{ maxWidth: 500 }}>
-          {LOADING_LINES.map((line, i) => {
-            const text = line.replace('{TICKER}', ticker)
-            const isLast = i === LOADING_LINES.length - 1
-            return (
-              <div key={i} style={{
-                fontSize: 13, color: '#555',
-                fontFamily: "'JetBrains Mono', monospace",
-                marginBottom: 12,
-                opacity: 0,
-                animation: `termFadeIn 0.4s ease ${i * 150}ms forwards`,
-              }}>
-                <span style={{ color: '#444', marginRight: 8 }}>&gt;</span>
-                {text}
-                {isLast && (
-                  <span style={{
-                    display: 'inline-block', width: 8, height: 16,
-                    background: '#555', marginLeft: 4, verticalAlign: 'middle',
-                    animation: 'blink 1s step-end infinite',
-                  }} />
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <ReportLoadingScreen
+        ticker={ticker}
+        reportReady={reportReady}
+        showCRT={showCRT}
+        onCRTStart={() => setShowCRT(true)}
+        onCRTDone={() => { setShowCRT(false); setLoading(false); setShowReport(true) }}
+      />
     )
   }
 
