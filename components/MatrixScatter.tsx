@@ -9,6 +9,8 @@ interface MatrixStock {
   name: string
   ret: number
   vol: number
+  downsideVol: number
+  maxDrawdown: number
   mcap: number
   sharpe: number
   price: number
@@ -19,26 +21,33 @@ interface MatrixBenchmark {
   name: string
   ret: number
   vol: number
+  downsideVol: number
+  maxDrawdown: number
   sharpe: number
 }
 
 interface MatrixData {
   stocks: MatrixStock[]
-  benchmark: MatrixBenchmark
+  benchmarks: MatrixBenchmark[]
+  riskFreeRate: number
+  period: string
 }
 
 type DataSource = 'Reports' | 'Watchlist' | 'Custom'
 type Quadrant = 'CORE' | 'VOLATILE' | 'DEFENSIVE' | 'AT RISK'
+type VolMetric = 'total' | 'downside'
+type Period = '3m' | '6m' | '12m'
 
 interface MatrixScatterProps {
   savedReports: Array<{ ticker: string }>
   watchlist: string[]
+  titleWidth?: number
+  onSelectStock?: (symbol: string | null) => void
+  customTickers: string[]
+  onCustomTickersChange: (tickers: string[]) => void
 }
 
 // ── Constants ──
-
-const VOL_THRESHOLD = 0.35
-const RET_THRESHOLD = 0.15
 
 const QUADRANT_CONFIG: Record<Quadrant, { color: string; position: 'tl' | 'tr' | 'bl' | 'br' }> = {
   'CORE': { color: '#22c55e', position: 'tl' },
@@ -47,12 +56,12 @@ const QUADRANT_CONFIG: Record<Quadrant, { color: string; position: 'tl' | 'tr' |
   'AT RISK': { color: '#ef4444', position: 'br' },
 }
 
-const PADDING = { top: 44, right: 28, bottom: 52, left: 56 }
+const PADDING = { top: 30, right: 20, bottom: 44, left: 48 }
 
-function getQuadrant(ret: number, vol: number): Quadrant {
-  if (ret >= RET_THRESHOLD && vol < VOL_THRESHOLD) return 'CORE'
-  if (ret >= RET_THRESHOLD && vol >= VOL_THRESHOLD) return 'VOLATILE'
-  if (ret < RET_THRESHOLD && vol < VOL_THRESHOLD) return 'DEFENSIVE'
+function getQuadrant(ret: number, vol: number, benchRet: number, benchVol: number): Quadrant {
+  if (ret >= benchRet && vol < benchVol) return 'CORE'
+  if (ret >= benchRet && vol >= benchVol) return 'VOLATILE'
+  if (ret < benchRet && vol < benchVol) return 'DEFENSIVE'
   return 'AT RISK'
 }
 
@@ -70,9 +79,9 @@ function dotRadius(mcap: number, allMcaps: number[]): number {
   const logMax = Math.log10(Math.max(1, Math.max(...allMcaps)))
   const logVal = Math.log10(Math.max(1, mcap))
   const range = logMax - logMin
-  if (range === 0) return 12
+  if (range === 0) return 17
   const t = Math.max(0, Math.min(1, (logVal - logMin) / range))
-  return 6 + t * 12
+  return 6 + t * 22
 }
 
 // ── Ticker Search for Custom mode ──
@@ -81,14 +90,15 @@ function TickerInput({ onAdd }: { onAdd: (symbol: string) => void }) {
   const [value, setValue] = useState('')
   const [suggestions, setSuggestions] = useState<Array<{ symbol: string; name: string }>>([])
   const [highlightedIdx, setHighlightedIdx] = useState(-1)
-  const [open, setOpen] = useState(false)
+  const [focused, setFocused] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
+      if (barRef.current && !barRef.current.contains(e.target as Node)) {
+        setSuggestions([])
+        setHighlightedIdx(-1)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -104,7 +114,6 @@ function TickerInput({ onAdd }: { onAdd: (symbol: string) => void }) {
         const data = await res.json()
         setSuggestions(data)
         setHighlightedIdx(-1)
-        setOpen(true)
       } catch { setSuggestions([]) }
     }, 200)
   }, [])
@@ -118,60 +127,114 @@ function TickerInput({ onAdd }: { onAdd: (symbol: string) => void }) {
       onAdd(sym.trim().toUpperCase())
       setValue('')
       setSuggestions([])
-      setOpen(false)
+      setHighlightedIdx(-1)
     }
   }
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={barRef} style={{ position: 'relative' }}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        border: '1px solid #1a1a1a', borderRadius: 4,
-        padding: '6px 10px', background: '#0a0a0a',
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '12px 0',
+        background: 'transparent',
       }}>
-        <span style={{ fontSize: 11, color: '#444', fontFamily: "'JetBrains Mono', monospace" }}>&gt;</span>
+        <span style={{
+          fontSize: 12, color: focused ? '#fff' : '#444',
+          fontFamily: "'JetBrains Mono', monospace",
+          flexShrink: 0, userSelect: 'none',
+          transition: 'color 0.2s ease',
+        }}>
+          &gt;
+        </span>
         <input
           type="text"
           value={value}
           onChange={e => { setValue(e.target.value.toUpperCase()); search(e.target.value) }}
           onKeyDown={e => {
-            if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightedIdx(p => Math.min(p + 1, suggestions.length - 1)) }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightedIdx(p => Math.max(p - 1, -1)) }
-            else if (e.key === 'Enter') {
-              if (highlightedIdx >= 0 && suggestions[highlightedIdx]) submit(suggestions[highlightedIdx].symbol)
-              else submit(value)
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              setHighlightedIdx(prev => Math.min(prev + 1, suggestions.length - 1))
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              setHighlightedIdx(prev => Math.max(prev - 1, -1))
+            } else if (e.key === 'Enter') {
+              if (highlightedIdx >= 0 && suggestions[highlightedIdx]) {
+                submit(suggestions[highlightedIdx].symbol)
+              } else {
+                submit(value)
+              }
+            } else if (e.key === 'Escape') {
+              setSuggestions([])
+              setHighlightedIdx(-1)
             }
-            else if (e.key === 'Escape') { setOpen(false); setSuggestions([]) }
           }}
-          onFocus={() => { if (suggestions.length > 0) setOpen(true) }}
-          placeholder="ADD TICKER"
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="ENTER TICKER TO ADD"
           style={{
-            background: 'transparent', border: 'none', outline: 'none',
-            color: '#fff', fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: '0.05em', width: 100,
+            flex: 1,
+            background: 'transparent',
+            border: 'none',
+            color: '#fff',
+            fontSize: 12,
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.05em',
+            outline: 'none',
           }}
         />
       </div>
-      {open && suggestions.length > 0 && (
+
+      <div className={`shimmer-underline${focused ? ' active' : ''}`} />
+
+      {suggestions.length > 0 && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, minWidth: 220,
-          background: '#0a0a0a', border: '1px solid #1a1a1a', borderTop: 'none',
-          borderRadius: '0 0 4px 4px', zIndex: 60, overflow: 'hidden',
+          position: 'absolute', top: '100%', left: 0, right: 0,
+          background: '#0a0a0a',
+          border: '1px solid #444',
+          borderTop: 'none',
+          borderRadius: '0 0 4px 4px',
+          zIndex: 50,
+          overflow: 'hidden',
         }}>
           {suggestions.map((s, i) => (
             <div
               key={s.symbol}
-              onMouseDown={e => { e.preventDefault(); submit(s.symbol) }}
+              onMouseDown={e => {
+                e.preventDefault()
+                submit(s.symbol)
+              }}
               onMouseEnter={() => setHighlightedIdx(i)}
+              onMouseLeave={() => setHighlightedIdx(-1)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 10px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '10px 16px',
                 background: highlightedIdx === i ? 'rgba(255,255,255,0.05)' : 'transparent',
-                borderTop: i > 0 ? '1px solid #111' : 'none',
+                cursor: 'pointer',
+                borderTop: i > 0 ? '1px solid #1a1a1a' : 'none',
+                transition: 'background 0.1s ease',
               }}
             >
-              <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#ccc', minWidth: 48 }}>{s.symbol}</span>
-              <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+              <span style={{
+                fontSize: 13,
+                fontFamily: "'JetBrains Mono', monospace",
+                color: highlightedIdx === i ? '#fff' : '#ccc',
+                letterSpacing: '0.05em',
+                minWidth: 56,
+                flexShrink: 0,
+                transition: 'color 0.1s ease',
+              }}>
+                {s.symbol}
+              </span>
+              <span style={{
+                fontSize: 11,
+                fontFamily: "'JetBrains Mono', monospace",
+                color: '#444',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {s.name}
+              </span>
             </div>
           ))}
         </div>
@@ -182,27 +245,29 @@ function TickerInput({ onAdd }: { onAdd: (symbol: string) => void }) {
 
 // ── Main Component ──
 
-export default function MatrixScatter({ savedReports, watchlist }: MatrixScatterProps) {
+export default function MatrixScatter({ savedReports, watchlist, titleWidth, onSelectStock, customTickers, onCustomTickersChange }: MatrixScatterProps) {
   const [source, setSource] = useState<DataSource>('Reports')
-  const [customTickers, setCustomTickers] = useState<string[]>([])
+  const [volMetric, setVolMetric] = useState<VolMetric>('total')
+  const [period, setPeriod] = useState<Period>('12m')
   const [data, setData] = useState<MatrixData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [hoveredSymbol, setHoveredSymbol] = useState<string | null>(null)
   const [pinnedSymbol, setPinnedSymbol] = useState<string | null>(null)
-  const [activeQuadrant, setActiveQuadrant] = useState<Quadrant | null>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 })
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Responsive sizing — fill remaining viewport
+  // Re-run when data loads so containerRef is available
+  const hasData = !!(data && data.stocks.length > 0 && !loading)
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     const compute = () => {
       const rect = el.getBoundingClientRect()
       const w = rect.width
-      const remaining = window.innerHeight - rect.top - 24 // 24px bottom breathing room
+      const remaining = window.innerHeight - rect.top - 40
       setDimensions({ width: w, height: Math.max(340, remaining) })
     }
     compute()
@@ -210,7 +275,7 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
     observer.observe(el)
     window.addEventListener('resize', compute)
     return () => { observer.disconnect(); window.removeEventListener('resize', compute) }
-  }, [])
+  }, [hasData])
 
   // Determine tickers for current source
   const tickers = useMemo(() => {
@@ -229,7 +294,7 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
     setError('')
     setMounted(false)
 
-    fetch(`/api/matrix?tickers=${encodeURIComponent(tickers.join(','))}`)
+    fetch(`/api/matrix?tickers=${encodeURIComponent(tickers.join(','))}&period=${period}`)
       .then(r => {
         if (!r.ok) throw new Error('Failed to load matrix data')
         return r.json()
@@ -247,25 +312,22 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
       })
 
     return () => { cancelled = true }
-  }, [tickers])
+  }, [tickers, period])
 
-  // Quadrant counts
-  const quadrantCounts = useMemo(() => {
-    const counts: Record<Quadrant, number> = { 'CORE': 0, 'VOLATILE': 0, 'DEFENSIVE': 0, 'AT RISK': 0 }
-    if (!data) return counts
-    for (const s of data.stocks) {
-      counts[getQuadrant(s.ret, s.vol)]++
-    }
-    return counts
-  }, [data])
+  const spyBenchmark = useMemo(() => data?.benchmarks.find(b => b.symbol === 'SPY') ?? null, [data])
+  const spyRet = spyBenchmark?.ret ?? 0
+  const spyVol = spyBenchmark ? (volMetric === 'downside' ? spyBenchmark.downsideVol : spyBenchmark.vol) : 0.35
+
+  const getVol = useCallback((s: { vol: number; downsideVol: number }) =>
+    volMetric === 'downside' ? s.downsideVol : s.vol, [volMetric])
 
   // Axis ranges — computed from data, with some padding
   const { xMin, xMax, yMin, yMax } = useMemo(() => {
     if (!data || data.stocks.length === 0) {
       return { xMin: 0, xMax: 0.8, yMin: -0.3, yMax: 0.6 }
     }
-    const allVols = [...data.stocks.map(s => s.vol), data.benchmark.vol]
-    const allRets = [...data.stocks.map(s => s.ret), data.benchmark.ret]
+    const allVols = [...data.stocks.map(s => getVol(s)), ...data.benchmarks.map(b => getVol(b))]
+    const allRets = [...data.stocks.map(s => s.ret), ...data.benchmarks.map(b => b.ret)]
     const vMin = Math.min(0, ...allVols)
     const vMax = Math.max(0.8, ...allVols)
     const rMin = Math.min(-0.3, ...allRets)
@@ -273,7 +335,7 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
     const vPad = (vMax - vMin) * 0.08
     const rPad = (rMax - rMin) * 0.08
     return { xMin: vMin - vPad, xMax: vMax + vPad, yMin: rMin - rPad, yMax: rMax + rPad }
-  }, [data])
+  }, [data, getVol])
 
   const allMcaps = useMemo(() => data ? data.stocks.map(s => s.mcap) : [], [data])
 
@@ -289,59 +351,142 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
 
   // ── Render ──
 
-  const sourceButtons: DataSource[] = ['Reports', 'Watchlist', 'Custom']
+  const sourceButtons: { label: DataSource; flex: number }[] = [
+    { label: 'Reports', flex: 0.9 },
+    { label: 'Watchlist', flex: 1.2 },
+    { label: 'Custom', flex: 0.9 },
+  ]
 
   return (
     <div>
-      {/* Data source selector */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
-        {sourceButtons.map(s => {
-          const isActive = s === source
-          return (
-            <button
-              key={s}
-              onClick={() => { setSource(s); setPinnedSymbol(null); setActiveQuadrant(null) }}
-              style={{
-                background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
-                borderRadius: 4,
-                padding: '6px 14px',
-                fontSize: 12,
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.08em',
-                color: isActive ? '#fff' : '#555',
-                cursor: 'pointer',
-                textTransform: 'uppercase' as const,
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
-              onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
-            >
-              {s}
-            </button>
-          )
-        })}
+      {/* Period subtitle */}
+      <div style={{
+        fontSize: 11,
+        fontFamily: "'JetBrains Mono', monospace",
+        color: '#444',
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase' as const,
+        marginTop: 6,
+      }}>
+        TRAILING {period.toUpperCase()}
       </div>
 
-      {/* Custom mode: ticker chips + input */}
+      {/* Control row: source buttons left, toggles right */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 16 }}>
+        {/* Source buttons — left */}
+        <div style={{ display: 'flex', gap: 8, width: titleWidth ?? 420, flexShrink: 0 }}>
+          {sourceButtons.map(({ label, flex }) => {
+            const isActive = label === source
+            return (
+              <button
+                key={label}
+                onClick={() => { setSource(label); setPinnedSymbol(null); onSelectStock?.(null) }}
+                style={{
+                  flex,
+                  background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+                  borderRadius: 4,
+                  padding: '6px 0',
+                  fontSize: 12,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.08em',
+                  color: isActive ? '#fff' : '#555',
+                  cursor: 'pointer',
+                  textTransform: 'uppercase' as const,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
+                onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Right side: vol toggle + period selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+          {/* Vol metric toggle */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            {(['total', 'downside'] as const).map(v => {
+              const isActive = volMetric === v
+              return (
+                <button
+                  key={v}
+                  onClick={() => setVolMetric(v)}
+                  style={{
+                    background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+                    border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+                    borderRadius: 4,
+                    padding: '4px 10px',
+                    fontSize: 11,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    letterSpacing: '0.08em',
+                    color: isActive ? '#fff' : '#555',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase' as const,
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap' as const,
+                  }}
+                  onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
+                  onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+                >
+                  {v === 'total' ? 'TOTAL VOL' : 'DOWNSIDE VOL'}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Period selector */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            {(['3m', '6m', '12m'] as const).map(p => {
+              const isActive = period === p
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  style={{
+                    background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+                    border: `1px solid ${isActive ? 'rgba(255,255,255,0.15)' : '#1a1a1a'}`,
+                    borderRadius: 4,
+                    padding: '4px 10px',
+                    fontSize: 11,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    letterSpacing: '0.08em',
+                    color: isActive ? '#fff' : '#555',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase' as const,
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = '#aaa' }}
+                  onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
+                >
+                  {p.toUpperCase()}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Custom mode: search bar + ticker chips in one row */}
       {source === 'Custom' && (
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8,
-          marginBottom: 20,
-          padding: '12px 0',
-          borderTop: '1px solid #111',
-          borderBottom: '1px solid #111',
-        }}>
-          {customTickers.map(t => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <div style={{ width: titleWidth ?? 420, flexShrink: 0 }}>
+            <TickerInput onAdd={(sym) => {
+              if (!customTickers.includes(sym)) onCustomTickersChange([...customTickers, sym])
+            }} />
+          </div>
+          {customTickers.length > 0 && customTickers.map(t => (
             <div key={t} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
+              display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
               background: 'rgba(255,255,255,0.04)',
               border: '1px solid #1a1a1a',
               borderRadius: 4, padding: '4px 10px',
             }}>
               <span style={{ fontSize: 11, color: '#ccc', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }}>{t}</span>
               <button
-                onClick={() => setCustomTickers(prev => prev.filter(x => x !== t))}
+                onClick={() => onCustomTickersChange(customTickers.filter(x => x !== t))}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: '#444', fontSize: 14, lineHeight: 1, padding: 0,
@@ -354,9 +499,6 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
               </button>
             </div>
           ))}
-          <TickerInput onAdd={(sym) => {
-            if (!customTickers.includes(sym)) setCustomTickers(prev => [...prev, sym])
-          }} />
         </div>
       )}
 
@@ -416,78 +558,25 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
       {/* Chart */}
       {!loading && !error && data && data.stocks.length > 0 && (
         <>
-          {/* Quadrant filter pills */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            {(Object.keys(QUADRANT_CONFIG) as Quadrant[]).map(q => {
-              const cfg = QUADRANT_CONFIG[q]
-              const count = quadrantCounts[q]
-              const isActive = activeQuadrant === q
-              return (
-                <button
-                  key={q}
-                  onClick={() => setActiveQuadrant(activeQuadrant === q ? null : q)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                    border: `1px solid ${isActive ? cfg.color + '44' : '#1a1a1a'}`,
-                    borderRadius: 4,
-                    padding: '5px 10px',
-                    fontSize: 10,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    letterSpacing: '0.08em',
-                    color: isActive ? cfg.color : '#555',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={e => { if (!isActive) (e.currentTarget).style.color = cfg.color }}
-                  onMouseLeave={e => { if (!isActive) (e.currentTarget).style.color = '#555' }}
-                >
-                  <span style={{
-                    width: 6, height: 6, borderRadius: '50%',
-                    background: cfg.color,
-                    opacity: isActive ? 1 : 0.5,
-                  }} />
-                  {q}
-                  <span style={{ color: '#333', marginLeft: 2 }}>{count}</span>
-                </button>
-              )
-            })}
-            {activeQuadrant && (
-              <button
-                onClick={() => setActiveQuadrant(null)}
-                style={{
-                  background: 'none', border: '1px solid #1a1a1a', borderRadius: 4,
-                  padding: '5px 10px', fontSize: 10, color: '#555', cursor: 'pointer',
-                  fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em',
-                  transition: 'color 0.2s ease',
-                }}
-                onMouseEnter={e => (e.currentTarget).style.color = '#fff'}
-                onMouseLeave={e => (e.currentTarget).style.color = '#555'}
-              >
-                CLEAR
-              </button>
-            )}
-          </div>
-
           {/* SVG Chart */}
           <div
             ref={containerRef}
             style={{
-              background: '#08080c',
-              border: '1px solid #111',
-              borderRadius: 8,
+              background: 'transparent',
               position: 'relative',
               overflow: 'hidden',
+              width: '100%',
+              height: dimensions.height,
             }}
           >
             <svg
               width={dimensions.width}
               height={dimensions.height}
               viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
-              style={{ display: 'block', width: '100%', height: 'auto' }}
+              style={{ display: 'block' }}
             >
+
               <defs>
-                {/* Quadrant gradient washes */}
                 <radialGradient id="grad-core" cx="25%" cy="25%" r="60%">
                   <stop offset="0%" stopColor="#22c55e" stopOpacity="0.06" />
                   <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
@@ -508,8 +597,8 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
 
               {/* Quadrant background washes */}
               {(() => {
-                const divX = toX(VOL_THRESHOLD)
-                const divY = toY(RET_THRESHOLD)
+                const divX = toX(spyVol)
+                const divY = toY(spyRet)
                 return (
                   <>
                     <rect x={PADDING.left} y={PADDING.top} width={divX - PADDING.left} height={divY - PADDING.top} fill="url(#grad-core)" />
@@ -520,48 +609,47 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
                 )
               })()}
 
-              {/* Grid lines — X axis (volatility) */}
-              {[0, 0.2, 0.4, 0.6, 0.8].filter(v => v >= xMin && v <= xMax).map(v => (
-                <line key={`xg-${v}`} x1={toX(v)} y1={PADDING.top} x2={toX(v)} y2={dimensions.height - PADDING.bottom} stroke="#0e0e12" strokeWidth="1" />
-              ))}
-
-              {/* Grid lines — Y axis (return) - contextual ticks */}
-              {(() => {
-                const ticks: number[] = []
-                const step = 0.1
-                let v = Math.ceil(yMin / step) * step
-                while (v <= yMax) { ticks.push(v); v += step }
-                return ticks.map(r => (
-                  <line
-                    key={`yg-${r}`}
-                    x1={PADDING.left} y1={toY(r)}
-                    x2={dimensions.width - PADDING.right} y2={toY(r)}
-                    stroke={Math.abs(r) < 0.001 ? '#222' : '#0e0e12'}
-                    strokeWidth="1"
-                    strokeDasharray={Math.abs(r) < 0.001 ? '4,4' : 'none'}
-                  />
-                ))
-              })()}
 
               {/* Quadrant divider lines */}
               <line
-                x1={toX(VOL_THRESHOLD)} y1={PADDING.top}
-                x2={toX(VOL_THRESHOLD)} y2={dimensions.height - PADDING.bottom}
+                x1={toX(spyVol)} y1={PADDING.top}
+                x2={toX(spyVol)} y2={dimensions.height - PADDING.bottom}
                 stroke="#1a1a1e" strokeWidth="1"
                 strokeDasharray="6,4"
                 style={{ animation: mounted ? undefined : 'none' }}
               />
               <line
-                x1={PADDING.left} y1={toY(RET_THRESHOLD)}
-                x2={dimensions.width - PADDING.right} y2={toY(RET_THRESHOLD)}
+                x1={PADDING.left} y1={toY(spyRet)}
+                x2={dimensions.width - PADDING.right} y2={toY(spyRet)}
                 stroke="#1a1a1e" strokeWidth="1"
                 strokeDasharray="6,4"
               />
 
+              {/* SPY crosshair labels */}
+              <text
+                x={dimensions.width - PADDING.right - 4}
+                y={toY(spyRet) - 6}
+                fill="#444"
+                fontSize="9"
+                fontFamily="'JetBrains Mono', monospace"
+                textAnchor="end"
+              >
+                SPY {(spyRet * 100).toFixed(1)}%
+              </text>
+              <text
+                x={toX(spyVol) + 6}
+                y={PADDING.top + 12}
+                fill="#444"
+                fontSize="9"
+                fontFamily="'JetBrains Mono', monospace"
+              >
+                SPY {(spyVol * 100).toFixed(1)}%
+              </text>
+
               {/* Quadrant labels */}
               {(() => {
-                const divX = toX(VOL_THRESHOLD)
-                const divY = toY(RET_THRESHOLD)
+                const divX = toX(spyVol)
+                const divY = toY(spyRet)
                 const labels: { text: string; x: number; y: number; color: string }[] = [
                   { text: 'CORE', x: PADDING.left + 10, y: PADDING.top + 18, color: '#22c55e' },
                   { text: 'VOLATILE', x: dimensions.width - PADDING.right - 10, y: PADDING.top + 18, color: '#f59e0b' },
@@ -587,23 +675,29 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
               })()}
 
               {/* X-axis ticks */}
-              {[0, 0.2, 0.4, 0.6, 0.8].filter(v => v >= xMin && v <= xMax).map(v => (
-                <text
-                  key={`xt-${v}`}
-                  x={toX(v)} y={dimensions.height - PADDING.bottom + 20}
-                  fill="#444" fontSize="10" textAnchor="middle"
-                  fontFamily="'JetBrains Mono', monospace"
-                >
-                  {(v * 100).toFixed(0)}%
-                </text>
-              ))}
+              {(() => {
+                const ticks: number[] = []
+                const step = 0.1
+                let v = Math.ceil(xMin / step) * step
+                while (v <= xMax) { ticks.push(v); v += step }
+                return ticks.map(v => (
+                  <text
+                    key={`xt-${v}`}
+                    x={toX(v)} y={dimensions.height - PADDING.bottom + 20}
+                    fill="#444" fontSize="10" textAnchor="middle"
+                    fontFamily="'JetBrains Mono', monospace"
+                  >
+                    {(v * 100).toFixed(0)}%
+                  </text>
+                ))
+              })()}
               <text
                 x={dimensions.width / 2} y={dimensions.height - 8}
                 fill="#333" fontSize="10" textAnchor="middle"
                 fontFamily="'JetBrains Mono', monospace"
                 letterSpacing="0.12em"
               >
-                VOLATILITY
+                {volMetric === 'downside' ? 'DOWNSIDE VOLATILITY' : 'VOLATILITY'}
               </text>
 
               {/* Y-axis ticks */}
@@ -619,7 +713,7 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
                     fill="#444" fontSize="10" textAnchor="end"
                     fontFamily="'JetBrains Mono', monospace"
                   >
-                    {(r * 100).toFixed(0)}%
+                    {Math.abs(r) < 0.001 ? '0' : (r * 100).toFixed(0)}%
                   </text>
                 ))
               })()}
@@ -633,30 +727,38 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
                 RETURN
               </text>
 
-              {/* Stock dots */}
+              {/* Stock dots — shapes layer */}
               {data.stocks.map((s, i) => {
-                const quad = getQuadrant(s.ret, s.vol)
+                const sVol = getVol(s)
+                const quad = getQuadrant(s.ret, sVol, spyRet, spyVol)
                 const color = QUADRANT_CONFIG[quad].color
                 const r = dotRadius(s.mcap, allMcaps)
-                const isFiltered = activeQuadrant !== null && activeQuadrant !== quad
                 const isActive = activeSymbol === s.symbol
-                const opacity = isFiltered ? 0.06 : 1
-                const cx = toX(s.vol)
+                const cx = toX(sVol)
                 const cy = toY(s.ret)
+
+                // Drawdown border ring
+                const dd = s.maxDrawdown
+                const ddRing = dd >= 0.40
+                  ? { width: 3, color: '#ef4444', opacity: 0.8 }
+                  : dd >= 0.20
+                  ? { width: 2, color, opacity: 0.6 }
+                  : dd >= 0.05
+                  ? { width: 1, color, opacity: 0.4 }
+                  : null
 
                 return (
                   <g
                     key={s.symbol}
-                    style={{
-                      opacity,
-                      transition: 'opacity 0.3s ease',
-                      cursor: 'pointer',
-                    }}
+                    style={{ cursor: 'pointer' }}
                     onMouseEnter={() => setHoveredSymbol(s.symbol)}
                     onMouseLeave={() => setHoveredSymbol(null)}
-                    onClick={() => setPinnedSymbol(pinnedSymbol === s.symbol ? null : s.symbol)}
+                    onClick={() => {
+                      const next = pinnedSymbol === s.symbol ? null : s.symbol
+                      setPinnedSymbol(next)
+                      onSelectStock?.(next)
+                    }}
                   >
-                    {/* Glow ring on hover */}
                     {isActive && (
                       <circle
                         cx={cx} cy={cy} r={r + 6}
@@ -665,7 +767,21 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
                         style={{ animation: 'pulse 2s ease-in-out infinite' }}
                       />
                     )}
-                    {/* Dot */}
+                    {ddRing && (
+                      <circle
+                        cx={cx} cy={cy}
+                        r={(isActive ? r + 2 : r) + ddRing.width + 1}
+                        fill="none"
+                        stroke={ddRing.color}
+                        strokeWidth={ddRing.width}
+                        opacity={ddRing.opacity}
+                        style={{
+                          transform: mounted ? 'scale(1)' : 'scale(0)',
+                          transformOrigin: `${cx}px ${cy}px`,
+                          transition: `transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 25}ms`,
+                        }}
+                      />
+                    )}
                     <circle
                       cx={cx} cy={cy}
                       r={isActive ? r + 2 : r}
@@ -677,41 +793,22 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
                         transition: `transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 25}ms, r 0.2s ease`,
                       }}
                     />
-                    {/* Label */}
-                    <text
-                      x={cx} y={cy - r - 6}
-                      fill={isActive ? '#fff' : color}
-                      opacity={isActive ? 1 : 0.65}
-                      fontSize="10"
-                      fontFamily="'JetBrains Mono', monospace"
-                      fontWeight={isActive ? 700 : 500}
-                      textAnchor="middle"
-                      style={{
-                        transition: 'fill 0.2s ease, opacity 0.2s ease',
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      {s.symbol}
-                    </text>
                   </g>
                 )
               })}
 
-              {/* SPY Benchmark diamond */}
-              {(() => {
-                const bx = toX(data.benchmark.vol)
-                const by = toY(data.benchmark.ret)
-                const isActive = activeSymbol === 'SPY_BENCH'
+              {/* Benchmark diamonds — shapes layer */}
+              {data.benchmarks.map((bench, bi) => {
+                const bx = toX(getVol(bench))
+                const by = toY(bench.ret)
+                const benchKey = `BENCH_${bench.symbol}`
                 return (
                   <g
-                    onMouseEnter={() => setHoveredSymbol('SPY_BENCH')}
+                    key={benchKey}
+                    onMouseEnter={() => setHoveredSymbol(benchKey)}
                     onMouseLeave={() => setHoveredSymbol(null)}
                     style={{ cursor: 'pointer' }}
                   >
-                    {/* Crosshair lines */}
-                    <line x1={bx - 18} y1={by} x2={bx + 18} y2={by} stroke="#fff" strokeWidth="0.5" opacity={0.3} />
-                    <line x1={bx} y1={by - 18} x2={bx} y2={by + 18} stroke="#fff" strokeWidth="0.5" opacity={0.3} />
-                    {/* Diamond (rotated square) */}
                     <rect
                       x={bx - 5} y={by - 5} width={10} height={10}
                       fill="#fff" fillOpacity={0.15}
@@ -720,35 +817,72 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
                       style={{
                         transform: mounted ? `rotate(45deg)` : 'rotate(45deg) scale(0)',
                         transformOrigin: `${bx}px ${by}px`,
-                        transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms',
+                        transition: `transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${bi * 50}ms`,
                       }}
                     />
-                    {/* Labels */}
-                    {isActive && (
-                      <>
-                        <text x={bx} y={by - 16} fill="#fff" fontSize="10" fontFamily="'JetBrains Mono', monospace" fontWeight="700" textAnchor="middle">SPY</text>
-                        <text x={bx} y={by - 26} fill="#888" fontSize="8" fontFamily="'JetBrains Mono', monospace" textAnchor="middle" letterSpacing="0.1em">BENCHMARK</text>
-                      </>
-                    )}
-                    {!isActive && (
-                      <text x={bx} y={by - 14} fill="#888" fontSize="9" fontFamily="'JetBrains Mono', monospace" fontWeight="500" textAnchor="middle" opacity={0.6}>SPY</text>
-                    )}
                   </g>
                 )
-              })()}
+              })}
+
+              {/* Labels layer — rendered last so they appear on top of all shapes */}
+              {data.stocks.map(s => {
+                const sVol = getVol(s)
+                const quad = getQuadrant(s.ret, sVol, spyRet, spyVol)
+                const color = QUADRANT_CONFIG[quad].color
+                const r = dotRadius(s.mcap, allMcaps)
+                const isActive = activeSymbol === s.symbol
+                const cx = toX(sVol)
+                const cy = toY(s.ret)
+
+                return (
+                  <text
+                    key={`label-${s.symbol}`}
+                    x={cx} y={cy - r - 6}
+                    fill={isActive ? '#fff' : color}
+                    opacity={isActive ? 1 : 0.65}
+                    fontSize="10"
+                    fontFamily="'JetBrains Mono', monospace"
+                    fontWeight={isActive ? 700 : 500}
+                    textAnchor="middle"
+                    style={{
+                      transition: 'fill 0.2s ease, opacity 0.2s ease',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {s.symbol}
+                  </text>
+                )
+              })}
+
+              {/* Benchmark labels — on top */}
+              {data.benchmarks.map(bench => {
+                const bx = toX(getVol(bench))
+                const by = toY(bench.ret)
+                const benchKey = `BENCH_${bench.symbol}`
+                const isActive = activeSymbol === benchKey
+                return isActive ? (
+                  <g key={`label-${benchKey}`} style={{ pointerEvents: 'none' }}>
+                    <text x={bx} y={by - 16} fill="#fff" fontSize="10" fontFamily="'JetBrains Mono', monospace" fontWeight="700" textAnchor="middle">{bench.symbol}</text>
+                    <text x={bx} y={by - 26} fill="#888" fontSize="8" fontFamily="'JetBrains Mono', monospace" textAnchor="middle" letterSpacing="0.1em">BENCHMARK</text>
+                  </g>
+                ) : (
+                  <text key={`label-${benchKey}`} x={bx} y={by - 14} fill="#888" fontSize="9" fontFamily="'JetBrains Mono', monospace" fontWeight="500" textAnchor="middle" opacity={0.6} style={{ pointerEvents: 'none' }}>{bench.symbol}</text>
+                )
+              })}
             </svg>
 
             {/* Hover tooltip */}
             {activeSymbol && (() => {
-              const stock = activeSymbol === 'SPY_BENCH'
+              const isBench = activeSymbol?.startsWith('BENCH_')
+              const stock = isBench
                 ? null
                 : data.stocks.find(s => s.symbol === activeSymbol)
-              const bench = activeSymbol === 'SPY_BENCH' ? data.benchmark : null
+              const bench = isBench ? data.benchmarks.find(b => `BENCH_${b.symbol}` === activeSymbol) ?? null : null
               const item = stock || bench
               if (!item) return null
 
-              const vol = 'mcap' in item ? item.vol : (item as MatrixBenchmark).vol
-              const ret = 'mcap' in item ? item.ret : (item as MatrixBenchmark).ret
+              const vol = getVol(item)
+              const ret = item.ret
               const px = toX(vol)
               const py = toY(ret)
 
@@ -757,7 +891,7 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
               const tooltipLeft = flipLeft ? px - 200 : px + 20
               const tooltipTop = Math.max(PADDING.top, Math.min(py - 40, dimensions.height - PADDING.bottom - 140))
 
-              const quad = getQuadrant(ret, vol)
+              const quad = getQuadrant(ret, vol, spyRet, spyVol)
               const qColor = QUADRANT_CONFIG[quad].color
               const sharpeColor = item.sharpe >= 1 ? '#22c55e' : item.sharpe >= 0.5 ? '#f59e0b' : item.sharpe >= 0 ? '#888' : '#ef4444'
 
@@ -792,15 +926,27 @@ export default function MatrixScatter({ savedReports, watchlist }: MatrixScatter
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>VOLATILITY</span>
+                      <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>{volMetric === 'downside' ? 'DOWNSIDE VOL' : 'VOLATILITY'}</span>
                       <span style={{ fontSize: 10, color: '#ccc', fontFamily: "'JetBrains Mono', monospace" }}>
                         {(vol * 100).toFixed(1)}%
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>DOWNSIDE VOL</span>
+                      <span style={{ fontSize: 10, color: '#ccc', fontFamily: "'JetBrains Mono', monospace" }}>
+                        {(item.downsideVol * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>MAX DD</span>
+                      <span style={{ fontSize: 10, color: '#ef4444', fontFamily: "'JetBrains Mono', monospace" }}>
+                        -{(item.maxDrawdown * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 10, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>SHARPE</span>
                       <span style={{ fontSize: 10, color: sharpeColor, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>
-                        {item.sharpe.toFixed(2)}
+                        {item.sharpe.toFixed(1)}
                       </span>
                     </div>
                     {stock && (
