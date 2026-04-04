@@ -18,11 +18,19 @@ const verdictBadgeColor: Record<string, 'green' | 'red' | 'blue'> = {
   BUY: 'green', SELL: 'red', HOLD: 'blue', AVOID: 'red',
 }
 
-const LOADING_LINES = [
+const LOADING_PHRASES = [
   'INITIALIZING SANCTUM AI ENGINE...',
   'FETCHING INSTITUTIONAL DATA FOR {TICKER}...',
   'RUNNING VALUATION MODELS...',
-  'GENERATING SYNDICATE REPORT...',
+  'GENERATING INSTITUTIONAL REPORT...',
+  'AUTHENTICATING DATA SOURCES...',
+  'PARSING FINANCIAL STATEMENTS...',
+  'ANALYZING INSIDER TRANSACTIONS...',
+  'SCORING FUNDAMENTAL STRENGTH...',
+  'SIMULATING MARKET STRESS CONDITIONS...',
+  'GENERATING ACTIONABLE INSIGHTS...',
+  'CALCULATING RISK EXPOSURE...',
+  'IDENTIFYING MISPRICING SIGNALS...',
 ]
 
 function CompanyLogo({ ticker, website }: { ticker: string; website?: string }) {
@@ -71,13 +79,18 @@ export default function StockReport({ ticker }: { ticker: string }) {
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('Overview')
   const [animating, setAnimating] = useState(false)
   const switchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [showCRT, setShowCRT] = useState(false)
+  const [reportReady, setReportReady] = useState(false)
+  const [showReport, setShowReport] = useState(false)
 
   const fetchReport = useCallback(async () => {
     setLoading(true)
     setError(null)
     setReport(null)
+    setReportReady(false)
+    setShowCRT(false)
+    setShowReport(false)
 
-    // Check Supabase for existing saved report
     const { data: existing } = await supabase
       .from('reports')
       .select('data')
@@ -88,11 +101,10 @@ export default function StockReport({ ticker }: { ticker: string }) {
 
     if (existing?.data?.companyName) {
       setReport(existing.data as StockReportType)
-      setLoading(false)
+      setReportReady(true)
       return
     }
 
-    // No saved report — generate a new one
     const result = await generateReport(ticker)
     if ('error' in result) {
       setError(result.error)
@@ -101,9 +113,8 @@ export default function StockReport({ ticker }: { ticker: string }) {
     }
 
     setReport(result)
-    setLoading(false)
+    setReportReady(true)
 
-    // Save to Supabase in background
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
       await supabase.from('reports').delete().eq('ticker', ticker)
