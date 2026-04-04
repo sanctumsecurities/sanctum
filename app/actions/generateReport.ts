@@ -236,7 +236,39 @@ async function fetchYahooData(ticker: string) {
     const currentPE = safeNum(summary.trailingPE) || safeNum(keyStats.trailingPE)
     const forwardPE = safeNum(summary.forwardPE) || safeNum(keyStats.forwardPE)
 
+    // ── Live price data for header overrides ──
+    const livePrice = safeNum(price.regularMarketPrice)
+    const prevClose = safeNum(price.regularMarketPreviousClose)
+    const fiftyTwoWeekHigh = safeNum(summary.fiftyTwoWeekHigh)
+    const marketCapRaw = safeNum(price.marketCap)
+    const epsTrailing = safeNum(keyStats.trailingEps) || safeNum(financial.earningsPerShare)
+
+    // Format market cap
+    let marketCapStr = ''
+    if (marketCapRaw >= 1e12) marketCapStr = `~$${(marketCapRaw / 1e12).toFixed(2)}T`
+    else if (marketCapRaw >= 1e9) marketCapStr = `~$${(marketCapRaw / 1e9).toFixed(0)}B`
+    else if (marketCapRaw >= 1e6) marketCapStr = `~$${(marketCapRaw / 1e6).toFixed(0)}M`
+    else marketCapStr = `$${marketCapRaw.toLocaleString()}`
+
+    // Price vs ATH
+    const priceVsATH = fiftyTwoWeekHigh > 0 && livePrice > 0
+      ? `${((livePrice / fiftyTwoWeekHigh - 1) * 100).toFixed(0)}% from 52wk high $${fiftyTwoWeekHigh.toFixed(2)}`
+      : ''
+
+    // Latest annual revenue for display
+    const latestRevenue = revenueVsCogs.length > 0 ? revenueVsCogs[revenueVsCogs.length - 1].revenue : 0
+
     return {
+      // Live price data
+      livePrice,
+      livePriceStr: `$${livePrice.toFixed(2)}`,
+      marketCap: marketCapStr,
+      marketCapRaw,
+      priceVsATH,
+      epsTrailing,
+      latestRevenue,
+      prevClose,
+      // Existing fields
       revenueCagr: { fiveYear: revenueCagr5 || 'N/A', tenYear: null },
       netIncomeCagr: { fiveYear: netIncomeCagr5 || 'N/A', tenYear: null },
       institutionalOwnership,
@@ -255,7 +287,7 @@ async function fetchYahooData(ticker: string) {
       cagrs: {
         revenue: { fiveYear: revenueCagr5 || 'N/A', tenYear: null },
         netIncome: { fiveYear: netIncomeCagr5 || 'N/A', tenYear: null },
-        eps: { fiveYear: 'N/A', tenYear: null }, // EPS CAGR would need per-share data
+        eps: { fiveYear: 'N/A', tenYear: null },
       },
       expandedAnnualColumns,
       recommendationTrend,
@@ -280,7 +312,12 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
     const yahooContext = yahoo ? `
-REAL MARKET DATA (use these exact numbers, do not fabricate):
+REAL MARKET DATA — TODAY'S DATE IS 2026-04-03. USE THESE EXACT NUMBERS:
+- *** CURRENT STOCK PRICE: $${yahoo.livePrice.toFixed(2)} *** (use this as currentPrice)
+- Market Cap: ${yahoo.marketCap} (use this as marketCap)
+- Price vs 52-Week High: ${yahoo.priceVsATH}
+- EPS (Trailing): $${yahoo.epsTrailing.toFixed(2)}
+- Latest Annual Revenue: $${yahoo.latestRevenue.toFixed(1)}B
 - Analyst Targets: Low $${yahoo.analystTargetRange.low.toFixed(2)}, Mean $${yahoo.analystTargetRange.mean.toFixed(2)}, High $${yahoo.analystTargetRange.high.toFixed(2)} (${yahoo.analystTargetRange.numberOfAnalysts} analysts)
 - Current Price: $${yahoo.analystTargetRange.currentPrice.toFixed(2)}
 - Recommendation: ${yahoo.analystConsensus.recommendation}
@@ -423,6 +460,11 @@ Requirements:
 
     // ── Merge Yahoo Finance data into Gemini response ──
     if (yahoo) {
+      // 0. Override header fields with LIVE Yahoo data
+      if (yahoo.livePrice > 0) parsed.currentPrice = yahoo.livePriceStr
+      if (yahoo.marketCap) parsed.marketCap = yahoo.marketCap
+      if (yahoo.priceVsATH) parsed.priceVsATH = yahoo.priceVsATH
+
       // 1. Overview fields
       parsed.overview.revenueCagr = yahoo.revenueCagr
       parsed.overview.netIncomeCagr = yahoo.netIncomeCagr
