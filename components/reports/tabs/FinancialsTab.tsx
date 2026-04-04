@@ -71,7 +71,7 @@ export default function FinancialsTab({ financials }: { financials: StockReport[
                 d.year,
                 `$${d.revenue}B`,
                 d.revenueGrowth,
-                `$${d.adjEPS.toFixed(2)}`,
+                `$${typeof d.adjEPS === 'number' ? d.adjEPS.toFixed(2) : d.adjEPS}`,
                 d.epsGrowth,
                 d.opCF,
                 d.keyMetric,

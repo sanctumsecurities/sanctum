@@ -32,12 +32,12 @@ function CompanyLogo({ ticker, website }: { ticker: string; website?: string }) 
   if (logoUrl && !imgError) {
     return (
       <div style={{
-        width: 48, height: 48, borderRadius: 12, overflow: 'hidden',
+        width: 54, height: 54, borderRadius: 15, overflow: 'hidden',
         background: '#ffffff', flexShrink: 0,
         boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
       }}>
         <Image
-          src={logoUrl} alt={ticker} width={48} height={48}
+          src={logoUrl} alt={ticker} width={54} height={54}
           style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }}
           onError={() => setImgError(true)}
           unoptimized
@@ -48,7 +48,7 @@ function CompanyLogo({ ticker, website }: { ticker: string; website?: string }) 
 
   return (
     <div style={{
-      width: 48, height: 48, borderRadius: 12, flexShrink: 0,
+      width: 54, height: 54, borderRadius: 15, flexShrink: 0,
       background: '#0f0f0f', border: '1px solid #1a1a1a',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: 16, fontWeight: 700, color: '#e8ecf1',
