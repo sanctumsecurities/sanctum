@@ -1139,6 +1139,54 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
               )
             })()}
           </div>
+
+          {/* Footer: sector legend */}
+          {colorMode === 'sector' ? (
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 12,
+              padding: '10px 0 4px',
+            }}>
+              {(() => {
+                const sectorCounts: Record<string, number> = {}
+                for (const s of data.stocks) {
+                  sectorCounts[s.sector] = (sectorCounts[s.sector] || 0) + 1
+                }
+                return Object.entries(sectorCounts)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([sector, count]) => {
+                    const isActive = sectorFilter === sector
+                    return (
+                      <button
+                        key={sector}
+                        onClick={() => setSectorFilter(sectorFilter === sector ? null : sector)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          background: 'none', border: 'none',
+                          cursor: 'pointer', padding: '2px 0',
+                        }}
+                      >
+                        <span style={{
+                          width: 5, height: 5, borderRadius: '50%',
+                          background: SECTOR_COLORS[sector] || SECTOR_COLORS['Other'],
+                          flexShrink: 0,
+                          opacity: isActive ? 1 : 0.7,
+                        }} />
+                        <span style={{
+                          fontSize: 9,
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: isActive ? '#fff' : '#555',
+                          letterSpacing: '0.05em',
+                          transition: 'color 0.2s ease',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {sector} ({count})
+                        </span>
+                      </button>
+                    )
+                  })
+              })()}
+            </div>
+          ) : null}
         </>
       )}
     </div>
