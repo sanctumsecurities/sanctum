@@ -809,7 +809,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const fillPoints = `0,${h} ${linePoints} ${lastX},${h}`
           const up = prices[prices.length - 1] >= prices[0]
           const strokeColor = up ? '#22c55e' : '#f87171'
-          const fillColor = up ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)'
+          const fillColor = up ? 'rgba(34,197,94,0.18)' : 'rgba(248,113,113,0.18)'
 
           return (
             <svg
@@ -1369,6 +1369,7 @@ export default function Home() {
               animation: 'pulse 2s ease-in-out infinite',
               flexShrink: 0,
               transition: 'background 0.4s ease',
+              boxShadow: `0 0 8px 2px ${statusColor}66`,
             }} />
             <span style={{
               fontSize: 11, color: statusColor,
