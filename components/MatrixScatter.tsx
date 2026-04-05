@@ -828,19 +828,19 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
 
               <defs>
                 <radialGradient id="grad-core" cx="25%" cy="25%" r="60%">
-                  <stop offset="0%" stopColor="#22c55e" stopOpacity="0.06" />
+                  <stop offset="0%" stopColor="#22c55e" stopOpacity="0.12" />
                   <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
                 </radialGradient>
                 <radialGradient id="grad-volatile" cx="75%" cy="25%" r="60%">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.06" />
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.12" />
                   <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
                 </radialGradient>
                 <radialGradient id="grad-defensive" cx="25%" cy="75%" r="60%">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.06" />
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.12" />
                   <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
                 </radialGradient>
                 <radialGradient id="grad-atrisk" cx="75%" cy="75%" r="60%">
-                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.06" />
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.12" />
                   <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
                 </radialGradient>
               </defs>
