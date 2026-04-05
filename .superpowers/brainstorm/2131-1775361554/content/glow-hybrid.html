@@ -1,0 +1,141 @@
+<h2>Hybrid: Clean + Feather Glow</h2>
+<p class="subtitle">A's crispness with a barely-there luminescence on strokes and dots</p>
+
+<div class="split">
+
+  <div class="mockup">
+    <div class="mockup-header">Before (A — current clean)</div>
+    <div class="mockup-body" style="background:#0a0a0a;padding:16px;border-radius:6px;">
+      <svg width="100%" height="130" viewBox="0 0 300 130">
+        <defs>
+          <linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#4ade80" stop-opacity="0.1"/>
+            <stop offset="100%" stop-color="#4ade80" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="30" y1="20" x2="290" y2="20" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="30" y1="55" x2="290" y2="55" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="30" y1="90" x2="290" y2="90" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="30" y1="115" x2="290" y2="115" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <!-- Area -->
+        <polygon points="40,90 100,65 160,50 220,35 280,45 280,115 40,115" fill="url(#bg1)"/>
+        <!-- Blue line, no glow -->
+        <polyline points="40,90 100,65 160,50 220,35 280,45" fill="none" stroke="#60a5fa" stroke-width="2"/>
+        <circle cx="40"  cy="90" r="3.5" fill="#60a5fa"/>
+        <circle cx="100" cy="65" r="3.5" fill="#60a5fa"/>
+        <circle cx="160" cy="50" r="3.5" fill="#60a5fa"/>
+        <circle cx="220" cy="35" r="3.5" fill="#60a5fa"/>
+        <circle cx="280" cy="45" r="3.5" fill="#60a5fa"/>
+        <!-- Area green -->
+        <polygon points="40,100 100,85 160,80 220,70 280,60 280,115 40,115" fill="url(#bg2)"/>
+        <polyline points="40,100 100,85 160,80 220,70 280,60" fill="none" stroke="#4ade80" stroke-width="2"/>
+        <circle cx="40"  cy="100" r="3.5" fill="#4ade80"/>
+        <circle cx="100" cy="85"  r="3.5" fill="#4ade80"/>
+        <circle cx="160" cy="80"  r="3.5" fill="#4ade80"/>
+        <circle cx="220" cy="70"  r="3.5" fill="#4ade80"/>
+        <circle cx="280" cy="60"  r="3.5" fill="#4ade80"/>
+        <!-- Bars -->
+        <rect x="44" y="80" width="13" height="35" rx="2" fill="rgba(96,165,250,0.3)"/>
+        <rect x="104" y="60" width="13" height="55" rx="2" fill="rgba(96,165,250,0.3)"/>
+        <rect x="164" y="50" width="13" height="65" rx="2" fill="rgba(74,222,128,0.3)"/>
+        <rect x="224" y="35" width="13" height="80" rx="2" fill="rgba(74,222,128,0.3)"/>
+        <!-- Axis labels -->
+        <text x="32" y="118" fill="#5a6475" font-size="9">Q1</text>
+        <text x="92" y="118" fill="#5a6475" font-size="9">Q2</text>
+        <text x="152" y="118" fill="#5a6475" font-size="9">Q3</text>
+        <text x="212" y="118" fill="#5a6475" font-size="9">Q4</text>
+        <text x="272" y="118" fill="#5a6475" font-size="9">Q5</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">After (Feather Glow)</div>
+    <div class="mockup-body" style="background:#0a0a0a;padding:16px;border-radius:6px;">
+      <svg width="100%" height="130" viewBox="0 0 300 130">
+        <defs>
+          <!-- Very gentle glow — stdDeviation=1.8, single pass -->
+          <filter id="fgBlue" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="fgGreen" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <!-- Subtle bar glow — even lighter -->
+          <filter id="fgBar" x="-30%" y="-20%" width="160%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <linearGradient id="bg1h" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.16"/>
+            <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="bg2h" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#4ade80" stop-opacity="0.13"/>
+            <stop offset="100%" stop-color="#4ade80" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="30" y1="20" x2="290" y2="20" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="30" y1="55" x2="290" y2="55" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="30" y1="90" x2="290" y2="90" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="30" y1="115" x2="290" y2="115" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <!-- Area -->
+        <polygon points="40,90 100,65 160,50 220,35 280,45 280,115 40,115" fill="url(#bg1h)"/>
+        <!-- Blue line with feather glow -->
+        <polyline points="40,90 100,65 160,50 220,35 280,45" fill="none" stroke="#60a5fa" stroke-width="2" filter="url(#fgBlue)"/>
+        <!-- Dots with feather glow -->
+        <circle cx="40"  cy="90" r="3.5" fill="#60a5fa" filter="url(#fgBlue)"/>
+        <circle cx="100" cy="65" r="3.5" fill="#60a5fa" filter="url(#fgBlue)"/>
+        <circle cx="160" cy="50" r="3.5" fill="#60a5fa" filter="url(#fgBlue)"/>
+        <circle cx="220" cy="35" r="3.5" fill="#60a5fa" filter="url(#fgBlue)"/>
+        <circle cx="280" cy="45" r="3.5" fill="#60a5fa" filter="url(#fgBlue)"/>
+        <!-- Area green -->
+        <polygon points="40,100 100,85 160,80 220,70 280,60 280,115 40,115" fill="url(#bg2h)"/>
+        <polyline points="40,100 100,85 160,80 220,70 280,60" fill="none" stroke="#4ade80" stroke-width="2" filter="url(#fgGreen)"/>
+        <circle cx="40"  cy="100" r="3.5" fill="#4ade80" filter="url(#fgGreen)"/>
+        <circle cx="100" cy="85"  r="3.5" fill="#4ade80" filter="url(#fgGreen)"/>
+        <circle cx="160" cy="80"  r="3.5" fill="#4ade80" filter="url(#fgGreen)"/>
+        <circle cx="220" cy="70"  r="3.5" fill="#4ade80" filter="url(#fgGreen)"/>
+        <circle cx="280" cy="60"  r="3.5" fill="#4ade80" filter="url(#fgGreen)"/>
+        <!-- Bars with subtle glow -->
+        <rect x="44" y="80" width="13" height="35" rx="2" fill="rgba(96,165,250,0.45)" filter="url(#fgBar)"/>
+        <rect x="104" y="60" width="13" height="55" rx="2" fill="rgba(96,165,250,0.45)" filter="url(#fgBar)"/>
+        <rect x="164" y="50" width="13" height="65" rx="2" fill="rgba(74,222,128,0.4)" filter="url(#fgBar)"/>
+        <rect x="224" y="35" width="13" height="80" rx="2" fill="rgba(74,222,128,0.4)" filter="url(#fgBar)"/>
+        <!-- Axis labels -->
+        <text x="32" y="118" fill="#5a6475" font-size="9">Q1</text>
+        <text x="92" y="118" fill="#5a6475" font-size="9">Q2</text>
+        <text x="152" y="118" fill="#5a6475" font-size="9">Q3</text>
+        <text x="212" y="118" fill="#5a6475" font-size="9">Q4</text>
+        <text x="272" y="118" fill="#5a6475" font-size="9">Q5</text>
+      </svg>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>What changes in the "After"</h3>
+  <ul>
+    <li><strong>Lines & dots</strong> — SVG <code>feGaussianBlur stdDeviation=1.8</code> filter (half of option B's 3.0). Adds a soft halo without blooming.</li>
+    <li><strong>Bars</strong> — Even lighter <code>stdDeviation=1.2</code> + fill opacity bumped from 0.30 → 0.45 so they feel more present without glowing harshly.</li>
+    <li><strong>Area fills</strong> — Gradient opacity bumped slightly (0.12 → 0.16) so the fill breathes a little more color into the background.</li>
+    <li><strong>Colors unchanged</strong> — same blue (#60a5fa) and green (#4ade80). No palette shift needed unless you want one.</li>
+  </ul>
+  <p class="subtitle">Does this feel right, or would you like the glow dialed up/down further?</p>
+</div>
