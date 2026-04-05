@@ -54,12 +54,12 @@ export function MetricCard({ label, value, subtitle, yoyChange }: {
   )
 }
 
-const badgeColors: Record<string, { bg: string; color: string; border: string }> = {
-  green: { bg: 'rgba(74,222,128,0.12)', color: '#4ade80', border: 'rgba(74,222,128,0.22)' },
-  red: { bg: 'rgba(248,113,113,0.12)', color: '#f87171', border: 'rgba(248,113,113,0.22)' },
-  blue: { bg: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: 'rgba(96,165,250,0.22)' },
-  yellow: { bg: 'rgba(234,179,8,0.12)', color: '#eab308', border: 'rgba(234,179,8,0.22)' },
-  gray: { bg: 'rgba(255,255,255,0.06)', color: '#8b95a5', border: 'rgba(255,255,255,0.1)' },
+const badgeColors: Record<string, { bg: string; color: string; border: string; glow: string }> = {
+  green: { bg: 'rgba(74,222,128,0.18)', color: '#4ade80', border: 'rgba(74,222,128,0.35)', glow: '0 0 10px 1px rgba(74,222,128,0.25)' },
+  red: { bg: 'rgba(248,113,113,0.18)', color: '#f87171', border: 'rgba(248,113,113,0.35)', glow: '0 0 10px 1px rgba(248,113,113,0.25)' },
+  blue: { bg: 'rgba(96,165,250,0.18)', color: '#60a5fa', border: 'rgba(96,165,250,0.35)', glow: '0 0 10px 1px rgba(96,165,250,0.25)' },
+  yellow: { bg: 'rgba(234,179,8,0.18)', color: '#eab308', border: 'rgba(234,179,8,0.35)', glow: '0 0 10px 1px rgba(234,179,8,0.25)' },
+  gray: { bg: 'rgba(255,255,255,0.06)', color: '#8b95a5', border: 'rgba(255,255,255,0.1)', glow: 'none' },
 }
 
 export function Badge({ text, variant = 'gray' }: { text: string; variant?: 'green' | 'red' | 'blue' | 'yellow' | 'gray' }) {
@@ -71,6 +71,7 @@ export function Badge({ text, variant = 'gray' }: { text: string; variant?: 'gre
       background: c.bg, color: c.color, border: `1px solid ${c.border}`,
       fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5,
       whiteSpace: 'nowrap',
+      boxShadow: c.glow,
     }}>{text}</span>
   )
 }
