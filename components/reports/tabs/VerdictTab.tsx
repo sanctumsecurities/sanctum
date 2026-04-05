@@ -71,6 +71,7 @@ export default function VerdictTab({ verdictDetails, verdict }: {
               ...glassCard,
               borderTop: `3px solid ${border}`,
               padding: '20px',
+              boxShadow: `0 -4px 12px -2px ${border}44`,
             }}>
               <div style={{
                 fontSize: 13, fontWeight: 700, color: border,
@@ -136,7 +137,7 @@ export default function VerdictTab({ verdictDetails, verdict }: {
             <DataTable
               headers={['Horizon', 'Bear Case', 'Base Case', 'Bull Case', 'Implied CAGR', 'Commentary']}
               rows={verdictDetails.multiYearProjections.map(r => [
-                r.horizon, r.bearCase, r.baseCase, r.bullCase, r.impliedCagr || 'N/A', r.commentary,
+                r.horizon, r.bearCase, r.baseCase, r.bullCase, r.impliedCagr || '—', r.commentary,
               ])}
               numericCols={[1, 2, 3, 4]}
             />
@@ -165,7 +166,7 @@ export default function VerdictTab({ verdictDetails, verdict }: {
                 <Tooltip content={<CTooltip />} />
                 <Area
                   type="monotone" dataKey="bull" name="Bull"
-                  stroke="#4ade80" fill="rgba(74,222,128,0.08)" strokeWidth={2}
+                  stroke="#4ade80" fill="rgba(74,222,128,0.18)" strokeWidth={2}
                 />
                 <Line
                   type="monotone" dataKey="base" name="Base"
@@ -174,7 +175,7 @@ export default function VerdictTab({ verdictDetails, verdict }: {
                 />
                 <Area
                   type="monotone" dataKey="bear" name="Bear"
-                  stroke="#f87171" fill="rgba(248,113,113,0.08)" strokeWidth={2}
+                  stroke="#f87171" fill="rgba(248,113,113,0.18)" strokeWidth={2}
                   strokeDasharray="5 3"
                 />
                 <Line
