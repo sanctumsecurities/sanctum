@@ -54,7 +54,7 @@ export default function ValuationTab({ valuation }: { valuation: StockReport['va
           <div style={{ ...glassCard, padding: '4px 0', overflow: 'hidden' }}>
             <DataTable
               headers={['Metric', 'Current', '5-Year Avg', 'Sector Median', 'Commentary']}
-              rows={valuation.metrics.map(m => [m.metric, m.current, m.fiveYearAvg, m.sectorMedian || 'N/A', m.commentary])}
+              rows={valuation.metrics.filter(m => m.current && m.current !== 'N/A').map(m => [m.metric, m.current, m.fiveYearAvg, m.sectorMedian || '—', m.commentary])}
               numericCols={[1, 2, 3]}
             />
           </div>
@@ -92,6 +92,7 @@ export default function ValuationTab({ valuation }: { valuation: StockReport['va
                     y={valuation.sectorMedianPE}
                     stroke="#f59e0b"
                     strokeDasharray="6 3"
+                    style={{ filter: 'url(#fGlow)' }}
                     label={{
                       value: `Sector ${valuation.sectorMedianPE.toFixed(0)}x`,
                       position: 'right',
@@ -104,6 +105,7 @@ export default function ValuationTab({ valuation }: { valuation: StockReport['va
                   type="monotone" dataKey="pe" name="P/E Ratio"
                   stroke="#60a5fa" strokeWidth={2.5}
                   dot={{ fill: '#60a5fa', r: 4, strokeWidth: 0 }}
+                  style={{ filter: 'url(#fGlow)' }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -113,9 +115,6 @@ export default function ValuationTab({ valuation }: { valuation: StockReport['va
                 <span style={{ fontSize: 11, color: '#f59e0b' }}>- - Sector Median</span>
               )}
             </div>
-            <p style={{ fontSize: 11, color: '#5a6475', textAlign: 'center', margin: '4px 0 0', fontFamily: "'DM Sans', sans-serif" }}>
-              P/E above sector median suggests premium valuation; below suggests potential value or concern.
-            </p>
           </div>
         </div>
       )}
