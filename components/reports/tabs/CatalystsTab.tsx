@@ -145,9 +145,9 @@ export default function CatalystsTab({ catalysts }: { catalysts: StockReport['ca
                 <XAxis dataKey="month" tick={{ fill: '#5a6475', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#5a6475', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CTooltip />} />
-                <Bar dataKey="buy" name="Buy" stackId="a" fill="rgba(74,222,128,0.7)" />
-                <Bar dataKey="hold" name="Hold" stackId="a" fill="rgba(96,165,250,0.7)" />
-                <Bar dataKey="sell" name="Sell" stackId="a" fill="rgba(248,113,113,0.7)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="buy" name="Buy" stackId="a" fill="rgba(74,222,128,0.72)" style={{ filter: 'url(#fGlowBar)' }} />
+                <Bar dataKey="hold" name="Hold" stackId="a" fill="rgba(96,165,250,0.72)" style={{ filter: 'url(#fGlowBar)' }} />
+                <Bar dataKey="sell" name="Sell" stackId="a" fill="rgba(248,113,113,0.72)" radius={[4, 4, 0, 0]} style={{ filter: 'url(#fGlowBar)' }} />
               </BarChart>
             </ResponsiveContainer>
             <div style={{ display: 'flex', gap: 16, justifyContent: 'center', paddingBottom: 6 }}>
