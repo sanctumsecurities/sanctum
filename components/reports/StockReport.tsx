@@ -203,6 +203,25 @@ function ReportLoadingScreen({
       minHeight: 'calc(100vh - 56px)', background: '#0a0a0a',
       position: 'relative', overflow: 'hidden',
     }}>
+      {/* Global SVG filter defs — referenced by all charts via url(#fGlow) / url(#fGlowBar) */}
+      <svg style={{ position: 'absolute', width: 0, height: 0 }} aria-hidden="true">
+        <defs>
+          <filter id="fGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="fGlowBar" x="-30%" y="-20%" width="160%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.0" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
       <style>{`
         @keyframes loadingBlink {
           0%, 100% { opacity: 1; }
