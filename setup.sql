@@ -25,7 +25,7 @@ create policy "Anyone can read reports"
 
 create policy "Authenticated users can insert reports"
   on reports for insert
-  with check (auth.uid() is not null);
+  with check (auth.uid() is not null and auth.uid() = created_by);
 
 create policy "Authenticated users can delete reports"
   on reports for delete

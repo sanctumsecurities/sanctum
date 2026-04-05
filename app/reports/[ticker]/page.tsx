@@ -52,7 +52,7 @@ export default function ReportPage() {
         padding: '0 40px',
       }}>
         <div style={{
-          maxWidth: 1400, margin: '0 auto', width: '100%',
+          maxWidth: 1880, margin: '0 auto', width: '100%',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           height: 56,
         }}>

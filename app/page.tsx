@@ -1055,7 +1055,7 @@ export default function Home() {
     } catch {}
   }, [])
 
-  // ── Load settings from localStorage ──
+  // ── Load settings from localStorage (immediate fallback before Supabase responds) ──
   useEffect(() => {
     try {
       const stored = localStorage.getItem('sanctum-settings')
@@ -1063,9 +1063,11 @@ export default function Home() {
         const parsed = JSON.parse(stored)
         const merged = { ...DEFAULT_SETTINGS, ...parsed }
         setSettings(merged)
-        if (merged.defaultTab) setActiveTab(merged.defaultTab)
+        // Only set activeTab from localStorage if no session (Supabase will override if logged in)
+        if (!session && merged.defaultTab) setActiveTab(merged.defaultTab)
       }
     } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {

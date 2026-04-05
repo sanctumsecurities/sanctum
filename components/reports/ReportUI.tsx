@@ -8,8 +8,9 @@ export const glassCard: React.CSSProperties = {
 }
 
 export function MetricCard({ label, value, subtitle, yoyChange }: {
-  label: string; value: string; subtitle?: string; color?: string; yoyChange?: string
+  label: string; value: string; subtitle?: string; yoyChange?: string
 }) {
+  const isCagr = /cagr/i.test(label)
   const changeColor = yoyChange?.startsWith('+') ? '#4ade80'
     : yoyChange?.startsWith('-') ? '#f87171'
     : '#5a6475'
@@ -25,7 +26,7 @@ export function MetricCard({ label, value, subtitle, yoyChange }: {
       display: 'flex', flexDirection: 'column',
     }}>
       <div style={{
-        fontSize: 10, letterSpacing: 1.4, color: '#5a6475',
+        fontSize: 13, letterSpacing: 1.4, color: '#5a6475',
         textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8,
         minHeight: 14,
       }}>{label}</div>
@@ -33,19 +34,19 @@ export function MetricCard({ label, value, subtitle, yoyChange }: {
         display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
       }}>
         <div style={{
-          fontSize: 22, fontWeight: 700, color: valueColor,
+          fontSize: 24, fontWeight: 700, color: valueColor,
           fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.1,
         }}>{value}</div>
-        {yoyChange && (
+        {yoyChange && !isCagr && (
           <span style={{
-            fontSize: 11, fontWeight: 600, color: changeColor,
+            fontSize: 12, fontWeight: 600, color: changeColor,
             fontFamily: "'JetBrains Mono', monospace",
-          }}>{yoyChange}</span>
+          }}>{yoyChange}<span style={{ color: '#5a6475', fontWeight: 400 }}> YoY</span></span>
         )}
       </div>
       {subtitle && (
         <div style={{
-          fontSize: 11, marginTop: 'auto', paddingTop: 8, fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 12, marginTop: 'auto', paddingTop: 8, fontFamily: "'JetBrains Mono', monospace",
           color: '#5a6475',
         }}>{subtitle}</div>
       )}

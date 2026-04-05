@@ -4,8 +4,8 @@ import { yahooFinance } from '@/lib/yahoo'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const query = (req.nextUrl.searchParams.get('q') ?? '').slice(0, 20)
-  if (!query.trim()) return NextResponse.json([])
+  const query = (req.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 20)
+  if (!query) return NextResponse.json([])
 
   try {
     const results = await yahooFinance.search(

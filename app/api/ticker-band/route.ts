@@ -34,11 +34,12 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
 export async function GET(request: NextRequest) {
   try {
     const tickersParam = request.nextUrl.searchParams.get('tickers')
+    const tickerPattern = /^[A-Z0-9.\-^=]+$/
     const instruments = tickersParam
       ? tickersParam.split(',').filter(Boolean).slice(0, 20).map(s => {
           const symbol = s.trim().toUpperCase()
           return { symbol, label: DEFAULT_LABEL_MAP[symbol] ?? symbol }
-        })
+        }).filter(i => i.symbol.length <= 20 && tickerPattern.test(i.symbol))
       : DEFAULT_INSTRUMENTS
 
     const symbols = instruments.map(i => i.symbol)
@@ -81,8 +82,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err: any) {
+    console.error('[ticker-band] fetch failed:', err)
     return NextResponse.json(
-      { error: err.message || 'Failed to fetch ticker data' },
+      { error: 'Failed to fetch ticker data' },
       { status: 500, headers: { 'Cache-Control': 'no-store' } }
     )
   }

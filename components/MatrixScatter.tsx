@@ -1179,7 +1179,6 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                       x={bx - 5} y={by - 5} width={10} height={10}
                       fill="#fff" fillOpacity={0.15}
                       stroke="#fff" strokeWidth="1.5"
-                      transform={`rotate(45, ${bx}, ${by})`}
                       style={{
                         transform: mounted ? `rotate(45deg)` : 'rotate(45deg) scale(0)',
                         transformOrigin: `${bx}px ${by}px`,

@@ -16,9 +16,11 @@ function getZone(score: number): { label: string; color: string } {
 }
 
 function getTickColor(index: number): string {
-  if (index <= 16) return '#ef4444'
-  if (index <= 33) return '#f0a030'
-  return '#22c55e'
+  if (index <= 12) return '#ef4444'   // Extreme Fear
+  if (index <= 22) return '#f0a030'   // Fear
+  if (index <= 27) return '#999999'   // Neutral
+  if (index <= 37) return '#a0d040'   // Greed
+  return '#22c55e'                    // Extreme Greed
 }
 
 export default function FearGreedMeter() {

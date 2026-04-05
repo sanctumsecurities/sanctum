@@ -102,8 +102,8 @@ async function fetchChart(symbol: string, period: string) {
 
     const points = rawQuotes.map((q: any, i: number) => ({
       time: new Date(q.date).toISOString(),
-      // First point uses open price so the chart starts at the day's open
-      price: (i === 0 && q.open != null) ? q.open as number : q.close as number,
+      // First point uses open price so the chart starts at the day's open (1D only)
+      price: (i === 0 && period !== '5D' && q.open != null) ? q.open as number : q.close as number,
     }))
 
     // chartPreviousClose is the close of the last session before the period starts —
@@ -166,7 +166,8 @@ export async function GET(req: NextRequest) {
     }
 
     const period = req.nextUrl.searchParams.get('period') || '1D'
-    const tickers = tickersParam.split(',').filter(Boolean).slice(0, 30).map(t => t.trim().toUpperCase())
+    const tickerPattern = /^[A-Z0-9.\-^=]+$/
+    const tickers = tickersParam.split(',').filter(Boolean).slice(0, 30).map(t => t.trim().toUpperCase()).filter(t => t.length <= 20 && tickerPattern.test(t))
     const results = await Promise.all(tickers.map(t => fetchChart(t, period)))
 
     const chartMap: Record<string, { points: { time: string; price: number }[]; afterHours: any; chartPreviousClose: number | null }> = {}
@@ -178,6 +179,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(chartMap)
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Failed to fetch charts' }, { status: 500 })
+    console.error('[charts] fetch failed:', err)
+    return NextResponse.json({ error: 'Failed to fetch charts' }, { status: 500 })
   }
 }

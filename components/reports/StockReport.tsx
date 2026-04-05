@@ -491,11 +491,11 @@ export default function StockReport({ ticker }: { ticker: string }) {
         }
       `}</style>
       <div style={{
-        padding: isDesktop ? '28px 40px 24px' : '28px 20px 24px',
+        padding: isDesktop ? '20px 40px 16px' : '28px 20px 24px',
         background: 'transparent',
         borderBottom: '1px solid #1a1a1a',
       }}>
-        <div style={{ maxWidth: isDesktop ? 1400 : 900, margin: '0 auto' }}>
+        <div style={{ maxWidth: isDesktop ? 1880 : 900, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
             <CompanyLogo ticker={report.ticker} website={report.website} />
             <div style={{ minWidth: 0 }}>
@@ -553,18 +553,25 @@ export default function StockReport({ ticker }: { ticker: string }) {
               {report.badges
                 .filter(b => !b.toLowerCase().includes('52wk') && !b.toLowerCase().includes('52-week') && !b.toLowerCase().includes('52 week'))
                 .slice(0, 6)
-                .map((b, i) => (
-                <Badge key={i} text={b} variant="gray" />
-              ))}
+                .map((b, i) => {
+                  const bl = b.toLowerCase()
+                  const variant: 'green' | 'red' | 'blue' | 'yellow' | 'gray' =
+                    /undervalued|strong buy|buy|bullish|upside|growth|beat|outperform|dividend|profitable|high margin/i.test(bl) ? 'green'
+                    : /overvalued|sell|bearish|downside|decline|miss|underperform|loss|debt|risk|warning|concern/i.test(bl) ? 'red'
+                    : /hold|neutral|mixed|moderate|stable|fair value/i.test(bl) ? 'blue'
+                    : /volatile|speculative|momentum|turnaround|cyclical|emerging/i.test(bl) ? 'yellow'
+                    : 'gray'
+                  return <Badge key={i} text={b} variant={variant} />
+                })}
             </div>
           )}
         </div>
       </div>
 
-      <div style={{ borderBottom: '1px solid #1a1a1a', overflowX: 'auto' }}>
+      <div style={{ borderBottom: '1px solid #1a1a1a', overflowX: 'auto', padding: isDesktop ? '0 40px' : '0 20px' }}>
         <div style={{
-          maxWidth: isDesktop ? 1400 : 900, margin: '0 auto',
-          padding: isDesktop ? '0 40px' : '0 20px', display: 'flex', gap: 0,
+          maxWidth: isDesktop ? 1880 : 900, margin: '0 auto',
+          display: 'flex', gap: 0,
         }}>
           {TABS.map(t => (
             <button
@@ -587,16 +594,20 @@ export default function StockReport({ ticker }: { ticker: string }) {
       </div>
 
       <div style={{
-        maxWidth: isDesktop ? 1400 : 900, margin: '0 auto', padding: isDesktop ? '28px 40px 72px' : '28px 20px 72px',
-        opacity: animating ? 0 : 1,
-        transform: animating ? 'translateY(6px)' : 'translateY(0)',
-        transition: 'opacity 0.2s ease, transform 0.2s ease',
+        padding: isDesktop ? '20px 40px 40px' : '28px 20px 72px',
       }}>
-        {activeTab === 'Overview' && <OverviewTab overview={report.overview} currentPrice={report.currentPrice} />}
-        {activeTab === 'Financials' && <FinancialsTab financials={report.financials} />}
-        {activeTab === 'Valuation' && <ValuationTab valuation={report.valuation} />}
-        {activeTab === 'Catalysts' && <CatalystsTab catalysts={report.catalysts} />}
-        {activeTab === 'Verdict' && <VerdictTab verdictDetails={report.verdictDetails} verdict={report.verdict} />}
+        <div style={{
+          maxWidth: isDesktop ? 1880 : 900, margin: '0 auto',
+          opacity: animating ? 0 : 1,
+          transform: animating ? 'translateY(6px)' : 'translateY(0)',
+          transition: 'opacity 0.2s ease, transform 0.2s ease',
+        }}>
+          {activeTab === 'Overview' && <OverviewTab overview={report.overview} currentPrice={report.currentPrice} convictionScore={report.convictionScore} convictionDrivers={report.verdictDetails?.convictionDrivers} />}
+          {activeTab === 'Financials' && <FinancialsTab financials={report.financials} />}
+          {activeTab === 'Valuation' && <ValuationTab valuation={report.valuation} />}
+          {activeTab === 'Catalysts' && <CatalystsTab catalysts={report.catalysts} />}
+          {activeTab === 'Verdict' && <VerdictTab verdictDetails={report.verdictDetails} verdict={report.verdict} />}
+        </div>
       </div>
     </div>
   )

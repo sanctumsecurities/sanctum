@@ -2,10 +2,23 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { StockReport } from '@/types/report'
-import YahooFinance from 'yahoo-finance2'
-const yahooFinance = new YahooFinance()
+import { yahooFinance } from '@/lib/yahoo'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+function getGenAI() {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) throw new Error('GEMINI_API_KEY is not configured')
+  return new GoogleGenerativeAI(key)
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Request timed out')), ms)
+    }),
+  ]).finally(() => clearTimeout(timer))
+}
 
 // ── Helper functions ──
 
@@ -326,11 +339,13 @@ async function fetchYahooData(ticker: string) {
 export async function generateReport(ticker: string): Promise<StockReport | { error: string }> {
   const symbol = ticker.toUpperCase().trim()
   if (!symbol) return { error: 'Ticker is required' }
+  if (symbol.length > 20 || !/^[A-Z0-9.\-^=]+$/.test(symbol)) return { error: 'Invalid ticker symbol' }
 
   try {
     // Fetch expanded Yahoo Finance data
     const yahoo = await fetchYahooData(symbol)
 
+    const genAI = getGenAI()
     const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
 
     const yahooContext = yahoo ? `
@@ -433,7 +448,7 @@ Schema:
 }
 
 Requirements:
-- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Beta, Forward P/E, Op Cash Flow, Dividend Yield (show "N/A" if no dividend). Include yoyChange where applicable. For CAGR metrics, use the CAGR itself as yoyChange. For Beta use the provided real value — no yoyChange needed.
+- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Beta, Forward P/E, Op Cash Flow, Dividend Yield (show "N/A" if no dividend). Include yoyChange for: Market Cap (YoY % change), FY Revenue (YoY % change), Revenue 5yr CAGR (the CAGR itself), Net Income 5yr CAGR (the CAGR itself), Op Cash Flow (YoY % change), Dividend Yield (YoY change). No yoyChange for Beta or Forward P/E.
 - overview.moatScores: exactly 6 items, 0-100 scale
 - overview.sectorMoatScores: exactly 6 items matching moatScores metrics
 - overview.segmentBreakdown: 3-8 segments summing close to 100
@@ -448,7 +463,7 @@ Requirements:
 - Be specific to THIS company — no generic filler
 - Return ONLY the JSON object, no wrapping`
 
-    const result = await model.generateContent(prompt)
+    const result = await withTimeout(model.generateContent(prompt), 120_000)
     const text = result.response.text()
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const parsed = JSON.parse(cleaned) as StockReport
@@ -602,6 +617,10 @@ Requirements:
 
     return parsed
   } catch (err: any) {
-    return { error: err.message || 'Failed to generate report' }
+    console.error('[generateReport] failed:', err)
+    const msg = err.message || ''
+    if (msg.includes('GEMINI_API_KEY')) return { error: msg }
+    if (msg.includes('timed out')) return { error: 'Report generation timed out. Please try again.' }
+    return { error: 'Failed to generate report. Please try again.' }
   }
 }
