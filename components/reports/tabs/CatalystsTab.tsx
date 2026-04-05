@@ -109,6 +109,7 @@ export default function CatalystsTab({ catalysts }: { catalysts: StockReport['ca
                 ...glassCard,
                 borderLeft: `3px solid ${severityBorder[risk.severity] || '#60a5fa'}`,
                 padding: '16px 20px',
+                boxShadow: `inset 3px 0 12px -4px ${severityBorder[risk.severity] || '#60a5fa'}44`,
               }}>
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -154,9 +155,6 @@ export default function CatalystsTab({ catalysts }: { catalysts: StockReport['ca
               <span style={{ fontSize: 11, color: '#60a5fa' }}>&#9632; Hold</span>
               <span style={{ fontSize: 11, color: '#f87171' }}>&#9632; Sell</span>
             </div>
-            <p style={{ fontSize: 11, color: '#5a6475', textAlign: 'center', margin: '4px 0 0', fontFamily: "'DM Sans', sans-serif" }}>
-              Shifts in buy/hold/sell distribution signal changing analyst sentiment.
-            </p>
           </div>
         </div>
       )}
@@ -175,6 +173,9 @@ export default function CatalystsTab({ catalysts }: { catalysts: StockReport['ca
                   <div style={{
                     width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                     background: txn.type === 'BUY' ? '#4ade80' : '#f87171',
+                    boxShadow: txn.type === 'BUY'
+                      ? '0 0 8px 2px rgba(74,222,128,0.4)'
+                      : '0 0 8px 2px rgba(248,113,113,0.4)',
                   }} />
                   <span style={{
                     fontSize: 11, color: '#5a6475', fontFamily: "'JetBrains Mono', monospace",
@@ -191,9 +192,6 @@ export default function CatalystsTab({ catalysts }: { catalysts: StockReport['ca
                 </div>
               ))}
             </div>
-            <p style={{ fontSize: 11, color: '#5a6475', margin: '12px 0 0', fontFamily: "'DM Sans', sans-serif" }}>
-              Insider buying often signals management confidence; heavy selling may flag concern (or routine diversification).
-            </p>
           </div>
         </div>
       )}
