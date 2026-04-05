@@ -548,23 +548,32 @@ export default function StockReport({ ticker }: { ticker: string }) {
             })()}
           </div>
 
-          {report.badges?.length > 0 && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {report.badges
-                .filter(b => !b.toLowerCase().includes('52wk') && !b.toLowerCase().includes('52-week') && !b.toLowerCase().includes('52 week'))
-                .slice(0, 6)
-                .map((b, i) => {
-                  const bl = b.toLowerCase()
-                  const variant: 'green' | 'red' | 'blue' | 'yellow' | 'gray' =
-                    /undervalued|strong buy|buy|bullish|upside|growth|beat|outperform|dividend|profitable|high margin/i.test(bl) ? 'green'
-                    : /overvalued|sell|bearish|downside|decline|miss|underperform|loss|debt|risk|warning|concern/i.test(bl) ? 'red'
-                    : /hold|neutral|mixed|moderate|stable|fair value/i.test(bl) ? 'blue'
-                    : /volatile|speculative|momentum|turnaround|cyclical|emerging/i.test(bl) ? 'yellow'
-                    : 'gray'
-                  return <Badge key={i} text={b} variant={variant} />
-                })}
-            </div>
-          )}
+          {report.badges?.length > 0 && (() => {
+            const sentimentToVariant: Record<string, 'green' | 'red' | 'blue' | 'yellow' | 'gray'> = {
+              positive: 'green',
+              negative: 'red',
+              neutral: 'blue',
+              caution: 'yellow',
+            }
+            const badges = report.badges.slice(0, 12).map(b =>
+              typeof b === 'string'
+                ? { text: b, variant: 'gray' as const }
+                : { text: b.text, variant: sentimentToVariant[b.sentiment] || 'gray' as const }
+            ).filter(b => {
+              const bl = b.text.toLowerCase()
+              if (bl.includes('52wk') || bl.includes('52-week') || bl.includes('52 week')) return false
+              if (/\$[\d.,]+|\d+(\.\d+)?[%x]|\d+(\.\d+)?\s*[btm]\b/i.test(b.text)) return false
+              if (/\b(mkt cap|market cap|p\/e|forward p\/e|trailing p\/e|eps|dividend yield|div yield|beta|cagr|revenue|cash flow|net income|op margin|gross margin)\b/i.test(bl)) return false
+              return true
+            })
+            return (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {badges.map((b, i) => (
+                  <Badge key={i} text={b.text} variant={b.variant} />
+                ))}
+              </div>
+            )
+          })()}
         </div>
       </div>
 

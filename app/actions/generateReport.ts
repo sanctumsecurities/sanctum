@@ -397,12 +397,16 @@ Schema:
   "verdict": "BUY" | "SELL" | "HOLD" | "AVOID",
   "verdictSubtitle": "string — one-line thesis, max 10 words",
   "convictionScore": number (0-100),
-  "badges": ["string — 4-6 contextual tags like 'DOJ Investigation', 'Buffett Bought', 'Mkt Cap ~$256B'"],
+  "badges": [{ "text": "string — qualitative/narrative tag about the company", "sentiment": "'positive' | 'negative' | 'neutral' | 'caution' — classify based on whether this tag is bullish (positive), bearish (negative), informational (neutral), or a risk/warning (caution)" }],
   "overview": {
     "keyMetrics": [
       { "label": "string", "value": "string", "subtitle": "string or omit", "color": "hex or omit", "yoyChange": "string like '+12.3%'" }
     ],
-    "businessSummary": "string — 2-3 sentences, what this company does and why it matters NOW",
+    "businessSummary": {
+      "businessModel": "string — 2-3 sentences on what this company does, its business model, and competitive position",
+      "financials": "string — 2-3 sentences summarizing financial health, growth trajectory, and profitability",
+      "valuation": "string — 2-3 sentences on current valuation, whether it appears cheap or expensive, and key valuation metrics"
+    },
     "whatHasGoneWrong": "string or null — only if genuine material negative exists",
     "segmentBreakdown": [{ "name": "string", "percentage": number }],
     "moatScores": [{ "metric": "string", "score": number 0-100 }],
@@ -448,6 +452,7 @@ Schema:
 }
 
 Requirements:
+- badges: 8-12 objects. Each tag must be qualitative/narrative — NEVER include numeric metrics (market cap, P/E, dividend yield, revenue, EPS, beta, CAGR, margins). Good: 'DOJ Investigation' (negative), 'Buffett Favorite' (positive), 'AI Tailwind' (positive), 'Founder-Led' (neutral), 'Dividend Aristocrat' (positive), 'Tariff Exposed' (caution). Sentiment must reflect whether the tag is bullish, bearish, informational, or a warning for this specific company.
 - overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Beta, Forward P/E, Op Cash Flow, Dividend Yield (show "N/A" if no dividend). Include yoyChange for: Market Cap (YoY % change), FY Revenue (YoY % change), Revenue 5yr CAGR (the CAGR itself), Net Income 5yr CAGR (the CAGR itself), Op Cash Flow (YoY % change), Dividend Yield (YoY change). No yoyChange for Beta or Forward P/E.
 - overview.moatScores: exactly 6 items, 0-100 scale
 - overview.sectorMoatScores: exactly 6 items matching moatScores metrics

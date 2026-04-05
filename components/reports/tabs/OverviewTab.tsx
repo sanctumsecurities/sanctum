@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis,
+  RadarChart, PolarGrid, PolarAngleAxis,
   Radar, ResponsiveContainer, Tooltip,
 } from 'recharts'
 import { MetricCard, SectionTitle, CTooltip, RangeBar, Badge, ConvictionBadge, glassCard } from '../ReportUI'
@@ -62,12 +62,29 @@ export default function OverviewTab({ overview, currentPrice, convictionScore, c
         {/* 2. Business Overview */}
         <div>
           <SectionTitle>Business Overview</SectionTitle>
-          {overview.businessSummary?.split('\n\n').map((p, i) => (
-            <p key={i} style={{
-              fontSize: 13, color: '#b8c4d4', lineHeight: 1.8,
-              fontFamily: "'JetBrains Mono', monospace", margin: '0 0 16px',
-            }}>{p}</p>
-          ))}
+          {overview.businessSummary && (() => {
+            const sections = typeof overview.businessSummary === 'string'
+              ? [{ label: 'Business Model', text: overview.businessSummary }]
+              : [
+                  { label: 'Business Model', text: overview.businessSummary.businessModel },
+                  { label: 'Financials', text: overview.businessSummary.financials },
+                  { label: 'Valuation', text: overview.businessSummary.valuation },
+                ].filter(s => s.text)
+            return sections.map((s, i) => (
+              <div key={i} style={{ marginBottom: i < sections.length - 1 ? 16 : 0 }}>
+                <div style={{
+                  fontSize: 9, fontWeight: 700, color: '#5a6475',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  letterSpacing: '0.15em', textTransform: 'uppercase',
+                  marginBottom: 6,
+                }}>{s.label}</div>
+                <p style={{
+                  fontSize: 13, color: '#b8c4d4', lineHeight: 1.8,
+                  fontFamily: "'JetBrains Mono', monospace", margin: 0,
+                }}>{s.text}</p>
+              </div>
+            ))
+          })()}
           {overview.whatHasGoneWrong && (
             <div style={{
               ...glassCard,
@@ -430,44 +447,51 @@ export default function OverviewTab({ overview, currentPrice, convictionScore, c
       {overview.segmentBreakdown?.length > 0 && (
         <div>
           <SectionTitle>Revenue by Segment</SectionTitle>
-          <div style={{ ...glassCard, padding: '20px 20px 10px 20px', overflow: 'hidden' }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: isDesktop ? 'column' : 'row',
-              alignItems: isDesktop ? 'stretch' : 'center',
-              gap: isDesktop ? 16 : 32,
-              flexWrap: 'wrap',
-            }}>
-              <div style={{ width: isDesktop ? '100%' : 220, height: isDesktop ? 320 : 220, flexShrink: 0 }}>
-                <ResponsiveContainer width="100%" height={isDesktop ? 320 : 220}>
-                  <PieChart>
-                    <Pie
-                      data={overview.segmentBreakdown}
-                      dataKey="percentage"
-                      nameKey="name"
-                      cx="50%" cy="50%"
-                      innerRadius={60} outerRadius={95} strokeWidth={0}
-                    >
-                      {overview.segmentBreakdown.map((_, i) => (
-                        <Cell key={i} fill={SEGMENT_COLORS[i % SEGMENT_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ flex: 1, minWidth: isDesktop ? 0 : 200 }}>
-                {overview.segmentBreakdown.map((seg, i) => (
-                  <div key={i} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
-                    borderBottom: i < overview.segmentBreakdown.length - 1 ? '1px solid #111' : 'none',
+          <div style={{ ...glassCard, padding: '28px 20px 20px', overflow: 'hidden' }}>
+            {/* Stacked horizontal bar */}
+            <div style={{ display: 'flex', height: 44, borderRadius: 6, overflow: 'hidden' }}>
+              {overview.segmentBreakdown.map((seg, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: `${seg.percentage}%`,
+                    background: SEGMENT_COLORS[i % SEGMENT_COLORS.length],
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    transition: 'filter 0.15s',
+                  }}
+                  title={`${seg.name}: ${seg.percentage}%`}
+                  onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.25)')}
+                  onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+                >
+                  <span style={{
+                    fontSize: seg.percentage >= 8 ? 13 : 10,
+                    fontWeight: 700,
+                    color: '#fff',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    userSelect: 'none',
+                    whiteSpace: 'nowrap',
                   }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 2, flexShrink: 0, background: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }} />
-                    <span style={{ flex: 1, fontSize: 14, color: '#b8c4d4', fontFamily: "'JetBrains Mono', monospace" }}>{seg.name}</span>
-                    <span style={{ fontSize: 14, color: '#e8ecf1', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{seg.percentage}%</span>
-                  </div>
-                ))}
-              </div>
+                    {seg.percentage}%
+                  </span>
+                </div>
+              ))}
+            </div>
+            {/* Legend */}
+            <div style={{ marginTop: 28 }}>
+              {overview.segmentBreakdown.map((seg, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+                  borderBottom: i < overview.segmentBreakdown.length - 1 ? '1px solid #111' : 'none',
+                }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 2, flexShrink: 0, background: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }} />
+                  <span style={{ flex: 1, fontSize: 14, color: '#b8c4d4', fontFamily: "'JetBrains Mono', monospace" }}>{seg.name}</span>
+                  <span style={{ fontSize: 14, color: '#e8ecf1', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{seg.percentage}%</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
