@@ -515,8 +515,8 @@ export default function OverviewTab({ overview, currentPrice, convictionScore, c
                 <RadarChart data={mergedMoatData} cx="50%" cy="50%" outerRadius="75%">
                   <PolarGrid stroke="rgba(255,255,255,0.06)" />
                   <PolarAngleAxis dataKey="metric" tick={{ fill: '#5a6475', fontSize: 13, fontFamily: "'JetBrains Mono', monospace" }} />
-                  {hasSector && <Radar dataKey="sectorScore" stroke="#a78bfa" fill="rgba(167,139,250,0.18)" strokeWidth={1.5} strokeDasharray="4 3" isAnimationActive={false} />}
-                  <Radar dataKey="score" stroke="#60a5fa" fill="rgba(96,165,250,0.20)" strokeWidth={2} dot={{ r: 4, fill: '#60a5fa', strokeWidth: 0 }} isAnimationActive={false} />
+                  {hasSector && <Radar dataKey="sectorScore" stroke="#a78bfa" fill="rgba(167,139,250,0.18)" strokeWidth={1.5} strokeDasharray="4 3" isAnimationActive={false} style={{ filter: 'url(#fGlow)' }} />}
+                  <Radar dataKey="score" stroke="#60a5fa" fill="rgba(96,165,250,0.22)" strokeWidth={2} dot={{ r: 4, fill: '#60a5fa', strokeWidth: 0 }} isAnimationActive={false} style={{ filter: 'url(#fGlow)' }} />
                   <Tooltip content={<CTooltip />} />
                 </RadarChart>
               </ResponsiveContainer>
