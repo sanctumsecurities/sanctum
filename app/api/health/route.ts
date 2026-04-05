@@ -41,7 +41,7 @@ async function checkYahooFinance(): Promise<ServiceResult & { spyPrice?: number;
       spyChangePct: quote?.regularMarketChangePercent,
     }
   } catch (err: any) {
-    return { name: 'Yahoo Finance', status: 'error', latency: Date.now() - t0, detail: err.message }
+    return { name: 'Yahoo Finance', status: 'error', latency: Date.now() - t0, detail: 'Yahoo Finance unavailable' }
   }
 }
 
@@ -53,11 +53,11 @@ async function checkGemini(): Promise<ServiceResult> {
   const t0 = Date.now()
   try {
     const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
     await withTimeout(model.countTokens('ping'), 5000)
     return { name: 'Gemini AI', status: 'ok', latency: Date.now() - t0 }
   } catch (err: any) {
-    return { name: 'Gemini AI', status: 'error', latency: Date.now() - t0, detail: err.message }
+    return { name: 'Gemini AI', status: 'error', latency: Date.now() - t0, detail: 'Gemini health check failed' }
   }
 }
 
@@ -80,7 +80,7 @@ async function checkFearGreed(): Promise<ServiceResult> {
     if (typeof data?.fear_and_greed?.score !== 'number') throw new Error('unexpected shape')
     return { name: 'CNN', status: 'ok', latency: Date.now() - t0 }
   } catch (err: any) {
-    return { name: 'CNN', status: 'error', latency: Date.now() - t0, detail: err.message }
+    return { name: 'CNN', status: 'error', latency: Date.now() - t0, detail: 'CNN unavailable' }
   }
 }
 
@@ -98,11 +98,11 @@ async function checkSupabase(): Promise<ServiceResult> {
     )
     const latency = Date.now() - t0
     if ((result as any).error && (result as any).error.code !== 'PGRST116') {
-      return { name: 'Supabase', status: 'error', latency, detail: (result as any).error.message }
+      return { name: 'Supabase', status: 'error', latency, detail: 'Supabase query failed' }
     }
     return { name: 'Supabase', status: 'ok', latency }
   } catch (err: any) {
-    return { name: 'Supabase', status: 'error', latency: Date.now() - t0, detail: err.message }
+    return { name: 'Supabase', status: 'error', latency: Date.now() - t0, detail: 'Supabase unavailable' }
   }
 }
 
@@ -137,7 +137,7 @@ export async function GET() {
     )
   } catch (err: any) {
     return NextResponse.json(
-      { services: [], overallStatus: 'down', checkedAt: Date.now(), error: err.message },
+      { services: [], overallStatus: 'down', checkedAt: Date.now() },
       { status: 500, headers: { 'Cache-Control': 'no-store' } }
     )
   }

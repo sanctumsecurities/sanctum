@@ -16,9 +16,11 @@ function getZone(score: number): { label: string; color: string } {
 }
 
 function getTickColor(index: number): string {
-  if (index <= 16) return '#ef4444'
-  if (index <= 33) return '#f0a030'
-  return '#22c55e'
+  if (index <= 12) return '#ef4444'   // Extreme Fear
+  if (index <= 22) return '#f0a030'   // Fear
+  if (index <= 27) return '#999999'   // Neutral
+  if (index <= 37) return '#a0d040'   // Greed
+  return '#22c55e'                    // Extreme Greed
 }
 
 export default function FearGreedMeter() {
@@ -78,25 +80,31 @@ export default function FearGreedMeter() {
           whiteSpace: 'nowrap',
           color,
           fontFamily: "'JetBrains Mono', monospace",
+          textShadow: `0 0 8px ${color}66`,
         }}
       >
         {data.score} {label}
       </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: 16 }}>
-        {Array.from({ length: 50 }, (_, i) => (
-          <span
-            key={i}
-            style={{
-              width: 2,
-              height: 14,
-              borderRadius: 1,
-              flexShrink: 0,
-              backgroundColor: getTickColor(i),
-              opacity: i <= activeUpTo ? 1 : 0.25,
-              display: 'block',
-            }}
-          />
-        ))}
+        {Array.from({ length: 50 }, (_, i) => {
+          const tickColor = getTickColor(i)
+          const isActive = i <= activeUpTo
+          return (
+            <span
+              key={i}
+              style={{
+                width: 2,
+                height: 14,
+                borderRadius: 1,
+                flexShrink: 0,
+                backgroundColor: tickColor,
+                opacity: isActive ? 1 : 0.25,
+                display: 'block',
+                boxShadow: isActive ? `0 0 4px 1px ${tickColor}55` : 'none',
+              }}
+            />
+          )
+        })}
       </div>
     </div>
   )

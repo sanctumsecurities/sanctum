@@ -11,6 +11,9 @@ export async function GET(req: NextRequest) {
     }
 
     const symbol = ticker.toUpperCase().trim()
+    if (!symbol || symbol.length > 20 || !/^[A-Z0-9.\-^=]+$/.test(symbol)) {
+      return NextResponse.json({ error: 'Invalid ticker symbol' }, { status: 400 })
+    }
 
     const [chartResult, quoteResult] = await Promise.all([
       yahooFinance.chart(symbol, {
@@ -50,6 +53,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ticker: symbol, points, afterHours })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Failed to fetch chart' }, { status: 500 })
+    console.error('[chart] fetch failed:', err)
+    return NextResponse.json({ error: 'Failed to fetch chart' }, { status: 500 })
   }
 }

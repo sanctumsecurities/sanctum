@@ -2,10 +2,23 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { StockReport } from '@/types/report'
-import YahooFinance from 'yahoo-finance2'
-const yahooFinance = new YahooFinance()
+import { yahooFinance } from '@/lib/yahoo'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+function getGenAI() {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) throw new Error('GEMINI_API_KEY is not configured')
+  return new GoogleGenerativeAI(key)
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Request timed out')), ms)
+    }),
+  ]).finally(() => clearTimeout(timer))
+}
 
 // ── Helper functions ──
 
@@ -32,21 +45,31 @@ function safeNum(val: any, fallback = 0): number {
 
 async function fetchYahooData(ticker: string) {
   try {
-    const result: any = await yahooFinance.quoteSummary(ticker, {
-      modules: [
-        'price',
-        'summaryDetail',
-        'defaultKeyStatistics',
-        'financialData',
-        'incomeStatementHistory',
-        'cashflowStatementHistory',
-        'balanceSheetHistory',
-        'earningsTrend',
-        'majorHoldersBreakdown',
-        'insiderTransactions',
-        'recommendationTrend',
-      ] as any,
-    }, { validateResult: false })
+    const [result, incomeData, cashFlowData]: [any, any[], any[]] = await Promise.all([
+      yahooFinance.quoteSummary(ticker, {
+        modules: [
+          'price',
+          'summaryDetail',
+          'defaultKeyStatistics',
+          'financialData',
+          'earningsTrend',
+          'majorHoldersBreakdown',
+          'insiderTransactions',
+          'recommendationTrend',
+        ] as any,
+      }, { validateResult: false }),
+      // fundamentalsTimeSeries returns accurate financials (quoteSummary broken since Nov 2024)
+      yahooFinance.fundamentalsTimeSeries(ticker, {
+        period1: '2010-01-01',
+        type: 'annual',
+        module: 'financials',
+      } as any).catch(() => []),
+      yahooFinance.fundamentalsTimeSeries(ticker, {
+        period1: '2010-01-01',
+        type: 'annual',
+        module: 'cash-flow',
+      } as any).catch(() => []),
+    ])
 
     // Fetch recent news headlines
     let recentNews: { title: string; date: string }[] = []
@@ -68,48 +91,45 @@ async function fetchYahooData(ticker: string) {
     const summary = result.summaryDetail || {}
     const keyStats = result.defaultKeyStatistics || {}
     const financial = result.financialData || {}
-    const incomeHistory = result.incomeStatementHistory?.incomeStatementHistory || []
-    const cashflowHistory = result.cashflowStatementHistory?.cashflowStatements || []
     const majorHolders = result.majorHoldersBreakdown || {}
     const insiderTxns = result.insiderTransactions?.transactions || []
     const recTrend = result.recommendationTrend?.trend || []
 
-    // Sort income statements ascending by date
-    const sortedIncome = [...incomeHistory].sort(
-      (a: any, b: any) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime()
-    )
+    // Filter to periods with actual data, sorted ascending by date
+    const sortedIncome = incomeData
+      .filter((d: any) => d.totalRevenue != null)
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
-    // Sort cash flow statements ascending by date
-    const sortedCashflow = [...cashflowHistory].sort(
-      (a: any, b: any) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime()
-    )
+    const sortedCashflow = cashFlowData
+      .filter((d: any) => d.operatingCashFlow != null || d.cashFlowFromContinuingOperatingActivities != null)
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
     // ── Revenue history & margin trends ──
     const revenueHistory = sortedIncome.map((stmt: any) => ({
-      year: new Date(stmt.endDate).getFullYear().toString(),
+      year: new Date(stmt.date).getFullYear().toString(),
       revenue: safeNum(stmt.totalRevenue),
       netIncome: safeNum(stmt.netIncome),
     }))
 
     const revenueVsCogs = sortedIncome.map((stmt: any) => {
       const rev = safeNum(stmt.totalRevenue)
-      const costOfRevenue = safeNum(stmt.costOfRevenue)
+      const cogs = safeNum(stmt.costOfRevenue)
       return {
-        year: new Date(stmt.endDate).getFullYear().toString(),
+        year: new Date(stmt.date).getFullYear().toString(),
         revenue: parseFloat((rev / 1e9).toFixed(1)),
-        cogs: parseFloat((costOfRevenue / 1e9).toFixed(1)),
-        grossProfit: parseFloat(((rev - costOfRevenue) / 1e9).toFixed(1)),
+        cogs: parseFloat((cogs / 1e9).toFixed(1)),
+        grossProfit: parseFloat(((rev - cogs) / 1e9).toFixed(1)),
       }
     })
 
     const marginTrends = sortedIncome.map((stmt: any) => {
       const rev = safeNum(stmt.totalRevenue)
-      const costOfRevenue = safeNum(stmt.costOfRevenue)
+      const cogs = safeNum(stmt.costOfRevenue)
       const opIncome = safeNum(stmt.operatingIncome)
       const netIncome = safeNum(stmt.netIncome)
       return {
-        year: new Date(stmt.endDate).getFullYear().toString(),
-        gross: rev > 0 ? parseFloat(((rev - costOfRevenue) / rev * 100).toFixed(1)) : 0,
+        year: new Date(stmt.date).getFullYear().toString(),
+        gross: rev > 0 ? parseFloat(((rev - cogs) / rev * 100).toFixed(1)) : 0,
         operating: rev > 0 ? parseFloat((opIncome / rev * 100).toFixed(1)) : 0,
         net: rev > 0 ? parseFloat((netIncome / rev * 100).toFixed(1)) : 0,
       }
@@ -117,14 +137,15 @@ async function fetchYahooData(ticker: string) {
 
     // ── FCF history (operating cash flow - capex) ──
     const fcfHistory = sortedCashflow.map((stmt: any) => {
-      const opCF = safeNum(stmt.totalCashFromOperatingActivities)
-      const capex = Math.abs(safeNum(stmt.capitalExpenditures))
+      const opCF = safeNum(stmt.operatingCashFlow) || safeNum(stmt.cashFlowFromContinuingOperatingActivities)
+      const capex = Math.abs(safeNum(stmt.capitalExpenditure) || safeNum(stmt.capitalExpenditureReported))
+      const divPaid = Math.abs(safeNum(stmt.cashDividendsPaid) || safeNum(stmt.commonStockDividendPaid))
       return {
-        year: new Date(stmt.endDate).getFullYear().toString(),
+        year: new Date(stmt.date).getFullYear().toString(),
         operatingCashFlow: opCF,
         capex: capex,
         fcf: opCF - capex,
-        dividendsPaid: Math.abs(safeNum(stmt.dividendsPaid)),
+        dividendsPaid: divPaid,
       }
     })
 
@@ -137,6 +158,18 @@ async function fetchYahooData(ticker: string) {
     const niLen = netIncomeArr.length
     const netIncomeCagr5 = niLen >= 2
       ? cagr(netIncomeArr[Math.max(0, niLen - 5)].netIncome, netIncomeArr[niLen - 1].netIncome, Math.min(niLen - 1, 4))
+      : null
+
+    // EPS CAGR from income data
+    const epsHistory = sortedIncome
+      .map((stmt: any) => ({
+        year: new Date(stmt.date).getFullYear().toString(),
+        eps: safeNum(stmt.dilutedEPS) || safeNum(stmt.basicEPS),
+      }))
+      .filter(e => e.eps > 0)
+    const epsLen = epsHistory.length
+    const epsCagr5 = epsLen >= 2
+      ? cagr(epsHistory[Math.max(0, epsLen - 5)].eps, epsHistory[epsLen - 1].eps, Math.min(epsLen - 1, 4))
       : null
 
     // ── Analyst targets ──
@@ -218,10 +251,16 @@ async function fetchYahooData(ticker: string) {
           dividendsPaid: parseFloat((f.dividendsPaid / 1e9).toFixed(1)),
         }))
 
+      const divHistory = fcfHistory.filter(f => f.dividendsPaid > 0)
+      const divLen = divHistory.length
+      const divCagr5 = divLen >= 2
+        ? cagr(divHistory[Math.max(0, divLen - 5)].dividendsPaid, divHistory[divLen - 1].dividendsPaid, Math.min(divLen - 1, 4))
+        : null
+
       dividendData = {
         currentYield: fmtPct(divYield),
         payoutRatio: fmtPct(payoutRatio),
-        fiveYearCagr: 'N/A', // would need historical dividend data not available in quoteSummary
+        fiveYearCagr: divCagr5 || 'N/A',
         tenYearCagr: null,
         consecutiveYearsGrowth: null,
         fcfVsDividends,
@@ -230,11 +269,11 @@ async function fetchYahooData(ticker: string) {
 
     // ── Expanded annual column data (for merging into Gemini annualData) ──
     const expandedAnnualColumns = sortedIncome.map((stmt: any) => {
-      const year = new Date(stmt.endDate).getFullYear().toString()
+      const year = new Date(stmt.date).getFullYear().toString()
       const rev = safeNum(stmt.totalRevenue)
-      const costOfRevenue = safeNum(stmt.costOfRevenue)
+      const cogs = safeNum(stmt.costOfRevenue)
       const opIncome = safeNum(stmt.operatingIncome)
-      const grossMarginVal = rev > 0 ? (rev - costOfRevenue) / rev : 0
+      const grossMarginVal = rev > 0 ? (rev - cogs) / rev : 0
       const opMarginVal = rev > 0 ? opIncome / rev : 0
 
       // Match FCF for this year
@@ -307,7 +346,7 @@ async function fetchYahooData(ticker: string) {
       cagrs: {
         revenue: { fiveYear: revenueCagr5 || 'N/A', tenYear: null },
         netIncome: { fiveYear: netIncomeCagr5 || 'N/A', tenYear: null },
-        eps: { fiveYear: 'N/A', tenYear: null },
+        eps: { fiveYear: epsCagr5 || 'N/A', tenYear: null },
       },
       expandedAnnualColumns,
       recommendationTrend,
@@ -326,11 +365,13 @@ async function fetchYahooData(ticker: string) {
 export async function generateReport(ticker: string): Promise<StockReport | { error: string }> {
   const symbol = ticker.toUpperCase().trim()
   if (!symbol) return { error: 'Ticker is required' }
+  if (symbol.length > 20 || !/^[A-Z0-9.\-^=]+$/.test(symbol)) return { error: 'Invalid ticker symbol' }
 
   try {
     // Fetch expanded Yahoo Finance data
     const yahoo = await fetchYahooData(symbol)
 
+    const genAI = getGenAI()
     const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
 
     const yahooContext = yahoo ? `
@@ -382,12 +423,16 @@ Schema:
   "verdict": "BUY" | "SELL" | "HOLD" | "AVOID",
   "verdictSubtitle": "string — one-line thesis, max 10 words",
   "convictionScore": number (0-100),
-  "badges": ["string — 4-6 contextual tags like 'DOJ Investigation', 'Buffett Bought', 'Mkt Cap ~$256B'"],
+  "badges": [{ "text": "string — qualitative/narrative tag about the company", "sentiment": "'positive' | 'negative' | 'neutral' | 'caution' — classify based on whether this tag is bullish (positive), bearish (negative), informational (neutral), or a risk/warning (caution)" }],
   "overview": {
     "keyMetrics": [
       { "label": "string", "value": "string", "subtitle": "string or omit", "color": "hex or omit", "yoyChange": "string like '+12.3%'" }
     ],
-    "businessSummary": "string — 2-3 sentences, what this company does and why it matters NOW",
+    "businessSummary": {
+      "businessModel": "string — 2-3 sentences on what this company does, its business model, and competitive position",
+      "financials": "string — 2-3 sentences summarizing financial health, growth trajectory, and profitability",
+      "valuation": "string — 2-3 sentences on current valuation, whether it appears cheap or expensive, and key valuation metrics"
+    },
     "whatHasGoneWrong": "string or null — only if genuine material negative exists",
     "segmentBreakdown": [{ "name": "string", "percentage": number }],
     "moatScores": [{ "metric": "string", "score": number 0-100 }],
@@ -433,7 +478,8 @@ Schema:
 }
 
 Requirements:
-- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Beta, Forward P/E, Op Cash Flow, Dividend Yield (show "N/A" if no dividend). Include yoyChange where applicable. For CAGR metrics, use the CAGR itself as yoyChange. For Beta use the provided real value — no yoyChange needed.
+- badges: 8-12 objects. Each tag must be qualitative/narrative — NEVER include numeric metrics (market cap, P/E, dividend yield, revenue, EPS, beta, CAGR, margins). Good: 'DOJ Investigation' (negative), 'Buffett Favorite' (positive), 'AI Tailwind' (positive), 'Founder-Led' (neutral), 'Dividend Aristocrat' (positive), 'Tariff Exposed' (caution). Sentiment must reflect whether the tag is bullish, bearish, informational, or a warning for this specific company.
+- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Beta, Forward P/E, Op Cash Flow, Dividend Yield (show "N/A" if no dividend). Include yoyChange for: Market Cap (YoY % change), FY Revenue (YoY % change), Revenue 5yr CAGR (the CAGR itself), Net Income 5yr CAGR (the CAGR itself), Op Cash Flow (YoY % change), Dividend Yield (YoY change). No yoyChange for Beta or Forward P/E.
 - overview.moatScores: exactly 6 items, 0-100 scale
 - overview.sectorMoatScores: exactly 6 items matching moatScores metrics
 - overview.segmentBreakdown: 3-8 segments summing close to 100
@@ -448,7 +494,7 @@ Requirements:
 - Be specific to THIS company — no generic filler
 - Return ONLY the JSON object, no wrapping`
 
-    const result = await model.generateContent(prompt)
+    const result = await withTimeout(model.generateContent(prompt), 120_000)
     const text = result.response.text()
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const parsed = JSON.parse(cleaned) as StockReport
@@ -602,6 +648,10 @@ Requirements:
 
     return parsed
   } catch (err: any) {
-    return { error: err.message || 'Failed to generate report' }
+    console.error('[generateReport] failed:', err)
+    const msg = err.message || ''
+    if (msg.includes('GEMINI_API_KEY')) return { error: msg }
+    if (msg.includes('timed out')) return { error: 'Report generation timed out. Please try again.' }
+    return { error: 'Failed to generate report. Please try again.' }
   }
 }

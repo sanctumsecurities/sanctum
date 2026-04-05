@@ -33,19 +33,18 @@ export default function FinancialsTab({ financials }: { financials: StockReport[
                 <XAxis dataKey="year" tick={{ fill: '#5a6475', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#5a6475', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v.toFixed(0)}B`} />
                 <Tooltip content={<CTooltip />} />
-                <Bar dataKey="revenue" name="Revenue ($B)" fill="rgba(96,165,250,0.6)" radius={[5, 5, 0, 0]} />
-                <Line type="monotone" dataKey="cogs" name="COGS ($B)" stroke="#f59e0b" strokeWidth={2.5} dot={{ fill: '#f59e0b', r: 4, strokeWidth: 0 }} />
-                <Area type="monotone" dataKey="grossProfit" name="Gross Profit ($B)" fill="rgba(74,222,128,0.08)" stroke="#4ade80" strokeWidth={1.5} />
+                <Bar dataKey="revenue" name="Revenue ($B)" fill="rgba(96,165,250,0.42)" radius={[5, 5, 0, 0]} style={{ filter: 'url(#fGlowBar)' }} />
+                <Bar dataKey="cogs" name="COGS ($B)" fill="rgba(248,113,113,0.38)" radius={[5, 5, 0, 0]} style={{ filter: 'url(#fGlowBar)' }} />
+                <Bar dataKey="grossProfit" name="Gross Profit ($B)" fill="rgba(74,222,128,0.40)" radius={[5, 5, 0, 0]} style={{ filter: 'url(#fGlowBar)' }} />
+                <Line type="monotone" dataKey="grossProfit" name="Gross Profit Trend" stroke="#e8ecf1" strokeWidth={2} dot={{ fill: '#e8ecf1', r: 3.5, strokeWidth: 0 }} style={{ filter: 'url(#fGlow)' }} />
               </ComposedChart>
             </ResponsiveContainer>
             <div style={{ display: 'flex', gap: 16, justifyContent: 'center', paddingBottom: 6 }}>
               <span style={{ fontSize: 11, color: '#60a5fa' }}>&#9632; Revenue</span>
-              <span style={{ fontSize: 11, color: '#f59e0b' }}>&#9679; COGS</span>
-              <span style={{ fontSize: 11, color: '#4ade80' }}>&#9650; Gross Profit</span>
+              <span style={{ fontSize: 11, color: '#f87171' }}>&#9632; COGS</span>
+              <span style={{ fontSize: 11, color: '#4ade80' }}>&#9632; Gross Profit</span>
+              <span style={{ fontSize: 11, color: '#e8ecf1' }}>&#9679; Trend</span>
             </div>
-            <p style={{ fontSize: 11, color: '#5a6475', textAlign: 'center', margin: '4px 0 0', fontFamily: "'DM Sans', sans-serif" }}>
-              Gap between revenue and COGS shows gross profit margin health over time.
-            </p>
           </div>
         </div>
       )}
@@ -60,9 +59,9 @@ export default function FinancialsTab({ financials }: { financials: StockReport[
                 <XAxis dataKey="year" tick={{ fill: '#5a6475', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#5a6475', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v.toFixed(0)}%`} />
                 <Tooltip content={<CTooltip />} />
-                <Line type="monotone" dataKey="gross" name="Gross Margin %" stroke="#4ade80" strokeWidth={2} dot={{ fill: '#4ade80', r: 3, strokeWidth: 0 }} />
-                <Line type="monotone" dataKey="operating" name="Operating Margin %" stroke="#60a5fa" strokeWidth={2} dot={{ fill: '#60a5fa', r: 3, strokeWidth: 0 }} />
-                <Line type="monotone" dataKey="net" name="Net Margin %" stroke="#a78bfa" strokeWidth={2} dot={{ fill: '#a78bfa', r: 3, strokeWidth: 0 }} />
+                <Line type="monotone" dataKey="gross" name="Gross Margin %" stroke="#4ade80" strokeWidth={2} dot={{ fill: '#4ade80', r: 3, strokeWidth: 0 }} style={{ filter: 'url(#fGlow)' }} />
+                <Line type="monotone" dataKey="operating" name="Operating Margin %" stroke="#60a5fa" strokeWidth={2} dot={{ fill: '#60a5fa', r: 3, strokeWidth: 0 }} style={{ filter: 'url(#fGlow)' }} />
+                <Line type="monotone" dataKey="net" name="Net Margin %" stroke="#a78bfa" strokeWidth={2} dot={{ fill: '#a78bfa', r: 3, strokeWidth: 0 }} style={{ filter: 'url(#fGlow)' }} />
               </LineChart>
             </ResponsiveContainer>
             <div style={{ display: 'flex', gap: 16, justifyContent: 'center', paddingBottom: 6 }}>
@@ -70,9 +69,6 @@ export default function FinancialsTab({ financials }: { financials: StockReport[
               <span style={{ fontSize: 11, color: '#60a5fa' }}>&#9679; Operating</span>
               <span style={{ fontSize: 11, color: '#a78bfa' }}>&#9679; Net</span>
             </div>
-            <p style={{ fontSize: 11, color: '#5a6475', textAlign: 'center', margin: '4px 0 0', fontFamily: "'DM Sans', sans-serif" }}>
-              Expanding margins signal improving efficiency; compressing margins flag rising costs or pricing pressure.
-            </p>
           </div>
         </div>
       )}
@@ -103,8 +99,8 @@ export default function FinancialsTab({ financials }: { financials: StockReport[
                   tickFormatter={(v: number) => `$${v}`}
                 />
                 <Tooltip content={<CTooltip />} />
-                <Bar yAxisId="revenue" dataKey="revenue" name="Revenue ($B)" fill="rgba(96,165,250,0.6)" radius={[5, 5, 0, 0]} />
-                <Line yAxisId="eps" type="monotone" dataKey="adjEPS" name="Adj EPS" stroke="#4ade80" strokeWidth={2.5} dot={{ fill: '#4ade80', r: 4, strokeWidth: 0 }} />
+                <Bar yAxisId="revenue" dataKey="revenue" name="Revenue ($B)" fill="rgba(96,165,250,0.65)" radius={[5, 5, 0, 0]} style={{ filter: 'url(#fGlowBar)' }} />
+                <Line yAxisId="eps" type="monotone" dataKey="adjEPS" name="Adj EPS" stroke="#4ade80" strokeWidth={2.5} dot={{ fill: '#4ade80', r: 4, strokeWidth: 0 }} style={{ filter: 'url(#fGlow)' }} />
               </ComposedChart>
             </ResponsiveContainer>
             <div style={{ display: 'flex', gap: 16, justifyContent: 'center', paddingBottom: 6 }}>
@@ -118,54 +114,67 @@ export default function FinancialsTab({ financials }: { financials: StockReport[
       {data.length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <SectionTitle>Annual Financial Data</SectionTitle>
-          <div style={{ ...glassCard, padding: '4px 0', overflow: 'hidden' }}>
-            <DataTable
-              headers={['Year', 'Revenue', 'Growth', 'Gross Margin', 'Op Margin', 'Adj EPS', 'EPS Growth', 'FCF']}
-              rows={data.map(d => [
-                d.year,
-                `$${d.revenue}B`,
-                d.revenueGrowth,
-                d.grossMargin || 'N/A',
-                d.operatingMargin || 'N/A',
-                `$${typeof d.adjEPS === 'number' ? d.adjEPS.toFixed(2) : d.adjEPS}`,
-                d.epsGrowth,
-                d.fcf || 'N/A',
-              ])}
-              numericCols={[1, 2, 3, 4, 5, 6, 7]}
-            />
-          </div>
+          {(() => {
+            const allHeaders = ['Year', 'Revenue', 'Growth', 'Gross Margin', 'Op Margin', 'Adj EPS', 'EPS Growth', 'FCF']
+            const allRows = data.map(d => [
+              d.year,
+              `$${d.revenue}B`,
+              d.revenueGrowth,
+              d.grossMargin || '',
+              d.operatingMargin || '',
+              `$${typeof d.adjEPS === 'number' ? d.adjEPS.toFixed(2) : d.adjEPS}`,
+              d.epsGrowth,
+              d.fcf || '',
+            ])
+            // Find columns where every row has data
+            const keepCols = allHeaders.map((_, ci) =>
+              ci === 0 || allRows.some(r => r[ci] && r[ci] !== 'N/A' && r[ci] !== '$0.00' && r[ci] !== '$0.0B' && r[ci] !== '0.0%')
+            )
+            const headers = allHeaders.filter((_, i) => keepCols[i])
+            const rows = allRows.map(r => r.filter((_, i) => keepCols[i]))
+            const numericCols = headers.map((_, i) => i).filter(i => i > 0)
+            return (
+              <div style={{ ...glassCard, padding: '4px 0', overflow: 'hidden' }}>
+                <DataTable headers={headers} rows={rows} numericCols={numericCols} />
+              </div>
+            )
+          })()}
 
-          {financials.cagrs && (
-            <div style={{
-              display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 12,
-              padding: '12px 16px', borderRadius: 10,
-              background: 'rgba(255,255,255,0.03)',
-            }}>
-              {[
-                { label: 'Revenue CAGR', five: financials.cagrs.revenue.fiveYear, ten: financials.cagrs.revenue.tenYear },
-                { label: 'Net Income CAGR', five: financials.cagrs.netIncome.fiveYear, ten: financials.cagrs.netIncome.tenYear },
-                { label: 'EPS CAGR', five: financials.cagrs.eps.fiveYear, ten: financials.cagrs.eps.tenYear },
-              ].map((c, i) => (
-                <div key={i} style={{ minWidth: 140 }}>
-                  <div style={{
-                    fontSize: 10, letterSpacing: 1.2, color: '#5a6475',
-                    textTransform: 'uppercase', fontFamily: "'DM Sans', sans-serif", marginBottom: 4,
-                  }}>{c.label}</div>
-                  <span style={{
-                    fontSize: 14, fontWeight: 700,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: c.five?.startsWith('+') ? '#4ade80' : c.five?.startsWith('-') ? '#f87171' : '#e8ecf1',
-                  }}>5yr: {c.five || 'N/A'}</span>
-                  {c.ten && (
+          {financials.cagrs && (() => {
+            const items = [
+              { label: 'Revenue CAGR', five: financials.cagrs.revenue.fiveYear, ten: financials.cagrs.revenue.tenYear },
+              { label: 'Net Income CAGR', five: financials.cagrs.netIncome.fiveYear, ten: financials.cagrs.netIncome.tenYear },
+              { label: 'EPS CAGR', five: financials.cagrs.eps.fiveYear, ten: financials.cagrs.eps.tenYear },
+            ].filter(c => c.five && c.five !== 'N/A')
+            if (items.length === 0) return null
+            return (
+              <div style={{
+                display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 12,
+                padding: '12px 16px', borderRadius: 10,
+                background: 'rgba(255,255,255,0.03)',
+              }}>
+                {items.map((c, i) => (
+                  <div key={i} style={{ minWidth: 140 }}>
+                    <div style={{
+                      fontSize: 10, letterSpacing: 1.2, color: '#5a6475',
+                      textTransform: 'uppercase', fontFamily: "'DM Sans', sans-serif", marginBottom: 4,
+                    }}>{c.label}</div>
                     <span style={{
-                      fontSize: 12, color: '#5a6475', marginLeft: 10,
+                      fontSize: 14, fontWeight: 700,
                       fontFamily: "'JetBrains Mono', monospace",
-                    }}>10yr: {c.ten}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                      color: c.five?.startsWith('+') ? '#4ade80' : c.five?.startsWith('-') ? '#f87171' : '#e8ecf1',
+                    }}>5yr: {c.five}</span>
+                    {c.ten && c.ten !== 'N/A' && (
+                      <span style={{
+                        fontSize: 12, color: '#5a6475', marginLeft: 10,
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}>10yr: {c.ten}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -200,7 +209,7 @@ export default function FinancialsTab({ financials }: { financials: StockReport[
               { label: '5yr CAGR', value: financials.dividendData.fiveYearCagr },
               ...(financials.dividendData.tenYearCagr ? [{ label: '10yr CAGR', value: financials.dividendData.tenYearCagr }] : []),
               ...(financials.dividendData.consecutiveYearsGrowth != null ? [{ label: 'Consec. Years Growth', value: String(financials.dividendData.consecutiveYearsGrowth) }] : []),
-            ].map((m, i) => (
+            ].filter(m => m.value && m.value !== 'N/A').map((m, i) => (
               <MetricCard key={i} label={m.label} value={m.value} />
             ))}
           </div>
@@ -213,17 +222,14 @@ export default function FinancialsTab({ financials }: { financials: StockReport[
                   <XAxis dataKey="year" tick={{ fill: '#5a6475', fontSize: 12 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#5a6475', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v.toFixed(0)}B`} />
                   <Tooltip content={<CTooltip />} />
-                  <Bar dataKey="fcf" name="Free Cash Flow ($B)" fill="rgba(74,222,128,0.6)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="dividendsPaid" name="Dividends Paid ($B)" fill="rgba(248,113,113,0.6)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="fcf" name="Free Cash Flow ($B)" fill="rgba(74,222,128,0.62)" radius={[4, 4, 0, 0]} style={{ filter: 'url(#fGlowBar)' }} />
+                  <Bar dataKey="dividendsPaid" name="Dividends Paid ($B)" fill="rgba(248,113,113,0.62)" radius={[4, 4, 0, 0]} style={{ filter: 'url(#fGlowBar)' }} />
                 </ComposedChart>
               </ResponsiveContainer>
               <div style={{ display: 'flex', gap: 16, justifyContent: 'center', paddingBottom: 6 }}>
                 <span style={{ fontSize: 11, color: '#4ade80' }}>&#9632; Free Cash Flow</span>
                 <span style={{ fontSize: 11, color: '#f87171' }}>&#9632; Dividends Paid</span>
               </div>
-              <p style={{ fontSize: 11, color: '#5a6475', textAlign: 'center', margin: '4px 0 0', fontFamily: "'DM Sans', sans-serif" }}>
-                FCF exceeding dividends indicates sustainable payout. Red bars approaching green signal dividend risk.
-              </p>
             </div>
           )}
         </div>

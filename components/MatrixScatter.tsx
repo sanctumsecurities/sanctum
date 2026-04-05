@@ -828,21 +828,28 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
 
               <defs>
                 <radialGradient id="grad-core" cx="25%" cy="25%" r="60%">
-                  <stop offset="0%" stopColor="#22c55e" stopOpacity="0.06" />
+                  <stop offset="0%" stopColor="#22c55e" stopOpacity="0.12" />
                   <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
                 </radialGradient>
                 <radialGradient id="grad-volatile" cx="75%" cy="25%" r="60%">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.06" />
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.12" />
                   <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
                 </radialGradient>
                 <radialGradient id="grad-defensive" cx="25%" cy="75%" r="60%">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.06" />
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.12" />
                   <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
                 </radialGradient>
                 <radialGradient id="grad-atrisk" cx="75%" cy="75%" r="60%">
-                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.06" />
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.12" />
                   <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
                 </radialGradient>
+                <filter id="fGlowDot" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="blur"/>
+                  <feMerge>
+                    <feMergeNode in="blur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
               </defs>
 
               {/* Quadrant background washes */}
@@ -1130,6 +1137,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                         cx={cx} cy={cy} r={r + 6}
                         fill="none" stroke={color} strokeWidth="1.5"
                         opacity={0.3}
+                        filter="url(#fGlowDot)"
                         style={{ animation: 'pulse 2s ease-in-out infinite' }}
                       />
                     )}
@@ -1153,6 +1161,7 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                       r={isActive ? r + 2 : r}
                       fill={color} fillOpacity={0.15}
                       stroke={color} strokeWidth={isActive ? 2 : 1.5}
+                      filter="url(#fGlowDot)"
                       style={{
                         transform: mounted ? 'scale(1)' : 'scale(0)',
                         transformOrigin: `${cx}px ${cy}px`,
@@ -1179,7 +1188,6 @@ export default function MatrixScatter({ savedReports, watchlist, titleWidth, onS
                       x={bx - 5} y={by - 5} width={10} height={10}
                       fill="#fff" fillOpacity={0.15}
                       stroke="#fff" strokeWidth="1.5"
-                      transform={`rotate(45, ${bx}, ${by})`}
                       style={{
                         transform: mounted ? `rotate(45deg)` : 'rotate(45deg) scale(0)',
                         transformOrigin: `${bx}px ${by}px`,

@@ -249,10 +249,12 @@ export async function GET(req: NextRequest) {
     const period = req.nextUrl.searchParams.get('period') || '12m'
     const periodDays = PERIOD_DAYS[period] || 365
 
+    const tickerPattern = /^[A-Z0-9.\-^=]+$/
     const tickers = tickersParam
       .split(',')
       .filter(Boolean)
       .map(t => t.trim().toUpperCase())
+      .filter(t => t.length <= 20 && tickerPattern.test(t))
       .slice(0, 30)
 
     const cacheKey = `${period}:${[...tickers].sort().join(',')}`
@@ -292,6 +294,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(result)
   } catch (err: any) {
     console.error('[matrix] route error:', err)
-    return NextResponse.json({ error: err.message || 'Failed to fetch matrix data' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch matrix data' }, { status: 500 })
   }
 }

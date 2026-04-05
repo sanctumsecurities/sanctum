@@ -809,7 +809,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const fillPoints = `0,${h} ${linePoints} ${lastX},${h}`
           const up = prices[prices.length - 1] >= prices[0]
           const strokeColor = up ? '#22c55e' : '#f87171'
-          const fillColor = up ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)'
+          const fillColor = up ? 'rgba(34,197,94,0.18)' : 'rgba(248,113,113,0.18)'
 
           return (
             <svg
@@ -1055,7 +1055,7 @@ export default function Home() {
     } catch {}
   }, [])
 
-  // ── Load settings from localStorage ──
+  // ── Load settings from localStorage (immediate fallback before Supabase responds) ──
   useEffect(() => {
     try {
       const stored = localStorage.getItem('sanctum-settings')
@@ -1063,9 +1063,11 @@ export default function Home() {
         const parsed = JSON.parse(stored)
         const merged = { ...DEFAULT_SETTINGS, ...parsed }
         setSettings(merged)
-        if (merged.defaultTab) setActiveTab(merged.defaultTab)
+        // Only set activeTab from localStorage if no session (Supabase will override if logged in)
+        if (!session && merged.defaultTab) setActiveTab(merged.defaultTab)
       }
     } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
@@ -1367,6 +1369,7 @@ export default function Home() {
               animation: 'pulse 2s ease-in-out infinite',
               flexShrink: 0,
               transition: 'background 0.4s ease',
+              boxShadow: `0 0 8px 2px ${statusColor}66`,
             }} />
             <span style={{
               fontSize: 11, color: statusColor,

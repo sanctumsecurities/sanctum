@@ -9,14 +9,18 @@ export interface StockReport {
   website: string
   verdict: 'BUY' | 'SELL' | 'HOLD' | 'AVOID'
   verdictSubtitle: string
-  badges: string[]
+  badges: { text: string; sentiment: 'positive' | 'negative' | 'neutral' | 'caution' }[]
 
   // === NEW: Root-level conviction ===
   convictionScore: number // 0-100, AI-generated
 
   overview: {
     keyMetrics: { label: string; value: string; subtitle?: string; color?: string; yoyChange?: string }[]
-    businessSummary: string
+    businessSummary: {
+      businessModel: string
+      financials: string
+      valuation: string
+    }
     whatHasGoneWrong: string | null
     segmentBreakdown: { name: string; percentage: number }[]
     moatScores: { metric: string; score: number }[]

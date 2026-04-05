@@ -129,6 +129,18 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
   return { displayText, caretMode, progress }
 }
 
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false)
+  useEffect(() => {
+    const mql = window.matchMedia(query)
+    setMatches(mql.matches)
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [query])
+  return matches
+}
+
 function ReportLoadingScreen({
   ticker,
   reportReady,
@@ -191,6 +203,25 @@ function ReportLoadingScreen({
       minHeight: 'calc(100vh - 56px)', background: '#0a0a0a',
       position: 'relative', overflow: 'hidden',
     }}>
+      {/* Global SVG filter defs — referenced by all charts via url(#fGlow) / url(#fGlowBar) */}
+      <svg style={{ position: 'absolute', width: 0, height: 0 }} aria-hidden="true">
+        <defs>
+          <filter id="fGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="fGlowBar" x="-30%" y="-20%" width="160%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.0" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
       <style>{`
         @keyframes loadingBlink {
           0%, 100% { opacity: 1; }
@@ -356,6 +387,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
   const [showCRT, setShowCRT] = useState(false)
   const [reportReady, setReportReady] = useState(false)
   const [showReport, setShowReport] = useState(false)
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
 
   const fetchReport = useCallback(async () => {
     setLoading(true)
@@ -471,6 +503,25 @@ export default function StockReport({ ticker }: { ticker: string }) {
       fontFamily: "'JetBrains Mono', monospace",
       animation: showReport ? 'reportReveal 500ms ease-out 200ms both' : undefined,
     }}>
+      {/* Global SVG filter defs — referenced by all charts via url(#fGlow) / url(#fGlowBar) */}
+      <svg style={{ position: 'absolute', width: 0, height: 0 }} aria-hidden="true">
+        <defs>
+          <filter id="fGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="fGlowBar" x="-30%" y="-20%" width="160%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.0" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
       <style>{`
         @keyframes reportReveal {
           from { opacity: 0; }
@@ -478,11 +529,11 @@ export default function StockReport({ ticker }: { ticker: string }) {
         }
       `}</style>
       <div style={{
-        padding: '28px 20px 24px',
+        padding: isDesktop ? '20px 40px 16px' : '28px 20px 24px',
         background: 'transparent',
         borderBottom: '1px solid #1a1a1a',
       }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ maxWidth: isDesktop ? 1880 : 900, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
             <CompanyLogo ticker={report.ticker} website={report.website} />
             <div style={{ minWidth: 0 }}>
@@ -535,23 +586,39 @@ export default function StockReport({ ticker }: { ticker: string }) {
             })()}
           </div>
 
-          {report.badges?.length > 0 && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {report.badges
-                .filter(b => !b.toLowerCase().includes('52wk') && !b.toLowerCase().includes('52-week') && !b.toLowerCase().includes('52 week'))
-                .slice(0, 6)
-                .map((b, i) => (
-                <Badge key={i} text={b} variant="gray" />
-              ))}
-            </div>
-          )}
+          {report.badges?.length > 0 && (() => {
+            const sentimentToVariant: Record<string, 'green' | 'red' | 'blue' | 'yellow' | 'gray'> = {
+              positive: 'green',
+              negative: 'red',
+              neutral: 'blue',
+              caution: 'yellow',
+            }
+            const badges = report.badges.slice(0, 12).map(b =>
+              typeof b === 'string'
+                ? { text: b, variant: 'gray' as const }
+                : { text: b.text, variant: sentimentToVariant[b.sentiment] || 'gray' as const }
+            ).filter(b => {
+              const bl = b.text.toLowerCase()
+              if (bl.includes('52wk') || bl.includes('52-week') || bl.includes('52 week')) return false
+              if (/\$[\d.,]+|\d+(\.\d+)?[%x]|\d+(\.\d+)?\s*[btm]\b/i.test(b.text)) return false
+              if (/\b(mkt cap|market cap|p\/e|forward p\/e|trailing p\/e|eps|dividend yield|div yield|beta|cagr|revenue|cash flow|net income|op margin|gross margin)\b/i.test(bl)) return false
+              return true
+            })
+            return (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {badges.map((b, i) => (
+                  <Badge key={i} text={b.text} variant={b.variant} />
+                ))}
+              </div>
+            )
+          })()}
         </div>
       </div>
 
-      <div style={{ borderBottom: '1px solid #1a1a1a', overflowX: 'auto' }}>
+      <div style={{ borderBottom: '1px solid #1a1a1a', overflowX: 'auto', padding: isDesktop ? '0 40px' : '0 20px' }}>
         <div style={{
-          maxWidth: 900, margin: '0 auto',
-          padding: '0 20px', display: 'flex', gap: 0,
+          maxWidth: isDesktop ? 1880 : 900, margin: '0 auto',
+          display: 'flex', gap: 0,
         }}>
           {TABS.map(t => (
             <button
@@ -574,16 +641,20 @@ export default function StockReport({ ticker }: { ticker: string }) {
       </div>
 
       <div style={{
-        maxWidth: 900, margin: '0 auto', padding: '28px 20px 72px',
-        opacity: animating ? 0 : 1,
-        transform: animating ? 'translateY(6px)' : 'translateY(0)',
-        transition: 'opacity 0.2s ease, transform 0.2s ease',
+        padding: isDesktop ? '20px 40px 40px' : '28px 20px 72px',
       }}>
-        {activeTab === 'Overview' && <OverviewTab overview={report.overview} currentPrice={report.currentPrice} />}
-        {activeTab === 'Financials' && <FinancialsTab financials={report.financials} />}
-        {activeTab === 'Valuation' && <ValuationTab valuation={report.valuation} />}
-        {activeTab === 'Catalysts' && <CatalystsTab catalysts={report.catalysts} />}
-        {activeTab === 'Verdict' && <VerdictTab verdictDetails={report.verdictDetails} verdict={report.verdict} />}
+        <div style={{
+          maxWidth: isDesktop ? 1880 : 900, margin: '0 auto',
+          opacity: animating ? 0 : 1,
+          transform: animating ? 'translateY(6px)' : 'translateY(0)',
+          transition: 'opacity 0.2s ease, transform 0.2s ease',
+        }}>
+          {activeTab === 'Overview' && <OverviewTab overview={report.overview} currentPrice={report.currentPrice} convictionScore={report.convictionScore} convictionDrivers={report.verdictDetails?.convictionDrivers} />}
+          {activeTab === 'Financials' && <FinancialsTab financials={report.financials} />}
+          {activeTab === 'Valuation' && <ValuationTab valuation={report.valuation} />}
+          {activeTab === 'Catalysts' && <CatalystsTab catalysts={report.catalysts} />}
+          {activeTab === 'Verdict' && <VerdictTab verdictDetails={report.verdictDetails} verdict={report.verdict} />}
+        </div>
       </div>
     </div>
   )
