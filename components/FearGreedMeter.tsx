@@ -80,25 +80,31 @@ export default function FearGreedMeter() {
           whiteSpace: 'nowrap',
           color,
           fontFamily: "'JetBrains Mono', monospace",
+          textShadow: `0 0 8px ${color}66`,
         }}
       >
         {data.score} {label}
       </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: 16 }}>
-        {Array.from({ length: 50 }, (_, i) => (
-          <span
-            key={i}
-            style={{
-              width: 2,
-              height: 14,
-              borderRadius: 1,
-              flexShrink: 0,
-              backgroundColor: getTickColor(i),
-              opacity: i <= activeUpTo ? 1 : 0.25,
-              display: 'block',
-            }}
-          />
-        ))}
+        {Array.from({ length: 50 }, (_, i) => {
+          const tickColor = getTickColor(i)
+          const isActive = i <= activeUpTo
+          return (
+            <span
+              key={i}
+              style={{
+                width: 2,
+                height: 14,
+                borderRadius: 1,
+                flexShrink: 0,
+                backgroundColor: tickColor,
+                opacity: isActive ? 1 : 0.25,
+                display: 'block',
+                boxShadow: isActive ? `0 0 4px 1px ${tickColor}55` : 'none',
+              }}
+            />
+          )
+        })}
       </div>
     </div>
   )
