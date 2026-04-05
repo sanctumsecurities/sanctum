@@ -52,7 +52,7 @@ export default function OverviewTab({ overview, currentPrice, convictionScore, c
             gridTemplateColumns: isDesktop ? 'repeat(4, 1fr)' : 'repeat(4, 1fr)',
             gap: 12,
           }}>
-            {overview.keyMetrics.map((m, i) => (
+            {overview.keyMetrics.filter(m => m.value && m.value !== 'N/A').map((m, i) => (
               <MetricCard key={i} label={m.label} value={m.value} subtitle={m.subtitle} yoyChange={m.yoyChange} />
             ))}
           </div>
@@ -233,14 +233,14 @@ export default function OverviewTab({ overview, currentPrice, convictionScore, c
           const totalScore = Math.round((insiderBase * contextMult * recencyMult) + instScore)
 
           const sentiment = totalScore >= 12
-            ? { label: 'STRONG BUY', color: '#4ade80', bg: 'rgba(74,222,128,0.07)', border: 'rgba(74,222,128,0.22)' }
+            ? { label: 'STRONG BUY', color: '#4ade80', bg: 'rgba(74,222,128,0.12)', border: 'rgba(74,222,128,0.35)', glow: '0 0 10px 1px rgba(74,222,128,0.25)' }
             : totalScore >= 8
-            ? { label: 'BUY', color: '#4ade80', bg: 'rgba(74,222,128,0.05)', border: 'rgba(74,222,128,0.16)' }
+            ? { label: 'BUY', color: '#4ade80', bg: 'rgba(74,222,128,0.08)', border: 'rgba(74,222,128,0.25)', glow: '0 0 10px 1px rgba(74,222,128,0.25)' }
             : totalScore >= 4
-            ? { label: 'HOLD', color: '#60a5fa', bg: 'rgba(96,165,250,0.05)', border: 'rgba(96,165,250,0.16)' }
+            ? { label: 'HOLD', color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)', glow: '0 0 10px 1px rgba(96,165,250,0.25)' }
             : totalScore >= 1
-            ? { label: 'SELL', color: '#f87171', bg: 'rgba(248,113,113,0.05)', border: 'rgba(248,113,113,0.16)' }
-            : { label: 'STRONG SELL', color: '#f87171', bg: 'rgba(248,113,113,0.07)', border: 'rgba(248,113,113,0.22)' }
+            ? { label: 'SELL', color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.25)', glow: '0 0 10px 1px rgba(248,113,113,0.25)' }
+            : { label: 'STRONG SELL', color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.35)', glow: '0 0 10px 1px rgba(248,113,113,0.25)' }
 
           return (
             <div>
@@ -257,14 +257,16 @@ export default function OverviewTab({ overview, currentPrice, convictionScore, c
                     padding: '3px 9px', borderRadius: 3,
                     border: `1px solid ${sentiment.border}`,
                     whiteSpace: 'nowrap',
+                    boxShadow: sentiment.glow,
                   }}>{sentiment.label} ({totalScore})</span>
                   {signals.map((s, i) => (
                     <span key={i} style={{
                       fontSize: 10, fontFamily: "'JetBrains Mono', monospace",
                       color: s.positive ? '#4ade80' : '#f87171',
-                      background: s.positive ? 'rgba(74,222,128,0.06)' : 'rgba(248,113,113,0.06)',
-                      border: `1px solid ${s.positive ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'}`,
+                      background: s.positive ? 'rgba(74,222,128,0.10)' : 'rgba(248,113,113,0.10)',
+                      border: `1px solid ${s.positive ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}`,
                       borderRadius: 3, padding: '2px 7px', whiteSpace: 'nowrap',
+                      boxShadow: s.positive ? '0 0 8px 1px rgba(74,222,128,0.2)' : '0 0 8px 1px rgba(248,113,113,0.2)',
                     }}>
                       {s.positive ? '↑' : '↓'} {s.text}
                     </span>
@@ -513,7 +515,7 @@ export default function OverviewTab({ overview, currentPrice, convictionScore, c
                 <RadarChart data={mergedMoatData} cx="50%" cy="50%" outerRadius="75%">
                   <PolarGrid stroke="rgba(255,255,255,0.06)" />
                   <PolarAngleAxis dataKey="metric" tick={{ fill: '#5a6475', fontSize: 13, fontFamily: "'JetBrains Mono', monospace" }} />
-                  {hasSector && <Radar dataKey="sectorScore" stroke="#a78bfa" fill="rgba(167,139,250,0.08)" strokeWidth={1.5} strokeDasharray="4 3" isAnimationActive={false} />}
+                  {hasSector && <Radar dataKey="sectorScore" stroke="#a78bfa" fill="rgba(167,139,250,0.18)" strokeWidth={1.5} strokeDasharray="4 3" isAnimationActive={false} />}
                   <Radar dataKey="score" stroke="#60a5fa" fill="rgba(96,165,250,0.20)" strokeWidth={2} dot={{ r: 4, fill: '#60a5fa', strokeWidth: 0 }} isAnimationActive={false} />
                   <Tooltip content={<CTooltip />} />
                 </RadarChart>
