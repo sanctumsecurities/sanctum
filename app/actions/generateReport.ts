@@ -427,7 +427,7 @@ function buildKeyMetricsFromYahoo(yahoo: NonNullable<Awaited<ReturnType<typeof f
       ...(yahoo.revenueCagr.fiveYear ? { yoyChange: yahoo.revenueCagr.fiveYear } : {}),
     },
     {
-      label: 'Net Income 5yr CAGR',
+      label: 'Net Income 5Y CAGR',
       value: yahoo.netIncomeCagr.fiveYear || 'N/A',
       ...(yahoo.netIncomeCagr.fiveYear ? { yoyChange: yahoo.netIncomeCagr.fiveYear } : {}),
     },

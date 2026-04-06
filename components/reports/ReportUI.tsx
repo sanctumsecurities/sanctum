@@ -32,10 +32,10 @@ export function MetricCard({ label, value, subtitle, yoyChange, footer }: {
         minHeight: 14,
       }}>{label}</div>
       <div style={{
-        display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+        display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'nowrap',
       }}>
         <div style={{
-          fontSize: 24, fontWeight: 700, color: valueColor,
+          fontSize: 23, fontWeight: 700, color: valueColor,
           fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.1,
         }}>{value}</div>
         {yoyChange && !isCagr && (
