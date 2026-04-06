@@ -15,7 +15,12 @@ export async function GET(req: NextRequest) {
     ) as any
 
     const suggestions = ((results as any).quotes ?? [])
-      .filter((q: any) => q.isYahooFinance && q.symbol && ['EQUITY', 'ETF', 'INDEX', 'MUTUALFUND'].includes(q.quoteType))
+      .filter((q: any) => {
+        if (!q.isYahooFinance || !q.symbol) return false
+        if (!['EQUITY', 'ETF'].includes(q.quoteType)) return false
+        const exchange = (q.exchange || '').toUpperCase()
+        return ['NYQ', 'NMS', 'NGM', 'NCM', 'NYS', 'NAS', 'PCX', 'BTS'].includes(exchange)
+      })
       .slice(0, 7)
       .map((q: any) => ({
         symbol: q.symbol as string,
