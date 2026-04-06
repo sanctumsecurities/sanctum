@@ -223,10 +223,17 @@ function scoreEarningsGrowthMomentum(
   const growthRates: number[] = []
 
   for (let i = 1; i < recent.length; i++) {
-    if (recent[i - 1].eps > 0) {
-      growthRates.push(
-        ((recent[i].eps - recent[i - 1].eps) / recent[i - 1].eps) * 100
-      )
+    const prev = recent[i - 1].eps
+    const curr = recent[i].eps
+    if (prev > 0) {
+      // Normal percentage growth when prior EPS is positive
+      growthRates.push(((curr - prev) / prev) * 100)
+    } else if (prev <= 0 && curr > 0) {
+      // Loss-to-profit transition — strong bullish signal
+      growthRates.push(100)
+    } else if (prev <= 0 && curr <= 0) {
+      // Stayed in loss territory — check if losses are shrinking
+      growthRates.push(curr > prev ? 20 : -20)
     }
   }
 

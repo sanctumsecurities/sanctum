@@ -192,12 +192,13 @@ async function fetchYahooData(ticker: string) {
       : null
 
     // EPS CAGR from income data
-    const epsHistory = sortedIncome
+    const epsHistoryAll = sortedIncome
       .map((stmt: any) => ({
         year: new Date(stmt.date).getFullYear().toString(),
         eps: safeNum(stmt.dilutedEPS) || safeNum(stmt.basicEPS),
       }))
-      .filter(e => e.eps > 0)
+    // Filtered to positive EPS for CAGR (negative EPS makes the math meaningless)
+    const epsHistory = epsHistoryAll.filter(e => e.eps > 0)
     const epsLen = epsHistory.length
     const epsCagr5 = epsLen >= 2
       ? cagr(epsHistory[Math.max(0, epsLen - 5)].eps, epsHistory[epsLen - 1].eps, Math.min(epsLen - 1, 4))
@@ -387,8 +388,8 @@ async function fetchYahooData(ticker: string) {
       beta,
       recentNews,
       opCashFlowHistory: fcfHistory.map(f => ({ year: f.year, opCF: f.operatingCashFlow })),
-      // Fields for quant pre-score
-      epsHistory,
+      // Fields for quant pre-score (unfiltered — includes negative EPS for momentum scoring)
+      epsHistory: epsHistoryAll,
       latestFCF: fcfHistory.length > 0 ? fcfHistory[fcfHistory.length - 1].fcf : 0,
       shortPercentOfFloat: keyStats.shortPercentOfFloat != null ? safeNum(keyStats.shortPercentOfFloat) : null,
     }
@@ -641,6 +642,12 @@ Requirements:
     // ── Apply verdict veto ──
     const { verdict: finalVerdict, vetoed } = resolveVerdict(quantSignal.verdict, parsed.verdict)
     parsed.verdict = finalVerdict
+    if (parsed.verdictDetails?.syndicateVerdict) {
+      parsed.verdictDetails.syndicateVerdict.rating = finalVerdict
+    }
+    if (vetoed) {
+      console.warn(`[generateReport] Verdict veto fired for ${symbol}: quant=${quantSignal.verdict}, gemini=${parsed.verdict} → ${finalVerdict}`)
+    }
 
     // ── Merge Yahoo Finance data into Gemini response ──
     if (yahoo) {
