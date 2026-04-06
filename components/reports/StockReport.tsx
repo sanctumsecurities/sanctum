@@ -618,7 +618,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
               caution: 'yellow',
             }
             const variantOrder: Record<string, number> = { green: 0, blue: 1, yellow: 2, red: 3, gray: 4 }
-            const badges = report.badges.slice(0, 8).map(b =>
+            const badges = report.badges.slice(0, 10).map(b =>
               typeof b === 'string'
                 ? { text: b, variant: 'gray' as const, reason: undefined as string | undefined }
                 : { text: b.text, variant: sentimentToVariant[b.sentiment] || 'gray' as const, reason: b.reason }
