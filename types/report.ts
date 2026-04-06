@@ -154,4 +154,52 @@ export interface StockReport {
     convictionScore: number
     convictionDrivers: string
   }
+
+  // === Quant pre-score (computed from Yahoo data before Gemini call) ===
+  quantSignal: {
+    score: number
+    verdict: 'BUY' | 'SELL' | 'HOLD' | 'AVOID'
+    factors: {
+      name: string
+      rawValue: string
+      score: number
+      weight: number
+      contribution: number
+    }[]
+    skippedFactors: string[]
+  }
+
+  // === Gemini chain-of-thought reasoning ===
+  reasoningTrace: {
+    quantAgreement: string
+    qualitativeOverrides: string
+    macroImpact: string
+    finalRationale: string
+  }
+
+  // === true when Gemini verdict diverges from quant verdict (or was vetoed) ===
+  splitSignal: boolean
+
+  // === Post-Gemini source-of-truth validation ===
+  dataValidation: {
+    flaggedClaims: {
+      field: string
+      claim: string
+      sourceValue: string
+      geminiValue: string
+      severity: 'low' | 'medium' | 'high'
+    }[]
+    validationScore: number
+    totalChecked: number
+    totalFlagged: number
+  }
+
+  // === Macro environment snapshot used for this report ===
+  macroContext: {
+    vix: { level: number; classification: string } | null
+    tenYearYield: number | null
+    sp500: { price: number; fiftyDayAvg: number; twoHundredDayAvg: number } | null
+    yieldCurve: { spread: number; status: 'inverted' | 'flat' | 'normal' } | null
+    fetchedAt: string
+  } | null
 }
