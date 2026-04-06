@@ -401,7 +401,7 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
             <KPI
               label="P/E Ratio"
               value={data.pe > 0 ? `${data.pe.toFixed(1)}x` : 'N/A'}
-              sub={data.forwardPe > 0 ? `Fwd: ${data.forwardPe.toFixed(1)}x` : ''}
+              sub={data.pe > 0 ? `TTM: ${data.pe.toFixed(1)}x` : ''}
             />
             <KPI
               label="Sentiment"

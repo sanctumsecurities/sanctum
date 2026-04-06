@@ -432,7 +432,7 @@ function buildKeyMetricsFromYahoo(yahoo: NonNullable<Awaited<ReturnType<typeof f
       ...(yahoo.netIncomeCagr.fiveYear ? { yoyChange: yahoo.netIncomeCagr.fiveYear } : {}),
     },
     { label: 'Beta', value: yahoo.beta > 0 ? yahoo.beta.toFixed(2) : 'N/A' },
-    { label: 'Forward P/E', value: yahoo.forwardPE > 0 ? `${yahoo.forwardPE.toFixed(1)}x` : 'N/A' },
+    { label: 'P/E (TTM)', value: yahoo.currentPE > 0 ? `${yahoo.currentPE.toFixed(1)}x` : 'N/A' },
     {
       label: 'Op Cash Flow',
       value: latestOCF && latestOCF.opCF > 0 ? `$${(latestOCF.opCF / 1e9).toFixed(1)}B` : 'N/A',
