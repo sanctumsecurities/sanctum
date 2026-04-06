@@ -305,7 +305,7 @@ function ReportLoadingScreen({
               </div>
             </div>
             <div style={{
-              fontSize: 28, color: progress >= 100 ? '#555' : '#333',
+              fontSize: 14, color: progress >= 100 ? '#555' : '#333',
               marginTop: 8, textAlign: 'right', letterSpacing: '0.05em',
               transition: 'color 300ms',
               fontFamily: "'JetBrains Mono', monospace",
