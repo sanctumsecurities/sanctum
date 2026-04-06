@@ -753,17 +753,17 @@ Requirements:
           const sectorPE = parsed.valuation.sectorMedianPE > 0
             ? parsed.valuation.sectorMedianPE.toFixed(1)
             : null
-          const footer: string[] = []
-          if (avg5yr) footer.push(`5yr avg: ${avg5yr}x`)
-          if (sectorPE) footer.push(`Sector avg: ${sectorPE}x`)
-          return { ...m, subtitle: undefined, footer: footer.length > 0 ? footer : undefined }
+          const parts: string[] = []
+          if (avg5yr) parts.push(`5yr avg: ${avg5yr}x`)
+          if (sectorPE) parts.push(`Sector avg: ${sectorPE}x`)
+          return { ...m, subtitle: parts.join('\n') || undefined, footer: undefined }
         }
         if (m.label === 'Beta') {
           return { ...m, subtitle: undefined }
         }
         if (m.label === 'Dividend Yield') {
           const sub = yahoo?.dividendData
-            ? `Payout: ${yahoo.dividendData.payoutRatio} · 5yr CAGR: ${yahoo.dividendData.fiveYearCagr}`
+            ? `Payout: ${yahoo.dividendData.payoutRatio}\n5yr CAGR: ${yahoo.dividendData.fiveYearCagr}`
             : (parsed.dividendHistory || 'No dividend history')
           return { ...m, subtitle: sub, footer: undefined }
         }

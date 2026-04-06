@@ -48,7 +48,7 @@ export function MetricCard({ label, value, subtitle, yoyChange, footer }: {
       {subtitle && (
         <div style={{
           fontSize: 12, marginTop: 'auto', paddingTop: 8, fontFamily: "'JetBrains Mono', monospace",
-          color: '#5a6475',
+          color: '#5a6475', whiteSpace: 'pre-line',
         }}>{subtitle}</div>
       )}
       {footer && footer.length > 0 && (
