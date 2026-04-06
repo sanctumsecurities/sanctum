@@ -355,11 +355,55 @@ async function fetchYahooData(ticker: string) {
       forwardPE,
       beta,
       recentNews,
+      opCashFlowHistory: fcfHistory.map(f => ({ year: f.year, opCF: f.operatingCashFlow })),
     }
   } catch (err) {
     console.error('fetchYahooData failed:', err)
     return null
   }
+}
+
+function buildKeyMetricsFromYahoo(yahoo: NonNullable<Awaited<ReturnType<typeof fetchYahooData>>>): StockReport['overview']['keyMetrics'] {
+  const revArr = yahoo.revenueVsCogs
+  const latestRev = revArr[revArr.length - 1]
+  const prevRev = revArr[revArr.length - 2]
+  const revYoY = latestRev && prevRev && prevRev.revenue > 0
+    ? `${((latestRev.revenue - prevRev.revenue) / prevRev.revenue * 100 >= 0 ? '+' : '')}${((latestRev.revenue - prevRev.revenue) / prevRev.revenue * 100).toFixed(1)}%`
+    : undefined
+
+  const ocfArr = yahoo.opCashFlowHistory
+  const latestOCF = ocfArr[ocfArr.length - 1]
+  const prevOCF = ocfArr[ocfArr.length - 2]
+  const ocfYoY = latestOCF && prevOCF && prevOCF.opCF > 0
+    ? `${((latestOCF.opCF - prevOCF.opCF) / prevOCF.opCF * 100 >= 0 ? '+' : '')}${((latestOCF.opCF - prevOCF.opCF) / prevOCF.opCF * 100).toFixed(1)}%`
+    : undefined
+
+  return [
+    { label: 'Market Cap', value: yahoo.marketCap },
+    {
+      label: 'FY Revenue',
+      value: latestRev ? `$${latestRev.revenue.toFixed(1)}B` : 'N/A',
+      ...(revYoY ? { yoyChange: revYoY } : {}),
+    },
+    {
+      label: 'Revenue 5yr CAGR',
+      value: yahoo.revenueCagr.fiveYear || 'N/A',
+      ...(yahoo.revenueCagr.fiveYear ? { yoyChange: yahoo.revenueCagr.fiveYear } : {}),
+    },
+    {
+      label: 'Net Income 5yr CAGR',
+      value: yahoo.netIncomeCagr.fiveYear || 'N/A',
+      ...(yahoo.netIncomeCagr.fiveYear ? { yoyChange: yahoo.netIncomeCagr.fiveYear } : {}),
+    },
+    { label: 'Beta', value: yahoo.beta > 0 ? yahoo.beta.toFixed(2) : 'N/A' },
+    { label: 'Forward P/E', value: yahoo.forwardPE > 0 ? `${yahoo.forwardPE.toFixed(1)}x` : 'N/A' },
+    {
+      label: 'Op Cash Flow',
+      value: latestOCF && latestOCF.opCF > 0 ? `$${(latestOCF.opCF / 1e9).toFixed(1)}B` : 'N/A',
+      ...(ocfYoY ? { yoyChange: ocfYoY } : {}),
+    },
+    { label: 'Dividend Yield', value: yahoo.dividendData?.currentYield || 'N/A' },
+  ]
 }
 
 export async function generateReport(ticker: string): Promise<StockReport | { error: string }> {
@@ -372,7 +416,13 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
     const yahoo = await fetchYahooData(symbol)
 
     const genAI = getGenAI()
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-3-flash-preview',
+      tools: [{ googleSearch: {} } as any],
+    })
+
+    // Build key metrics from real Yahoo data before calling Gemini
+    const preBuiltMetrics = yahoo ? buildKeyMetricsFromYahoo(yahoo) : null
 
     const yahooContext = yahoo ? `
 MARKET DATA:
@@ -396,6 +446,9 @@ MARKET DATA:
 
 RECENT NEWS & EVENTS:
 ${yahoo.recentNews.length > 0 ? yahoo.recentNews.map((n: any) => `- ${n.date}: ${n.title}`).join('\n') : '- No recent news available'}
+
+PRE-BUILT KEY METRICS (real-time Yahoo Finance — use these exact values in overview.keyMetrics, only add subtitle):
+${JSON.stringify(preBuiltMetrics, null, 2)}
 ` : ''
 
     const prompt = `You are a quantitative equity strategist. You write dense, forward-looking analysis. Every sentence either cites a number or makes a falsifiable prediction. No filler. If a sentence could apply to any company, delete it.
@@ -479,7 +532,7 @@ Schema:
 
 Requirements:
 - badges: 8-12 objects. Each tag must be qualitative/narrative — NEVER include numeric metrics (market cap, P/E, dividend yield, revenue, EPS, beta, CAGR, margins). Good: 'DOJ Investigation' (negative), 'Buffett Favorite' (positive), 'AI Tailwind' (positive), 'Founder-Led' (neutral), 'Dividend Aristocrat' (positive), 'Tariff Exposed' (caution). Sentiment must reflect whether the tag is bullish, bearish, informational, or a warning for this specific company.
-- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Beta, Forward P/E, Op Cash Flow, Dividend Yield (show "N/A" if no dividend). Include yoyChange for: Market Cap (YoY % change), FY Revenue (YoY % change), Revenue 5yr CAGR (the CAGR itself), Net Income 5yr CAGR (the CAGR itself), Op Cash Flow (YoY % change), Dividend Yield (YoY change). No yoyChange for Beta or Forward P/E.
+- overview.keyMetrics: copy the PRE-BUILT KEY METRICS from context exactly (label, value, yoyChange are already correct real-time data — do NOT change them). Your only job per metric is to add a "subtitle" field: 3-5 words of sharp interpretation (e.g. "above sector avg", "accelerating trend", "historically cheap", "crowded valuation", "near multi-year low"). Use your web search knowledge and the provided financials to make these insightful, not generic.
 - overview.moatScores: exactly 6 items, 0-100 scale
 - overview.sectorMoatScores: exactly 6 items matching moatScores metrics
 - overview.segmentBreakdown: 3-8 segments summing close to 100
@@ -506,19 +559,18 @@ Requirements:
       if (yahoo.marketCap) parsed.marketCap = yahoo.marketCap
       if (yahoo.priceVsATH) parsed.priceVsATH = yahoo.priceVsATH
 
-      // 1. Overview fields — replace EPS card with Beta (match either label)
-      if (yahoo.beta > 0 && parsed.overview.keyMetrics) {
-        const idx = parsed.overview.keyMetrics.findIndex(m => {
-          const l = m.label.toLowerCase()
-          return l.includes('beta') || l.includes('eps')
-        })
-        if (idx !== -1) {
-          parsed.overview.keyMetrics[idx].label = 'Beta'
-          parsed.overview.keyMetrics[idx].value = yahoo.beta.toFixed(2)
-          parsed.overview.keyMetrics[idx].subtitle = 'vs. market volatility'
-          delete (parsed.overview.keyMetrics[idx] as any).yoyChange
+      // 1. Override keyMetrics entirely with Yahoo-sourced values, keeping Gemini's subtitles
+      if (preBuiltMetrics) {
+        const geminiSubtitles: Record<string, string> = {}
+        for (const m of (parsed.overview.keyMetrics ?? [])) {
+          if (m.subtitle) geminiSubtitles[m.label.toLowerCase()] = m.subtitle
         }
+        parsed.overview.keyMetrics = preBuiltMetrics.map(m => ({
+          ...m,
+          ...(geminiSubtitles[m.label.toLowerCase()] ? { subtitle: geminiSubtitles[m.label.toLowerCase()] } : {}),
+        }))
       }
+
       parsed.overview.revenueCagr = yahoo.revenueCagr
       parsed.overview.netIncomeCagr = yahoo.netIncomeCagr
       parsed.overview.institutionalOwnership = yahoo.institutionalOwnership

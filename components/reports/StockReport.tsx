@@ -14,8 +14,8 @@ import type { StockReport as StockReportType } from '@/types/report'
 
 const TABS = ['Overview', 'Financials', 'Valuation', 'Catalysts', 'Verdict'] as const
 
-const verdictBadgeColor: Record<string, 'green' | 'red' | 'blue'> = {
-  BUY: 'green', SELL: 'red', HOLD: 'blue', AVOID: 'red',
+const verdictBadgeColor: Record<string, 'green' | 'red' | 'blue' | 'yellow'> = {
+  BUY: 'green', SELL: 'red', HOLD: 'yellow', AVOID: 'red',
 }
 
 const LOADING_PHRASES = [
@@ -388,8 +388,11 @@ export default function StockReport({ ticker }: { ticker: string }) {
   const [reportReady, setReportReady] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const fetchIdRef = useRef(0)
 
   const fetchReport = useCallback(async () => {
+    const myId = ++fetchIdRef.current
+
     setLoading(true)
     setError(null)
     setReport(null)
@@ -405,6 +408,8 @@ export default function StockReport({ ticker }: { ticker: string }) {
       .limit(1)
       .single()
 
+    if (myId !== fetchIdRef.current) return
+
     if (existing?.data?.companyName) {
       setReport(existing.data as StockReportType)
       setReportReady(true)
@@ -414,6 +419,9 @@ export default function StockReport({ ticker }: { ticker: string }) {
     }
 
     const result = await generateReport(ticker)
+
+    if (myId !== fetchIdRef.current) return
+
     if ('error' in result) {
       setError(result.error)
       setLoading(false)
@@ -438,7 +446,10 @@ export default function StockReport({ ticker }: { ticker: string }) {
 
   useEffect(() => {
     fetchReport()
-    return () => { if (switchTimer.current) clearTimeout(switchTimer.current) }
+    return () => {
+      fetchIdRef.current++ // invalidate any in-flight request for this ticker
+      if (switchTimer.current) clearTimeout(switchTimer.current)
+    }
   }, [fetchReport])
 
   const switchTab = (t: typeof TABS[number]) => {
