@@ -3,6 +3,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { StockReport } from '@/types/report'
 import { yahooFinance } from '@/lib/yahoo'
+import { computeQuantSignal, formatQuantSignal, type QuantSignal } from '@/lib/quantScore'
+import { fetchMacroContext, type MacroContext } from '@/lib/macroContext'
+import { validateReport } from '@/lib/reportValidation'
 
 function getGenAI() {
   const key = process.env.GEMINI_API_KEY
@@ -39,6 +42,34 @@ function fmtPct(n: number): string {
 function safeNum(val: any, fallback = 0): number {
   if (val === undefined || val === null || isNaN(val)) return fallback
   return typeof val === 'object' && 'raw' in val ? val.raw : Number(val)
+}
+
+// ── Verdict veto logic ──
+// Gemini can always go more cautious than quant, but cannot go more than
+// one notch bullish above quant. If it tries, clamp to one notch above.
+const VERDICT_RANK: Record<string, number> = { AVOID: 1, SELL: 2, HOLD: 3, BUY: 4 }
+const RANK_TO_VERDICT: Record<number, 'BUY' | 'SELL' | 'HOLD' | 'AVOID'> = {
+  1: 'AVOID', 2: 'SELL', 3: 'HOLD', 4: 'BUY',
+}
+
+function resolveVerdict(
+  quantVerdict: string, geminiVerdict: string
+): { verdict: 'BUY' | 'SELL' | 'HOLD' | 'AVOID'; vetoed: boolean } {
+  const qRank = VERDICT_RANK[quantVerdict] ?? 3
+  const gRank = VERDICT_RANK[geminiVerdict] ?? 3
+
+  // Gemini going more cautious or same — always allowed
+  if (gRank <= qRank) {
+    return { verdict: RANK_TO_VERDICT[gRank], vetoed: false }
+  }
+
+  // Gemini going one notch more bullish — allowed
+  if (gRank - qRank <= 1) {
+    return { verdict: RANK_TO_VERDICT[gRank], vetoed: false }
+  }
+
+  // Gemini trying to go 2+ notches more bullish — veto, clamp to one above quant
+  return { verdict: RANK_TO_VERDICT[qRank + 1], vetoed: true }
 }
 
 // ── Yahoo Finance data fetching ──
@@ -417,12 +448,27 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
 
   try {
     // Fetch expanded Yahoo Finance data
-    const yahoo = await fetchYahooData(symbol)
+    // Fetch Yahoo data + macro context in parallel
+    const [yahoo, macroResult] = await Promise.all([
+      fetchYahooData(symbol),
+      fetchMacroContext().catch((): { formatted: string; data: MacroContext | null } => ({
+        formatted: '',
+        data: null,
+      })),
+    ])
+
+    // Compute quant pre-score from Yahoo data
+    const quantSignal: QuantSignal = yahoo
+      ? computeQuantSignal(yahoo)
+      : { score: 50, verdict: 'HOLD', factors: [], skippedFactors: ['all (Yahoo data unavailable)'] }
 
     const genAI = getGenAI()
     const model = genAI.getGenerativeModel({
       model: 'gemini-3-flash-preview',
       tools: [{ googleSearch: {} } as any],
+      generationConfig: {
+        thinkingConfig: { thinkingBudget: -1 },
+      } as any,
     })
 
     // Build key metrics from real Yahoo data before calling Gemini
@@ -455,10 +501,39 @@ PRE-BUILT KEY METRICS (real-time Yahoo Finance — use these exact values in ove
 ${JSON.stringify(preBuiltMetrics, null, 2)}
 ` : ''
 
-    const prompt = `You are a quantitative equity strategist. You write dense, forward-looking analysis. Every sentence either cites a number or makes a falsifiable prediction. No filler. If a sentence could apply to any company, delete it.
+    const quantContext = formatQuantSignal(quantSignal)
+    const macroContextStr = macroResult.formatted
 
-Here is today's market data and recent news for ${symbol} as of ${new Date().toISOString().split('T')[0]}. Your job is to ANALYZE this data, not repeat it. Data-sourced fields (prices, margins, analyst targets, insider activity) will be injected separately into the report — you do not generate them. Focus on interpretation, thesis, and forward scenarios.
+    const prompt = `You are a quantitative equity strategist at a multi-strategy hedge fund. You write dense, forward-looking analysis. Every sentence either cites a number or makes a falsifiable prediction. No filler. If a sentence could apply to any company, delete it.
+
+You are provided with a quantitative pre-score computed from market data. Your job is to CONFIRM, OVERRIDE, or NUANCE this signal with qualitative reasoning. If you disagree with the quant signal, you must explicitly state why.
+
+When the data is ambiguous or insufficient to support a strong directional call, default to HOLD. Never manufacture conviction.
+
+Here is today's market data, quantitative signal, and macro context for ${symbol} as of ${new Date().toISOString().split('T')[0]}. Your job is to ANALYZE this data, not repeat it. Data-sourced fields (prices, margins, analyst targets, insider activity) will be injected separately into the report — you do not generate them. Focus on interpretation, thesis, and forward scenarios.
+
+=== MARKET DATA ===
 ${yahooContext}
+
+=== QUANTITATIVE PRE-SCORE ===
+${quantContext}
+
+=== MACRO ENVIRONMENT ===
+${macroContextStr || 'Macro data unavailable.'}
+Consider the current macro environment when evaluating risk and positioning. A rising rate / high VIX environment should increase your skepticism of growth-dependent theses.
+
+CHAIN-OF-THOUGHT:
+Before generating the final JSON, internally reason through these steps in order:
+1. Evaluate the quant signal — which factors do you agree with and which do you think are misleading for this specific company?
+2. Identify 1-3 qualitative factors NOT captured in the quant data (competitive dynamics, management quality, regulatory risk, product cycle) that should shift the verdict
+3. Determine if macro conditions amplify or dampen the stock-specific thesis
+4. Arrive at your final verdict and conviction score, noting any divergence from the quant signal
+
+Embed your reasoning chain in a top-level field called "reasoningTrace" in the JSON output — this should be a structured object with keys: quantAgreement, qualitativeOverrides, macroImpact, finalRationale — each being 1-3 sentences.
+
+SPLIT SIGNAL:
+If your verdict DISAGREES with the quant pre-score verdict, you MUST set "splitSignal": true at the root level and explain the divergence in reasoningTrace.finalRationale. If you agree, set "splitSignal": false.
+
 DIRECTIVES:
 1. Ground every claim in provided data — reference specific margins, growth rates, and multiples.
 2. Focus on what changes from here. Historical context only to support a forward thesis.
@@ -480,6 +555,13 @@ Schema:
   "verdict": "BUY" | "SELL" | "HOLD" | "AVOID",
   "verdictSubtitle": "string — one-line thesis, max 10 words",
   "convictionScore": number (0-100),
+  "splitSignal": boolean,
+  "reasoningTrace": {
+    "quantAgreement": "string — 1-3 sentences on which quant factors you agree/disagree with",
+    "qualitativeOverrides": "string — 1-3 sentences on qualitative factors not in the quant data",
+    "macroImpact": "string — 1-3 sentences on how macro conditions affect the thesis",
+    "finalRationale": "string — 1-3 sentences on your final verdict and any divergence from quant"
+  },
   "badges": [{ "text": "string — qualitative/narrative tag about the company", "sentiment": "'positive' | 'negative' | 'neutral' | 'caution' — classify based on whether this tag is bullish (positive), bearish (negative), informational (neutral), or a risk/warning (caution)" }],
   "overview": {
     "keyMetrics": [
@@ -555,6 +637,10 @@ Requirements:
     const text = result.response.text()
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const parsed = JSON.parse(cleaned) as StockReport
+
+    // ── Apply verdict veto ──
+    const { verdict: finalVerdict, vetoed } = resolveVerdict(quantSignal.verdict, parsed.verdict)
+    parsed.verdict = finalVerdict
 
     // ── Merge Yahoo Finance data into Gemini response ──
     if (yahoo) {
@@ -701,6 +787,23 @@ Requirements:
     // Verdict details conviction
     parsed.verdictDetails.convictionScore = parsed.verdictDetails.convictionScore ?? parsed.convictionScore
     parsed.verdictDetails.convictionDrivers = parsed.verdictDetails.convictionDrivers ?? ''
+
+    // ── Post-Gemini validation ──
+    const dataValidation = yahoo
+      ? validateReport(parsed, yahoo)
+      : { flaggedClaims: [], validationScore: 100, totalChecked: 0, totalFlagged: 0 }
+
+    // ── Attach new fields ──
+    parsed.quantSignal = quantSignal
+    parsed.splitSignal = vetoed || (parsed.splitSignal ?? false)
+    parsed.reasoningTrace = parsed.reasoningTrace ?? {
+      quantAgreement: '',
+      qualitativeOverrides: '',
+      macroImpact: '',
+      finalRationale: '',
+    }
+    parsed.dataValidation = dataValidation
+    parsed.macroContext = macroResult.data
 
     return parsed
   } catch (err: any) {
