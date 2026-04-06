@@ -48,6 +48,27 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
   const onCompleteRef = useRef(onComplete)
   useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
 
+  // Smooth time-based progress: ramps quickly to ~70%, decelerates toward 90%
+  useEffect(() => {
+    if (reportReady) return
+    const start = Date.now()
+    const id = setInterval(() => {
+      const elapsed = (Date.now() - start) / 1000
+      // Fast ramp: 70% in ~2s, asymptotically approaches 90%
+      const p = 90 * (1 - Math.exp(-elapsed / 1.8))
+      setProgress(Math.min(90, p))
+    }, 60)
+    return () => clearInterval(id)
+  }, [ticker, reportReady])
+
+  // Snap to 100% when report arrives
+  useEffect(() => {
+    if (!reportReady) return
+    setProgress(100)
+    const id = setTimeout(() => onCompleteRef.current(), 800)
+    return () => clearTimeout(id)
+  }, [reportReady])
+
   useEffect(() => {
     abortRef.current = false
     phrasesRef.current = LOADING_PHRASES.map(p => p.replace('{TICKER}', ticker.toUpperCase()))
@@ -56,7 +77,7 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
     const sleep = (ms: number) => new Promise<void>((resolve, reject) => {
       const id = setTimeout(resolve, ms)
       const check = setInterval(() => {
-        if (abortRef.current) { clearTimeout(id); clearInterval(check); reject('aborted') }
+        if (abortRef.current || reportReadyRef.current) { clearTimeout(id); clearInterval(check); reject('ready') }
       }, 50)
       setTimeout(() => clearInterval(check), ms + 100)
     })
@@ -79,36 +100,24 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
 
           for (let i = 0; i < phrase.length; i++) {
             if (abortRef.current) return
+            if (reportReadyRef.current) return
             setDisplayText(phrase.slice(0, i + 1))
             setCaretMode('solid')
             await sleep(typeDelay())
           }
 
-          const progressPerPhrase = 88 / phrases.length
-          setProgress(Math.min(90, (phraseIdx + 1) * progressPerPhrase))
-
-          if (reportReadyRef.current) {
-            setProgress(100)
-            setCaretMode('blink')
-            await sleep(1200)
-            onCompleteRef.current()
-            return
-          }
+          if (reportReadyRef.current) return
 
           setCaretMode('blink')
           await sleep(3000)
 
-          if (reportReadyRef.current) {
-            setProgress(100)
-            await sleep(1200)
-            onCompleteRef.current()
-            return
-          }
+          if (reportReadyRef.current) return
 
           setCaretMode('solid')
           const text = phrase
           for (let i = text.length; i >= 0; i--) {
             if (abortRef.current) return
+            if (reportReadyRef.current) return
             setDisplayText(text.slice(0, i))
             setCaretMode('solid')
             await sleep(deleteDelay())
@@ -117,7 +126,7 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
           phraseIdx++
         }
       } catch (e) {
-        if (e !== 'aborted') console.error(e)
+        if (e !== 'ready' && e !== 'aborted') console.error(e)
       }
     }
 
