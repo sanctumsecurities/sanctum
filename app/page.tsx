@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Auth from '@/components/Auth'
@@ -15,7 +15,6 @@ interface SavedReport {
   id: string
   ticker: string
   data: any
-  ai: any
   created_by: string
   created_by_email: string | null
   created_at: string
@@ -38,13 +37,6 @@ interface HealthData {
 }
 
 
-const formatMktCap = (val: number) => {
-  if (!val) return '\u2014'
-  if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`
-  if (val >= 1e9) return `$${(val / 1e9).toFixed(2)}B`
-  if (val >= 1e6) return `$${(val / 1e6).toFixed(1)}M`
-  return `$${val.toLocaleString()}`
-}
 
 // ── Isolated Clock (re-renders only itself every second) ──
 function Clock({ format }: { format: '12h' | '24h' }) {
@@ -432,13 +424,8 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
     ? initialChartData
     : (periodCache[selectedPeriod] ?? undefined)
 
-  // Support both old format (d.price is number) and new StockReport format (d.currentPrice is "$180.52")
-  const isNewFormat = !!d.companyName
-  const sentiment = isNewFormat ? (d.verdict || '') : (report.ai?.overview?.sentiment || '')
-  const price = isNewFormat ? parseFloat(String(d.currentPrice).replace(/[^0-9.]/g, '')) || null : d.price
-  const prevClose = isNewFormat ? null : d.previousClose
-  const dayPriceChange = price && prevClose ? price - prevClose : null
-  const dayPriceChangePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null
+  const sentiment = d.verdict || ''
+  const price = parseFloat(String(d.currentPrice).replace(/[^0-9.]/g, '')) || null
 
   // For non-1D periods, use chartPreviousClose (close of last session before period) as reference
   const chartPoints = tickerChart?.points
@@ -447,18 +434,40 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
   const periodPriceChange = periodRef && periodLast ? periodLast - periodRef : null
   const periodPriceChangePct = periodRef && periodLast ? ((periodLast - periodRef) / periodRef) * 100 : null
 
-  // For new format on 1D, derive change from chart data since we don't have previousClose
-  const chart1DRef = isNewFormat && selectedPeriod === '1D' && chartPoints && chartPoints.length >= 2
+  // For 1D, derive change from chart data
+  const chart1DRef = selectedPeriod === '1D' && chartPoints && chartPoints.length >= 2
     ? (tickerChart?.chartPreviousClose ?? chartPoints[0].price) : null
-  const chart1DLast = isNewFormat && selectedPeriod === '1D' && chartPoints && chartPoints.length >= 2
+  const chart1DLast = selectedPeriod === '1D' && chartPoints && chartPoints.length >= 2
     ? chartPoints[chartPoints.length - 1].price : null
   const chart1DChange = chart1DRef && chart1DLast ? chart1DLast - chart1DRef : null
   const chart1DChangePct = chart1DRef && chart1DLast ? ((chart1DLast - chart1DRef) / chart1DRef) * 100 : null
 
-  const priceChange = selectedPeriod === '1D' ? (isNewFormat ? chart1DChange : dayPriceChange) : periodPriceChange
-  const priceChangePct = selectedPeriod === '1D' ? (isNewFormat ? chart1DChangePct : dayPriceChangePct) : periodPriceChangePct
+  const priceChange = selectedPeriod === '1D' ? chart1DChange : periodPriceChange
+  const priceChangePct = selectedPeriod === '1D' ? chart1DChangePct : periodPriceChangePct
   const isUp = priceChange !== null && priceChange >= 0
   const ah = selectedPeriod === '1D' ? (tickerChart?.afterHours || null) : null
+
+  // Compute 1D ET time window for consistent time-based positioning (chart + tooltip)
+  const dayWindow = useMemo(() => {
+    const pts = tickerChart?.points
+    if (selectedPeriod !== '1D' || !pts || pts.length < 2) return null
+    const endMs = new Date(pts[pts.length - 1].time).getTime()
+    const etParts = etFormatter.formatToParts(new Date(endMs))
+    const pyr = etParts.find(p => p.type === 'year')?.value ?? '2024'
+    const pmo = etParts.find(p => p.type === 'month')?.value ?? '01'
+    const pda = etParts.find(p => p.type === 'day')?.value ?? '01'
+    const pH  = etParts.find(p => p.type === 'hour')?.value ?? '00'
+    const pM  = etParts.find(p => p.type === 'minute')?.value ?? '00'
+    const pS  = etParts.find(p => p.type === 'second')?.value ?? '00'
+    const probeEtFakeUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T${pH}:${pM}:${pS}Z`)
+    const offsetMs = endMs - probeEtFakeUtcMs
+    const etMidnightUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T00:00:00Z`) + offsetMs
+    return {
+      period1Ms: etMidnightUtcMs + 4  * 60 * 60 * 1000,  // 4 AM ET
+      period2Ms: etMidnightUtcMs + 20 * 60 * 60 * 1000,  // 8 PM ET
+      etMidnightUtcMs,
+    }
+  }, [tickerChart?.points, selectedPeriod])
 
   const handlePeriodSelect = useCallback(async (period: Period) => {
     setSelectedPeriod(period)
@@ -475,8 +484,8 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
     }
   }, [periodCache, report.ticker])
 
-  const sentimentColor = (sentiment === 'Bullish' || sentiment === 'BUY') ? '#22c55e'
-    : (sentiment === 'Bearish' || sentiment === 'SELL' || sentiment === 'AVOID') ? '#f87171' : '#eab308'
+  const sentimentColor = sentiment === 'BUY' ? '#22c55e'
+    : (sentiment === 'SELL' || sentiment === 'AVOID') ? '#f87171' : '#eab308'
 
   const creatorEmail = report.created_by_email || ''
   const creatorName = creatorEmail ? creatorEmail.split('@')[0] : 'unknown'
@@ -518,7 +527,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             maxWidth: 140,
           }}>
-            {d.companyName || d.name || ''}
+            {d.companyName || ''}
           </div>
         </div>
         {sentiment && (() => {
@@ -607,7 +616,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
         display: 'grid', gridTemplateColumns: '1fr 1fr',
         gap: '8px', marginBottom: 14,
       }}>
-        {(isNewFormat ? (() => {
+        {(() => {
           const km = d.overview?.keyMetrics || []
           const find = (s: string) => km.find((k: any) => k.label?.toLowerCase().includes(s))?.value || '—'
           return [
@@ -616,12 +625,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
             { label: 'BETA', value: find('beta') },
             { label: 'DIV YIELD', value: find('dividend') },
           ]
-        })() : [
-          { label: 'MKT CAP', value: formatMktCap(d.marketCap) },
-          { label: 'P/E', value: d.pe ? d.pe.toFixed(2) : '—' },
-          { label: 'BETA', value: d.beta ? d.beta.toFixed(2) : '—' },
-          { label: 'DIV YIELD', value: d.dividendYield ? `${(d.dividendYield * 100).toFixed(2)}%` : '—' },
-        ]).map((m, i) => (
+        })().map((m, i) => (
           <div key={i}>
             <div style={{ fontSize: 11, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 4 }}>
               {m.label}
@@ -684,7 +688,19 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const localH = rect.height
           const x = e.clientX - rect.left
           const pct = Math.max(0, Math.min(1, x / localW))
-          const idx = Math.round(pct * (pts.length - 1))
+          let idx: number
+          if (selectedPeriod === '1D' && dayWindow) {
+            // Time-based lookup: match the chart's time-based x positioning
+            const cursorMs = dayWindow.period1Ms + pct * (dayWindow.period2Ms - dayWindow.period1Ms)
+            idx = 0
+            let bestDist = Infinity
+            for (let i = 0; i < pts.length; i++) {
+              const dist = Math.abs(new Date(pts[i].time).getTime() - cursorMs)
+              if (dist < bestDist) { bestDist = dist; idx = i }
+            }
+          } else {
+            idx = Math.round(pct * (pts.length - 1))
+          }
           const pt = pts[idx]
           const refPrice = (selectedPeriod !== '1D' && tickerChart?.chartPreviousClose) ? tickerChart.chartPreviousClose : pts[0].price
           const changeFromRef = refPrice > 0 ? ((pt.price - refPrice) / refPrice) * 100 : 0
@@ -759,25 +775,14 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const padTop = 12
           const padBottom = 2
 
-          // For 1D: derive the full-day ET window (4 AM – 8 PM) so the chart fills
+          // For 1D: reuse the precomputed ET window (4 AM – 8 PM) so the chart fills
           // left-to-right as the day progresses rather than always stretching to fill width
-          let period1Ms = 0
-          let period2Ms = 0
+          const period1Ms = dayWindow?.period1Ms ?? 0
+          const period2Ms = dayWindow?.period2Ms ?? 0
+          const etMidnightUtcMs = dayWindow?.etMidnightUtcMs ?? 0
           const sessionMarkers: { x: number; label: string; key: string }[] = []
-          if (selectedPeriod === '1D') {
+          if (selectedPeriod === '1D' && dayWindow) {
             const endMs = new Date(pts[pts.length - 1].time).getTime()
-            const etParts = etFormatter.formatToParts(new Date(endMs))
-            const pyr = etParts.find(p => p.type === 'year')?.value ?? '2024'
-            const pmo = etParts.find(p => p.type === 'month')?.value ?? '01'
-            const pda = etParts.find(p => p.type === 'day')?.value ?? '01'
-            const pH  = etParts.find(p => p.type === 'hour')?.value ?? '00'
-            const pM  = etParts.find(p => p.type === 'minute')?.value ?? '00'
-            const pS  = etParts.find(p => p.type === 'second')?.value ?? '00'
-            const probeEtFakeUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T${pH}:${pM}:${pS}Z`)
-            const offsetMs = endMs - probeEtFakeUtcMs
-            const etMidnightUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T00:00:00Z`) + offsetMs
-            period1Ms = etMidnightUtcMs + 4  * 60 * 60 * 1000  // 4 AM ET
-            period2Ms = etMidnightUtcMs + 20 * 60 * 60 * 1000  // 8 PM ET
 
             const sessionBoundaries = [
               { label: 'P', etH: 4,  etM: 0  },

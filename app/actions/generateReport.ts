@@ -3,6 +3,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { StockReport } from '@/types/report'
 import { yahooFinance } from '@/lib/yahoo'
+import { computeQuantSignal, formatQuantSignal, type QuantSignal } from '@/lib/quantScore'
+import { fetchMacroContext, type MacroContext } from '@/lib/macroContext'
+import { validateReport } from '@/lib/reportValidation'
 
 function getGenAI() {
   const key = process.env.GEMINI_API_KEY
@@ -39,6 +42,34 @@ function fmtPct(n: number): string {
 function safeNum(val: any, fallback = 0): number {
   if (val === undefined || val === null || isNaN(val)) return fallback
   return typeof val === 'object' && 'raw' in val ? val.raw : Number(val)
+}
+
+// ── Verdict veto logic ──
+// Gemini can always go more cautious than quant, but cannot go more than
+// one notch bullish above quant. If it tries, clamp to one notch above.
+const VERDICT_RANK: Record<string, number> = { AVOID: 1, SELL: 2, HOLD: 3, BUY: 4 }
+const RANK_TO_VERDICT: Record<number, 'BUY' | 'SELL' | 'HOLD' | 'AVOID'> = {
+  1: 'AVOID', 2: 'SELL', 3: 'HOLD', 4: 'BUY',
+}
+
+function resolveVerdict(
+  quantVerdict: string, geminiVerdict: string
+): { verdict: 'BUY' | 'SELL' | 'HOLD' | 'AVOID'; vetoed: boolean } {
+  const qRank = VERDICT_RANK[quantVerdict] ?? 3
+  const gRank = VERDICT_RANK[geminiVerdict] ?? 3
+
+  // Gemini going more cautious or same — always allowed
+  if (gRank <= qRank) {
+    return { verdict: RANK_TO_VERDICT[gRank], vetoed: false }
+  }
+
+  // Gemini going one notch more bullish — allowed
+  if (gRank - qRank <= 1) {
+    return { verdict: RANK_TO_VERDICT[gRank], vetoed: false }
+  }
+
+  // Gemini trying to go 2+ notches more bullish — veto, clamp to one above quant
+  return { verdict: RANK_TO_VERDICT[qRank + 1], vetoed: true }
 }
 
 // ── Yahoo Finance data fetching ──
@@ -161,12 +192,13 @@ async function fetchYahooData(ticker: string) {
       : null
 
     // EPS CAGR from income data
-    const epsHistory = sortedIncome
+    const epsHistoryAll = sortedIncome
       .map((stmt: any) => ({
         year: new Date(stmt.date).getFullYear().toString(),
         eps: safeNum(stmt.dilutedEPS) || safeNum(stmt.basicEPS),
       }))
-      .filter(e => e.eps > 0)
+    // Filtered to positive EPS for CAGR (negative EPS makes the math meaningless)
+    const epsHistory = epsHistoryAll.filter(e => e.eps > 0)
     const epsLen = epsHistory.length
     const epsCagr5 = epsLen >= 2
       ? cagr(epsHistory[Math.max(0, epsLen - 5)].eps, epsHistory[epsLen - 1].eps, Math.min(epsLen - 1, 4))
@@ -355,11 +387,59 @@ async function fetchYahooData(ticker: string) {
       forwardPE,
       beta,
       recentNews,
+      opCashFlowHistory: fcfHistory.map(f => ({ year: f.year, opCF: f.operatingCashFlow })),
+      // Fields for quant pre-score (unfiltered — includes negative EPS for momentum scoring)
+      epsHistory: epsHistoryAll,
+      latestFCF: fcfHistory.length > 0 ? fcfHistory[fcfHistory.length - 1].fcf : 0,
+      shortPercentOfFloat: keyStats.shortPercentOfFloat != null ? safeNum(keyStats.shortPercentOfFloat) : null,
     }
   } catch (err) {
     console.error('fetchYahooData failed:', err)
     return null
   }
+}
+
+function buildKeyMetricsFromYahoo(yahoo: NonNullable<Awaited<ReturnType<typeof fetchYahooData>>>): StockReport['overview']['keyMetrics'] {
+  const revArr = yahoo.revenueVsCogs
+  const latestRev = revArr[revArr.length - 1]
+  const prevRev = revArr[revArr.length - 2]
+  const revYoY = latestRev && prevRev && prevRev.revenue > 0
+    ? `${((latestRev.revenue - prevRev.revenue) / prevRev.revenue * 100 >= 0 ? '+' : '')}${((latestRev.revenue - prevRev.revenue) / prevRev.revenue * 100).toFixed(1)}%`
+    : undefined
+
+  const ocfArr = yahoo.opCashFlowHistory
+  const latestOCF = ocfArr[ocfArr.length - 1]
+  const prevOCF = ocfArr[ocfArr.length - 2]
+  const ocfYoY = latestOCF && prevOCF && prevOCF.opCF > 0
+    ? `${((latestOCF.opCF - prevOCF.opCF) / prevOCF.opCF * 100 >= 0 ? '+' : '')}${((latestOCF.opCF - prevOCF.opCF) / prevOCF.opCF * 100).toFixed(1)}%`
+    : undefined
+
+  return [
+    { label: 'Market Cap', value: yahoo.marketCap },
+    {
+      label: 'FY Revenue',
+      value: latestRev ? `$${latestRev.revenue.toFixed(1)}B` : 'N/A',
+      ...(revYoY ? { yoyChange: revYoY } : {}),
+    },
+    {
+      label: 'Revenue 5yr CAGR',
+      value: yahoo.revenueCagr.fiveYear || 'N/A',
+      ...(yahoo.revenueCagr.fiveYear ? { yoyChange: yahoo.revenueCagr.fiveYear } : {}),
+    },
+    {
+      label: 'Net Income 5yr CAGR',
+      value: yahoo.netIncomeCagr.fiveYear || 'N/A',
+      ...(yahoo.netIncomeCagr.fiveYear ? { yoyChange: yahoo.netIncomeCagr.fiveYear } : {}),
+    },
+    { label: 'Beta', value: yahoo.beta > 0 ? yahoo.beta.toFixed(2) : 'N/A' },
+    { label: 'Forward P/E', value: yahoo.forwardPE > 0 ? `${yahoo.forwardPE.toFixed(1)}x` : 'N/A' },
+    {
+      label: 'Op Cash Flow',
+      value: latestOCF && latestOCF.opCF > 0 ? `$${(latestOCF.opCF / 1e9).toFixed(1)}B` : 'N/A',
+      ...(ocfYoY ? { yoyChange: ocfYoY } : {}),
+    },
+    { label: 'Dividend Yield', value: yahoo.dividendData?.currentYield || 'N/A' },
+  ]
 }
 
 export async function generateReport(ticker: string): Promise<StockReport | { error: string }> {
@@ -369,10 +449,31 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
 
   try {
     // Fetch expanded Yahoo Finance data
-    const yahoo = await fetchYahooData(symbol)
+    // Fetch Yahoo data + macro context in parallel
+    const [yahoo, macroResult] = await Promise.all([
+      fetchYahooData(symbol),
+      fetchMacroContext().catch((): { formatted: string; data: MacroContext | null } => ({
+        formatted: '',
+        data: null,
+      })),
+    ])
+
+    // Compute quant pre-score from Yahoo data
+    const quantSignal: QuantSignal = yahoo
+      ? computeQuantSignal(yahoo)
+      : { score: 50, verdict: 'HOLD', factors: [], skippedFactors: ['all (Yahoo data unavailable)'] }
 
     const genAI = getGenAI()
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-3-flash-preview',
+      tools: [{ googleSearch: {} } as any],
+      generationConfig: {
+        thinkingConfig: { thinkingBudget: -1 },
+      } as any,
+    })
+
+    // Build key metrics from real Yahoo data before calling Gemini
+    const preBuiltMetrics = yahoo ? buildKeyMetricsFromYahoo(yahoo) : null
 
     const yahooContext = yahoo ? `
 MARKET DATA:
@@ -396,12 +497,44 @@ MARKET DATA:
 
 RECENT NEWS & EVENTS:
 ${yahoo.recentNews.length > 0 ? yahoo.recentNews.map((n: any) => `- ${n.date}: ${n.title}`).join('\n') : '- No recent news available'}
+
+PRE-BUILT KEY METRICS (real-time Yahoo Finance — use these exact values in overview.keyMetrics, only add subtitle):
+${JSON.stringify(preBuiltMetrics, null, 2)}
 ` : ''
 
-    const prompt = `You are a quantitative equity strategist. You write dense, forward-looking analysis. Every sentence either cites a number or makes a falsifiable prediction. No filler. If a sentence could apply to any company, delete it.
+    const quantContext = formatQuantSignal(quantSignal)
+    const macroContextStr = macroResult.formatted
 
-Here is today's market data and recent news for ${symbol} as of ${new Date().toISOString().split('T')[0]}. Your job is to ANALYZE this data, not repeat it. Data-sourced fields (prices, margins, analyst targets, insider activity) will be injected separately into the report — you do not generate them. Focus on interpretation, thesis, and forward scenarios.
+    const prompt = `You are a quantitative equity strategist at a multi-strategy hedge fund. You write dense, forward-looking analysis. Every sentence either cites a number or makes a falsifiable prediction. No filler. If a sentence could apply to any company, delete it.
+
+You are provided with a quantitative pre-score computed from market data. Your job is to CONFIRM, OVERRIDE, or NUANCE this signal with qualitative reasoning. If you disagree with the quant signal, you must explicitly state why.
+
+When the data is ambiguous or insufficient to support a strong directional call, default to HOLD. Never manufacture conviction.
+
+Here is today's market data, quantitative signal, and macro context for ${symbol} as of ${new Date().toISOString().split('T')[0]}. Your job is to ANALYZE this data, not repeat it. Data-sourced fields (prices, margins, analyst targets, insider activity) will be injected separately into the report — you do not generate them. Focus on interpretation, thesis, and forward scenarios.
+
+=== MARKET DATA ===
 ${yahooContext}
+
+=== QUANTITATIVE PRE-SCORE ===
+${quantContext}
+
+=== MACRO ENVIRONMENT ===
+${macroContextStr || 'Macro data unavailable.'}
+Consider the current macro environment when evaluating risk and positioning. A rising rate / high VIX environment should increase your skepticism of growth-dependent theses.
+
+CHAIN-OF-THOUGHT:
+Before generating the final JSON, internally reason through these steps in order:
+1. Evaluate the quant signal — which factors do you agree with and which do you think are misleading for this specific company?
+2. Identify 1-3 qualitative factors NOT captured in the quant data (competitive dynamics, management quality, regulatory risk, product cycle) that should shift the verdict
+3. Determine if macro conditions amplify or dampen the stock-specific thesis
+4. Arrive at your final verdict and conviction score, noting any divergence from the quant signal
+
+Embed your reasoning chain in a top-level field called "reasoningTrace" in the JSON output — this should be a structured object with keys: quantAgreement, qualitativeOverrides, macroImpact, finalRationale — each being 1-3 sentences.
+
+SPLIT SIGNAL:
+If your verdict DISAGREES with the quant pre-score verdict, you MUST set "splitSignal": true at the root level and explain the divergence in reasoningTrace.finalRationale. If you agree, set "splitSignal": false.
+
 DIRECTIVES:
 1. Ground every claim in provided data — reference specific margins, growth rates, and multiples.
 2. Focus on what changes from here. Historical context only to support a forward thesis.
@@ -423,6 +556,13 @@ Schema:
   "verdict": "BUY" | "SELL" | "HOLD" | "AVOID",
   "verdictSubtitle": "string — one-line thesis, max 10 words",
   "convictionScore": number (0-100),
+  "splitSignal": boolean,
+  "reasoningTrace": {
+    "quantAgreement": "string — 1-3 sentences on which quant factors you agree/disagree with",
+    "qualitativeOverrides": "string — 1-3 sentences on qualitative factors not in the quant data",
+    "macroImpact": "string — 1-3 sentences on how macro conditions affect the thesis",
+    "finalRationale": "string — 1-3 sentences on your final verdict and any divergence from quant"
+  },
   "badges": [{ "text": "string — qualitative/narrative tag about the company", "sentiment": "'positive' | 'negative' | 'neutral' | 'caution' — classify based on whether this tag is bullish (positive), bearish (negative), informational (neutral), or a risk/warning (caution)" }],
   "overview": {
     "keyMetrics": [
@@ -479,7 +619,7 @@ Schema:
 
 Requirements:
 - badges: 8-12 objects. Each tag must be qualitative/narrative — NEVER include numeric metrics (market cap, P/E, dividend yield, revenue, EPS, beta, CAGR, margins). Good: 'DOJ Investigation' (negative), 'Buffett Favorite' (positive), 'AI Tailwind' (positive), 'Founder-Led' (neutral), 'Dividend Aristocrat' (positive), 'Tariff Exposed' (caution). Sentiment must reflect whether the tag is bullish, bearish, informational, or a warning for this specific company.
-- overview.keyMetrics: exactly 8 items: Market Cap, FY Revenue, Revenue 5yr CAGR, Net Income 5yr CAGR, Beta, Forward P/E, Op Cash Flow, Dividend Yield (show "N/A" if no dividend). Include yoyChange for: Market Cap (YoY % change), FY Revenue (YoY % change), Revenue 5yr CAGR (the CAGR itself), Net Income 5yr CAGR (the CAGR itself), Op Cash Flow (YoY % change), Dividend Yield (YoY change). No yoyChange for Beta or Forward P/E.
+- overview.keyMetrics: copy the PRE-BUILT KEY METRICS from context exactly (label, value, yoyChange are already correct real-time data — do NOT change them). Your only job per metric is to add a "subtitle" field: 3-5 words of sharp interpretation (e.g. "above sector avg", "accelerating trend", "historically cheap", "crowded valuation", "near multi-year low"). Use your web search knowledge and the provided financials to make these insightful, not generic.
 - overview.moatScores: exactly 6 items, 0-100 scale
 - overview.sectorMoatScores: exactly 6 items matching moatScores metrics
 - overview.segmentBreakdown: 3-8 segments summing close to 100
@@ -499,6 +639,16 @@ Requirements:
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const parsed = JSON.parse(cleaned) as StockReport
 
+    // ── Apply verdict veto ──
+    const { verdict: finalVerdict, vetoed } = resolveVerdict(quantSignal.verdict, parsed.verdict)
+    parsed.verdict = finalVerdict
+    if (parsed.verdictDetails?.syndicateVerdict) {
+      parsed.verdictDetails.syndicateVerdict.rating = finalVerdict
+    }
+    if (vetoed) {
+      console.warn(`[generateReport] Verdict veto fired for ${symbol}: quant=${quantSignal.verdict}, gemini=${parsed.verdict} → ${finalVerdict}`)
+    }
+
     // ── Merge Yahoo Finance data into Gemini response ──
     if (yahoo) {
       // 0. Override header fields with LIVE Yahoo data
@@ -506,19 +656,18 @@ Requirements:
       if (yahoo.marketCap) parsed.marketCap = yahoo.marketCap
       if (yahoo.priceVsATH) parsed.priceVsATH = yahoo.priceVsATH
 
-      // 1. Overview fields — replace EPS card with Beta (match either label)
-      if (yahoo.beta > 0 && parsed.overview.keyMetrics) {
-        const idx = parsed.overview.keyMetrics.findIndex(m => {
-          const l = m.label.toLowerCase()
-          return l.includes('beta') || l.includes('eps')
-        })
-        if (idx !== -1) {
-          parsed.overview.keyMetrics[idx].label = 'Beta'
-          parsed.overview.keyMetrics[idx].value = yahoo.beta.toFixed(2)
-          parsed.overview.keyMetrics[idx].subtitle = 'vs. market volatility'
-          delete (parsed.overview.keyMetrics[idx] as any).yoyChange
+      // 1. Override keyMetrics entirely with Yahoo-sourced values, keeping Gemini's subtitles
+      if (preBuiltMetrics) {
+        const geminiSubtitles: Record<string, string> = {}
+        for (const m of (parsed.overview.keyMetrics ?? [])) {
+          if (m.subtitle) geminiSubtitles[m.label.toLowerCase()] = m.subtitle
         }
+        parsed.overview.keyMetrics = preBuiltMetrics.map(m => ({
+          ...m,
+          ...(geminiSubtitles[m.label.toLowerCase()] ? { subtitle: geminiSubtitles[m.label.toLowerCase()] } : {}),
+        }))
       }
+
       parsed.overview.revenueCagr = yahoo.revenueCagr
       parsed.overview.netIncomeCagr = yahoo.netIncomeCagr
       parsed.overview.institutionalOwnership = yahoo.institutionalOwnership
@@ -645,6 +794,23 @@ Requirements:
     // Verdict details conviction
     parsed.verdictDetails.convictionScore = parsed.verdictDetails.convictionScore ?? parsed.convictionScore
     parsed.verdictDetails.convictionDrivers = parsed.verdictDetails.convictionDrivers ?? ''
+
+    // ── Post-Gemini validation ──
+    const dataValidation = yahoo
+      ? validateReport(parsed, yahoo)
+      : { flaggedClaims: [], validationScore: 100, totalChecked: 0, totalFlagged: 0 }
+
+    // ── Attach new fields ──
+    parsed.quantSignal = quantSignal
+    parsed.splitSignal = vetoed || (parsed.splitSignal ?? false)
+    parsed.reasoningTrace = parsed.reasoningTrace ?? {
+      quantAgreement: '',
+      qualitativeOverrides: '',
+      macroImpact: '',
+      finalRationale: '',
+    }
+    parsed.dataValidation = dataValidation
+    parsed.macroContext = macroResult.data
 
     return parsed
   } catch (err: any) {

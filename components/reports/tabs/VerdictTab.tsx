@@ -7,10 +7,10 @@ import {
 import { SectionTitle, DataTable, Badge, ConvictionBadge, CTooltip, glassCard } from '../ReportUI'
 import type { StockReport } from '@/types/report'
 
-const ratingColor: Record<string, 'green' | 'red' | 'blue'> = {
+const ratingColor: Record<string, 'green' | 'red' | 'blue' | 'yellow'> = {
   BUY: 'green',
   SELL: 'red',
-  HOLD: 'blue',
+  HOLD: 'yellow',
   AVOID: 'red',
 }
 
