@@ -52,7 +52,7 @@ export default function OverviewTab({ overview, currentPrice, convictionScore, c
             gridTemplateColumns: isDesktop ? 'repeat(4, 1fr)' : 'repeat(4, 1fr)',
             gap: 12,
           }}>
-            {overview.keyMetrics.filter(m => m.value && m.value !== 'N/A').map((m, i) => (
+            {overview.keyMetrics.map((m, i) => (
               <MetricCard key={i} label={m.label} value={m.value} subtitle={m.subtitle} yoyChange={m.yoyChange} footer={m.footer} />
             ))}
           </div>
