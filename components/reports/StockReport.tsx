@@ -48,15 +48,16 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
   const onCompleteRef = useRef(onComplete)
   useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
 
-  // Smooth time-based progress: ramps quickly to ~70%, decelerates toward 90%
+  // Smooth time-based progress: synced with typewriter start, slower ramp
   useEffect(() => {
     if (reportReady) return
     const start = Date.now()
+    const initialDelay = 500 // match typewriter's initial sleep
     const id = setInterval(() => {
-      const elapsed = (Date.now() - start) / 1000
-      // Fast ramp: 70% in ~2s, asymptotically approaches 90%
-      const p = 90 * (1 - Math.exp(-elapsed / 1.8))
-      setProgress(Math.min(90, p))
+      const elapsed = Math.max(0, (Date.now() - start - initialDelay) / 1000)
+      // Slower ramp: ~50% at 4s, ~70% at 7s, asymptotically approaches 99%
+      const p = 99 * (1 - Math.exp(-elapsed / 5))
+      setProgress(p)
     }, 60)
     return () => clearInterval(id)
   }, [ticker, reportReady])
