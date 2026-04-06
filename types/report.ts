@@ -99,6 +99,7 @@ export interface StockReport {
     }
     historicalPE: { year: string; pe: number }[]
     sectorMedianPE: number
+    sectorMedianBeta: number
   }
 
   catalysts: {

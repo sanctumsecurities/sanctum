@@ -591,7 +591,8 @@ Schema:
     "bearCase": "string — 2-3 sentences, quantitative, with price math",
     "metrics": [{ "metric": "string", "current": "string", "fiveYearAvg": "string", "sectorMedian": "string", "commentary": "string — one sentence, forward-looking" }],
     "historicalPE": [{ "year": "string", "pe": number }],
-    "sectorMedianPE": number
+    "sectorMedianPE": number,
+    "sectorMedianBeta": number
   },
   "catalysts": {
     "catalystTable": [{ "timeline": "string", "catalyst": "string", "impact": "string (use arrow like '↑ Positive' or '↓ Negative')", "probability": "string", "timeframe": "NEAR" | "MEDIUM" | "LONG", "conviction": number (0-100) }],
@@ -740,6 +741,7 @@ Requirements:
     parsed.overview.sectorMoatScores = parsed.overview.sectorMoatScores ?? []
     parsed.valuation.historicalPE = parsed.valuation.historicalPE ?? []
     parsed.valuation.sectorMedianPE = parsed.valuation.sectorMedianPE ?? 0
+    parsed.valuation.sectorMedianBeta = parsed.valuation.sectorMedianBeta ?? 0
     parsed.dividendHistory = parsed.dividendHistory ?? null
 
     // ── Enrich key metric subtitles/footers with post-AI data ──
@@ -759,7 +761,10 @@ Requirements:
           return { ...m, subtitle: parts.join('\n') || undefined, footer: undefined }
         }
         if (m.label === 'Beta') {
-          return { ...m, subtitle: undefined }
+          const sectorBeta = parsed.valuation.sectorMedianBeta > 0
+            ? `Sector avg: ${parsed.valuation.sectorMedianBeta.toFixed(2)}`
+            : undefined
+          return { ...m, subtitle: sectorBeta }
         }
         if (m.label === 'Dividend Yield') {
           const sub = yahoo?.dividendData
