@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Auth from '@/components/Auth'
@@ -460,6 +460,28 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
   const isUp = priceChange !== null && priceChange >= 0
   const ah = selectedPeriod === '1D' ? (tickerChart?.afterHours || null) : null
 
+  // Compute 1D ET time window for consistent time-based positioning (chart + tooltip)
+  const dayWindow = useMemo(() => {
+    const pts = tickerChart?.points
+    if (selectedPeriod !== '1D' || !pts || pts.length < 2) return null
+    const endMs = new Date(pts[pts.length - 1].time).getTime()
+    const etParts = etFormatter.formatToParts(new Date(endMs))
+    const pyr = etParts.find(p => p.type === 'year')?.value ?? '2024'
+    const pmo = etParts.find(p => p.type === 'month')?.value ?? '01'
+    const pda = etParts.find(p => p.type === 'day')?.value ?? '01'
+    const pH  = etParts.find(p => p.type === 'hour')?.value ?? '00'
+    const pM  = etParts.find(p => p.type === 'minute')?.value ?? '00'
+    const pS  = etParts.find(p => p.type === 'second')?.value ?? '00'
+    const probeEtFakeUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T${pH}:${pM}:${pS}Z`)
+    const offsetMs = endMs - probeEtFakeUtcMs
+    const etMidnightUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T00:00:00Z`) + offsetMs
+    return {
+      period1Ms: etMidnightUtcMs + 4  * 60 * 60 * 1000,  // 4 AM ET
+      period2Ms: etMidnightUtcMs + 20 * 60 * 60 * 1000,  // 8 PM ET
+      etMidnightUtcMs,
+    }
+  }, [tickerChart?.points, selectedPeriod])
+
   const handlePeriodSelect = useCallback(async (period: Period) => {
     setSelectedPeriod(period)
     if (period === '1D' || periodCache[period] !== undefined) return
@@ -684,7 +706,19 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const localH = rect.height
           const x = e.clientX - rect.left
           const pct = Math.max(0, Math.min(1, x / localW))
-          const idx = Math.round(pct * (pts.length - 1))
+          let idx: number
+          if (selectedPeriod === '1D' && dayWindow) {
+            // Time-based lookup: match the chart's time-based x positioning
+            const cursorMs = dayWindow.period1Ms + pct * (dayWindow.period2Ms - dayWindow.period1Ms)
+            idx = 0
+            let bestDist = Infinity
+            for (let i = 0; i < pts.length; i++) {
+              const dist = Math.abs(new Date(pts[i].time).getTime() - cursorMs)
+              if (dist < bestDist) { bestDist = dist; idx = i }
+            }
+          } else {
+            idx = Math.round(pct * (pts.length - 1))
+          }
           const pt = pts[idx]
           const refPrice = (selectedPeriod !== '1D' && tickerChart?.chartPreviousClose) ? tickerChart.chartPreviousClose : pts[0].price
           const changeFromRef = refPrice > 0 ? ((pt.price - refPrice) / refPrice) * 100 : 0
@@ -759,25 +793,14 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const padTop = 12
           const padBottom = 2
 
-          // For 1D: derive the full-day ET window (4 AM – 8 PM) so the chart fills
+          // For 1D: reuse the precomputed ET window (4 AM – 8 PM) so the chart fills
           // left-to-right as the day progresses rather than always stretching to fill width
-          let period1Ms = 0
-          let period2Ms = 0
+          const period1Ms = dayWindow?.period1Ms ?? 0
+          const period2Ms = dayWindow?.period2Ms ?? 0
+          const etMidnightUtcMs = dayWindow?.etMidnightUtcMs ?? 0
           const sessionMarkers: { x: number; label: string; key: string }[] = []
-          if (selectedPeriod === '1D') {
+          if (selectedPeriod === '1D' && dayWindow) {
             const endMs = new Date(pts[pts.length - 1].time).getTime()
-            const etParts = etFormatter.formatToParts(new Date(endMs))
-            const pyr = etParts.find(p => p.type === 'year')?.value ?? '2024'
-            const pmo = etParts.find(p => p.type === 'month')?.value ?? '01'
-            const pda = etParts.find(p => p.type === 'day')?.value ?? '01'
-            const pH  = etParts.find(p => p.type === 'hour')?.value ?? '00'
-            const pM  = etParts.find(p => p.type === 'minute')?.value ?? '00'
-            const pS  = etParts.find(p => p.type === 'second')?.value ?? '00'
-            const probeEtFakeUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T${pH}:${pM}:${pS}Z`)
-            const offsetMs = endMs - probeEtFakeUtcMs
-            const etMidnightUtcMs = Date.parse(`${pyr}-${pmo}-${pda}T00:00:00Z`) + offsetMs
-            period1Ms = etMidnightUtcMs + 4  * 60 * 60 * 1000  // 4 AM ET
-            period2Ms = etMidnightUtcMs + 20 * 60 * 60 * 1000  // 8 PM ET
 
             const sessionBoundaries = [
               { label: 'P', etH: 4,  etM: 0  },
