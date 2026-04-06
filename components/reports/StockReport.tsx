@@ -618,7 +618,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
               caution: 'yellow',
             }
             const variantOrder: Record<string, number> = { green: 0, blue: 1, yellow: 2, red: 3, gray: 4 }
-            const badges = report.badges.slice(0, 12).map(b =>
+            const badges = report.badges.slice(0, 8).map(b =>
               typeof b === 'string'
                 ? { text: b, variant: 'gray' as const, reason: undefined as string | undefined }
                 : { text: b.text, variant: sentimentToVariant[b.sentiment] || 'gray' as const, reason: b.reason }
@@ -630,7 +630,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
               return true
             }).sort((a, b) => (variantOrder[a.variant] ?? 4) - (variantOrder[b.variant] ?? 4))
             return (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflow: 'hidden' }}>
                 {badges.map((b, i) => (
                   <Badge key={i} text={b.text} variant={b.variant} tooltip={b.reason} />
                 ))}
