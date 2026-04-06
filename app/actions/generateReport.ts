@@ -438,16 +438,7 @@ function buildKeyMetricsFromYahoo(yahoo: NonNullable<Awaited<ReturnType<typeof f
       value: latestOCF && latestOCF.opCF > 0 ? `$${(latestOCF.opCF / 1e9).toFixed(1)}B` : 'N/A',
       ...(ocfYoY ? { yoyChange: ocfYoY } : {}),
     },
-    {
-      label: 'Dividend Yield',
-      value: yahoo.dividendData?.currentYield || '0.00%',
-      footer: yahoo.dividendData
-        ? [
-            `Payout: ${yahoo.dividendData.payoutRatio}`,
-            `5yr CAGR: ${yahoo.dividendData.fiveYearCagr}`,
-          ]
-        : [],
-    },
+    { label: 'Dividend Yield', value: yahoo.dividendData?.currentYield || '0.00%' },
   ]
 }
 
@@ -751,7 +742,7 @@ Requirements:
     parsed.valuation.sectorMedianPE = parsed.valuation.sectorMedianPE ?? 0
     parsed.dividendHistory = parsed.dividendHistory ?? null
 
-    // ── Enrich key metric footers with post-AI data ──
+    // ── Enrich key metric subtitles/footers with post-AI data ──
     if (parsed.overview.keyMetrics) {
       parsed.overview.keyMetrics = parsed.overview.keyMetrics.map(m => {
         if (m.label === 'P/E (TTM)') {
@@ -762,13 +753,19 @@ Requirements:
           const sectorPE = parsed.valuation.sectorMedianPE > 0
             ? parsed.valuation.sectorMedianPE.toFixed(1)
             : null
-          const footer: string[] = []
-          if (avg5yr) footer.push(`5yr avg: ${avg5yr}x`)
-          if (sectorPE) footer.push(`Sector avg: ${sectorPE}x`)
-          return { ...m, footer }
+          const parts: string[] = []
+          if (avg5yr) parts.push(`5yr avg: ${avg5yr}x`)
+          if (sectorPE) parts.push(`Sector: ${sectorPE}x`)
+          return { ...m, subtitle: parts.join(' · ') || undefined, footer: undefined }
         }
-        if (m.label === 'Dividend Yield' && !yahoo?.dividendData) {
-          return { ...m, footer: [parsed.dividendHistory || 'No dividend history'] }
+        if (m.label === 'Beta') {
+          return { ...m, subtitle: undefined }
+        }
+        if (m.label === 'Dividend Yield') {
+          const sub = yahoo?.dividendData
+            ? `Payout: ${yahoo.dividendData.payoutRatio} · 5yr CAGR: ${yahoo.dividendData.fiveYearCagr}`
+            : (parsed.dividendHistory || 'No dividend history')
+          return { ...m, subtitle: sub, footer: undefined }
         }
         return m
       })
