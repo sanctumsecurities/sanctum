@@ -9,7 +9,7 @@ export interface StockReport {
   website: string
   verdict: 'BUY' | 'SELL' | 'HOLD' | 'AVOID'
   verdictSubtitle: string
-  badges: { text: string; sentiment: 'positive' | 'negative' | 'neutral' | 'caution' }[]
+  badges: { text: string; sentiment: 'positive' | 'negative' | 'neutral' | 'caution'; reason?: string }[]
 
   // === NEW: Root-level conviction ===
   convictionScore: number // 0-100, AI-generated

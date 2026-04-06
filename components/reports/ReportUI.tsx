@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { TooltipProps } from 'recharts'
 
 export const glassCard: React.CSSProperties = {
@@ -62,17 +63,36 @@ const badgeColors: Record<string, { bg: string; color: string; border: string; g
   gray: { bg: 'rgba(255,255,255,0.06)', color: '#8b95a5', border: 'rgba(255,255,255,0.1)', glow: 'none' },
 }
 
-export function Badge({ text, variant = 'gray' }: { text: string; variant?: 'green' | 'red' | 'blue' | 'yellow' | 'gray' }) {
+export function Badge({ text, variant = 'gray', tooltip }: { text: string; variant?: 'green' | 'red' | 'blue' | 'yellow' | 'gray'; tooltip?: string }) {
   const c = badgeColors[variant] || badgeColors.gray
+  const [show, setShow] = useState(false)
   return (
-    <span style={{
-      display: 'inline-block', padding: '3px 10px', borderRadius: 4,
-      fontSize: 10, fontWeight: 600,
-      background: c.bg, color: c.color, border: `1px solid ${c.border}`,
-      fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5,
-      whiteSpace: 'nowrap',
-      boxShadow: c.glow,
-    }}>{text}</span>
+    <span
+      style={{ position: 'relative', display: 'inline-block' }}
+      onMouseEnter={() => tooltip && setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span style={{
+        display: 'inline-block', padding: '3px 10px', borderRadius: 4,
+        fontSize: 10, fontWeight: 600,
+        background: c.bg, color: c.color, border: `1px solid ${c.border}`,
+        fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5,
+        whiteSpace: 'nowrap',
+        boxShadow: c.glow,
+        cursor: tooltip ? 'help' : undefined,
+      }}>{text}</span>
+      {show && tooltip && (
+        <span style={{
+          position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
+          background: '#1a1f2e', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
+          padding: '8px 12px', fontSize: 11, lineHeight: 1.5, color: '#c8d0dc',
+          fontFamily: "'DM Sans', sans-serif", fontWeight: 400,
+          width: 240, whiteSpace: 'normal', zIndex: 50,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+          pointerEvents: 'none',
+        }}>{tooltip}</span>
+      )}
+    </span>
   )
 }
 

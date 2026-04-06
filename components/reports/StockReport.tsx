@@ -614,21 +614,22 @@ export default function StockReport({ ticker }: { ticker: string }) {
               neutral: 'blue',
               caution: 'yellow',
             }
+            const variantOrder: Record<string, number> = { green: 0, blue: 1, yellow: 2, red: 3, gray: 4 }
             const badges = report.badges.slice(0, 12).map(b =>
               typeof b === 'string'
-                ? { text: b, variant: 'gray' as const }
-                : { text: b.text, variant: sentimentToVariant[b.sentiment] || 'gray' as const }
+                ? { text: b, variant: 'gray' as const, reason: undefined as string | undefined }
+                : { text: b.text, variant: sentimentToVariant[b.sentiment] || 'gray' as const, reason: b.reason }
             ).filter(b => {
               const bl = b.text.toLowerCase()
               if (bl.includes('52wk') || bl.includes('52-week') || bl.includes('52 week')) return false
               if (/\$[\d.,]+|\d+(\.\d+)?[%x]|\d+(\.\d+)?\s*[btm]\b/i.test(b.text)) return false
               if (/\b(mkt cap|market cap|p\/e|forward p\/e|trailing p\/e|eps|dividend yield|div yield|beta|cagr|revenue|cash flow|net income|op margin|gross margin)\b/i.test(bl)) return false
               return true
-            })
+            }).sort((a, b) => (variantOrder[a.variant] ?? 4) - (variantOrder[b.variant] ?? 4))
             return (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {badges.map((b, i) => (
-                  <Badge key={i} text={b.text} variant={b.variant} />
+                  <Badge key={i} text={b.text} variant={b.variant} tooltip={b.reason} />
                 ))}
               </div>
             )

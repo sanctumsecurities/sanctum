@@ -563,7 +563,7 @@ Schema:
     "macroImpact": "string — 1-3 sentences on how macro conditions affect the thesis",
     "finalRationale": "string — 1-3 sentences on your final verdict and any divergence from quant"
   },
-  "badges": [{ "text": "string — qualitative/narrative tag about the company", "sentiment": "'positive' | 'negative' | 'neutral' | 'caution' — classify based on whether this tag is bullish (positive), bearish (negative), informational (neutral), or a risk/warning (caution)" }],
+  "badges": [{ "text": "string — qualitative/narrative tag about the company", "sentiment": "'positive' | 'negative' | 'neutral' | 'caution' — classify based on whether this tag is bullish (positive), bearish (negative), informational (neutral), or a risk/warning (caution)", "reason": "string — 1-2 sentences explaining why this tag is relevant to the company right now" }],
   "overview": {
     "keyMetrics": [
       { "label": "string", "value": "string", "subtitle": "string or omit", "color": "hex or omit", "yoyChange": "string like '+12.3%'" }
