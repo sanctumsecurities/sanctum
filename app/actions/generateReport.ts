@@ -753,10 +753,10 @@ Requirements:
           const sectorPE = parsed.valuation.sectorMedianPE > 0
             ? parsed.valuation.sectorMedianPE.toFixed(1)
             : null
-          const parts: string[] = []
-          if (avg5yr) parts.push(`5yr avg: ${avg5yr}x`)
-          if (sectorPE) parts.push(`Sector: ${sectorPE}x`)
-          return { ...m, subtitle: parts.join(' · ') || undefined, footer: undefined }
+          const footer: string[] = []
+          if (avg5yr) footer.push(`5yr avg: ${avg5yr}x`)
+          if (sectorPE) footer.push(`Sector avg: ${sectorPE}x`)
+          return { ...m, subtitle: undefined, footer: footer.length > 0 ? footer : undefined }
         }
         if (m.label === 'Beta') {
           return { ...m, subtitle: undefined }
