@@ -26,7 +26,7 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: 'SANCTUM',
-  description: 'AI-Powered Stock Research Terminal',
+  description: '',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
