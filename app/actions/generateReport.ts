@@ -356,6 +356,10 @@ async function fetchYahooData(ticker: string) {
       beta,
       recentNews,
       opCashFlowHistory: fcfHistory.map(f => ({ year: f.year, opCF: f.operatingCashFlow })),
+      // Fields for quant pre-score
+      epsHistory,
+      latestFCF: fcfHistory.length > 0 ? fcfHistory[fcfHistory.length - 1].fcf : 0,
+      shortPercentOfFloat: keyStats.shortPercentOfFloat != null ? safeNum(keyStats.shortPercentOfFloat) : null,
     }
   } catch (err) {
     console.error('fetchYahooData failed:', err)
