@@ -419,7 +419,7 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
             />
             <KPI
               label="Div Yield"
-              value={data.dividendYield > 0 ? fmtPct(data.dividendYield) : 'N/A'}
+              value={data.dividendYield > 0 ? `${(data.dividendYield * 100).toFixed(2)}%` : 'N/A'}
               sub={data.dividendPerShare > 0 ? `$${data.dividendPerShare.toFixed(2)}/yr` : 'No dividend'}
             />
             <KPI
@@ -647,7 +647,7 @@ export default function ReportView({ data, ai, ticker }: ReportViewProps) {
               <MetricRow label="P/E Ratio" value={data.pe > 0 ? `${data.pe.toFixed(1)}x` : 'N/A'} />
               <MetricRow label="Operating Margin" value={fmtPct(data.operatingMargins)} highlight={data.operatingMargins > 0.2 ? 'green' : undefined} />
               <MetricRow label="Free Cash Flow" value={fmtB(data.freeCashflow)} />
-              <MetricRow label="Dividend Yield" value={data.dividendYield > 0 ? fmtPct(data.dividendYield) : 'N/A'} />
+              <MetricRow label="Dividend Yield" value={data.dividendYield > 0 ? `${(data.dividendYield * 100).toFixed(2)}%` : 'N/A'} />
             </div>
           </Section>
         </>}

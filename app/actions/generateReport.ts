@@ -290,7 +290,7 @@ async function fetchYahooData(ticker: string) {
         : null
 
       dividendData = {
-        currentYield: fmtPct(divYield),
+        currentYield: `${(divYield * 100).toFixed(2)}%`,
         payoutRatio: fmtPct(payoutRatio),
         fiveYearCagr: divCagr5 || 'N/A',
         tenYearCagr: null,
