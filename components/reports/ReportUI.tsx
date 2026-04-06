@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { TooltipProps } from 'recharts'
 
 export const glassCard: React.CSSProperties = {
@@ -66,6 +66,18 @@ const badgeColors: Record<string, { bg: string; color: string; border: string; g
 export function Badge({ text, variant = 'gray', tooltip }: { text: string; variant?: 'green' | 'red' | 'blue' | 'yellow' | 'gray'; tooltip?: string }) {
   const c = badgeColors[variant] || badgeColors.gray
   const [show, setShow] = useState(false)
+  const tipRef = useRef<HTMLSpanElement>(null)
+  const [nudge, setNudge] = useState(0)
+
+  useEffect(() => {
+    if (!show || !tipRef.current) { setNudge(0); return }
+    const rect = tipRef.current.getBoundingClientRect()
+    const pad = 8
+    if (rect.left < pad) setNudge(pad - rect.left)
+    else if (rect.right > window.innerWidth - pad) setNudge(window.innerWidth - pad - rect.right)
+    else setNudge(0)
+  }, [show])
+
   return (
     <span
       style={{ position: 'relative', display: 'inline-block' }}
@@ -82,11 +94,12 @@ export function Badge({ text, variant = 'gray', tooltip }: { text: string; varia
         cursor: tooltip ? 'help' : undefined,
       }}>{text}</span>
       {show && tooltip && (
-        <span style={{
-          position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
+        <span ref={tipRef} style={{
+          position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%',
+          transform: `translateX(calc(-50% + ${nudge}px))`,
           background: '#1a1f2e', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
           padding: '8px 12px', fontSize: 11, lineHeight: 1.5, color: '#c8d0dc',
-          fontFamily: "'DM Sans', sans-serif", fontWeight: 400,
+          fontFamily: "'JetBrains Mono', monospace", fontWeight: 400,
           width: 240, whiteSpace: 'normal', zIndex: 50,
           boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
           pointerEvents: 'none',
