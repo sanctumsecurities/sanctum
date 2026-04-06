@@ -219,7 +219,8 @@ function MarketStatus() {
           style={{
             position: 'absolute',
             top: 'calc(100% + 22px)',
-            left: 0,
+            left: '50%',
+            marginLeft: -155,
             width: 310,
             background: '#0f0f0f',
             border: '1px solid #1a1a1a',
@@ -251,7 +252,7 @@ function MarketStatus() {
 
           {/* Footer */}
           <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+            <span style={{ fontSize: 11, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
               YOUR TIMEZONE
             </span>
             <span style={{ fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
@@ -1356,6 +1357,7 @@ export default function Home() {
           position: 'absolute', left: 0, top: 0, height: 56,
           display: 'flex', alignItems: 'center', gap: 0,
           paddingLeft: 40, zIndex: 1,
+          maxWidth: 'calc(50% - 160px)',
         }}>
           {/* Hoverable status indicator with popup */}
           <div
@@ -1389,7 +1391,7 @@ export default function Home() {
                 style={{
                   position: 'absolute',
                   top: 'calc(100% + 22px)',
-                  left: 0,
+                  left: -20,
                   width: 310,
                   background: '#0f0f0f',
                   border: '1px solid #1a1a1a',
@@ -1449,18 +1451,18 @@ export default function Home() {
                     disabled={healthLoading}
                     style={{
                       background: 'none', border: 'none', cursor: healthLoading ? 'default' : 'pointer',
-                      color: healthLoading ? '#2a2a2a' : '#333',
+                      color: healthLoading ? '#444' : '#333',
                       fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
                       letterSpacing: '0.1em', padding: 0,
                       transition: 'color 0.15s ease',
                     }}
                     onMouseEnter={e => { if (!healthLoading) (e.currentTarget as HTMLButtonElement).style.color = '#fff' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = healthLoading ? '#2a2a2a' : '#333' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = healthLoading ? '#444' : '#333' }}
                   >
                     {healthLoading ? 'CHECKING...' : '↺ REFRESH'}
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: '#2a2a2a', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                    <span style={{ fontSize: 11, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
                       UPTIME
                     </span>
                     <span style={{ fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
@@ -1497,6 +1499,8 @@ export default function Home() {
           <div className="nav-links-desktop" style={{
             position: 'absolute', left: '50%', transform: 'translateX(-50%)',
             display: 'flex', gap: 32,
+            background: '#0a0a0a', padding: '0 20px',
+            zIndex: 2,
           }}>
             {(['Dashboard', 'Matrix', 'Watchlist'] as const).map(tab => {
               const isActive = tab === activeTab
@@ -1530,6 +1534,7 @@ export default function Home() {
           position: 'absolute', right: 0, top: 0, height: 56,
           display: 'flex', alignItems: 'center',
           paddingRight: 40, gap: 12,
+          maxWidth: 'calc(50% - 160px)',
         }}>
             <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <Clock format={settings.clockFormat} />

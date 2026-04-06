@@ -32,8 +32,29 @@ export async function GET() {
     if (!data?.fear_and_greed || typeof data.fear_and_greed.score !== 'number') {
       throw new Error('unexpected response shape')
     }
-    const { score, rating } = data.fear_and_greed
-    return NextResponse.json({ score: Math.round(score), rating })
+    const fg = data.fear_and_greed
+    const indicators = [
+      { key: 'market_momentum_sp500', label: 'Market Momentum' },
+      { key: 'stock_price_strength', label: 'Price Strength' },
+      { key: 'stock_price_breadth', label: 'Price Breadth' },
+      { key: 'put_call_options', label: 'Put/Call Options' },
+      { key: 'market_volatility_vix', label: 'Volatility (VIX)' },
+      { key: 'safe_haven_demand', label: 'Safe Haven Demand' },
+      { key: 'junk_bond_demand', label: 'Junk Bond Demand' },
+    ].map(({ key, label }) => {
+      const d = data[key]
+      return d ? { label, score: Math.round(d.score), rating: d.rating } : null
+    }).filter(Boolean)
+
+    return NextResponse.json({
+      score: Math.round(fg.score),
+      rating: fg.rating,
+      previousClose: typeof fg.previous_close === 'number' ? Math.round(fg.previous_close) : null,
+      previous1Week: typeof fg.previous_1_week === 'number' ? Math.round(fg.previous_1_week) : null,
+      previous1Month: typeof fg.previous_1_month === 'number' ? Math.round(fg.previous_1_month) : null,
+      previous1Year: typeof fg.previous_1_year === 'number' ? Math.round(fg.previous_1_year) : null,
+      indicators,
+    })
   } catch (err) {
     console.error('[fear-greed] fetch failed:', err)
     return NextResponse.json({ error: 'unavailable' }, { status: 502 })
