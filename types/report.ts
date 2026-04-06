@@ -10,12 +10,13 @@ export interface StockReport {
   verdict: 'BUY' | 'SELL' | 'HOLD' | 'AVOID'
   verdictSubtitle: string
   badges: { text: string; sentiment: 'positive' | 'negative' | 'neutral' | 'caution'; reason?: string }[]
+  dividendHistory: string | null
 
   // === NEW: Root-level conviction ===
   convictionScore: number // 0-100, AI-generated
 
   overview: {
-    keyMetrics: { label: string; value: string; subtitle?: string; color?: string; yoyChange?: string }[]
+    keyMetrics: { label: string; value: string; subtitle?: string; color?: string; yoyChange?: string; footer?: string[] }[]
     businessSummary: {
       businessModel: string
       financials: string

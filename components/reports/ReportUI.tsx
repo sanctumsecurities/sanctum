@@ -8,8 +8,8 @@ export const glassCard: React.CSSProperties = {
   boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
 }
 
-export function MetricCard({ label, value, subtitle, yoyChange }: {
-  label: string; value: string; subtitle?: string; yoyChange?: string
+export function MetricCard({ label, value, subtitle, yoyChange, footer }: {
+  label: string; value: string; subtitle?: string; yoyChange?: string; footer?: string[]
 }) {
   const isCagr = /cagr/i.test(label)
   const changeColor = yoyChange?.startsWith('+') ? '#4ade80'
@@ -50,6 +50,19 @@ export function MetricCard({ label, value, subtitle, yoyChange }: {
           fontSize: 12, marginTop: 'auto', paddingTop: 8, fontFamily: "'JetBrains Mono', monospace",
           color: '#5a6475',
         }}>{subtitle}</div>
+      )}
+      {footer && footer.length > 0 && (
+        <div style={{
+          marginTop: subtitle ? 4 : 'auto', paddingTop: subtitle ? 0 : 8,
+          display: 'flex', flexDirection: 'column', gap: 2,
+        }}>
+          {footer.map((line, i) => (
+            <div key={i} style={{
+              fontSize: 10, fontFamily: "'JetBrains Mono', monospace",
+              color: '#4a5568', lineHeight: 1.4,
+            }}>{line}</div>
+          ))}
+        </div>
       )}
     </div>
   )

@@ -438,7 +438,16 @@ function buildKeyMetricsFromYahoo(yahoo: NonNullable<Awaited<ReturnType<typeof f
       value: latestOCF && latestOCF.opCF > 0 ? `$${(latestOCF.opCF / 1e9).toFixed(1)}B` : 'N/A',
       ...(ocfYoY ? { yoyChange: ocfYoY } : {}),
     },
-    { label: 'Dividend Yield', value: yahoo.dividendData?.currentYield || 'N/A' },
+    {
+      label: 'Dividend Yield',
+      value: yahoo.dividendData?.currentYield || '0.00%',
+      footer: yahoo.dividendData
+        ? [
+            `Payout: ${yahoo.dividendData.payoutRatio}`,
+            `5yr CAGR: ${yahoo.dividendData.fiveYearCagr}`,
+          ]
+        : [],
+    },
   ]
 }
 
@@ -564,6 +573,7 @@ Schema:
     "finalRationale": "string — 1-3 sentences on your final verdict and any divergence from quant"
   },
   "badges": [{ "text": "string — qualitative/narrative tag about the company", "sentiment": "'positive' | 'negative' | 'neutral' | 'caution' — classify based on whether this tag is bullish (positive), bearish (negative), informational (neutral), or a risk/warning (caution)", "reason": "string — 1-2 sentences explaining why this tag is relevant to the company right now" }],
+  "dividendHistory": "string or null — ONLY for companies that do NOT currently pay dividends: a short phrase like 'Never paid a dividend' or 'Last paid Q3 2019'. null if the company currently pays dividends.",
   "overview": {
     "keyMetrics": [
       { "label": "string", "value": "string", "subtitle": "string or omit", "color": "hex or omit", "yoyChange": "string like '+12.3%'" }
@@ -739,6 +749,30 @@ Requirements:
     parsed.overview.sectorMoatScores = parsed.overview.sectorMoatScores ?? []
     parsed.valuation.historicalPE = parsed.valuation.historicalPE ?? []
     parsed.valuation.sectorMedianPE = parsed.valuation.sectorMedianPE ?? 0
+    parsed.dividendHistory = parsed.dividendHistory ?? null
+
+    // ── Enrich key metric footers with post-AI data ──
+    if (parsed.overview.keyMetrics) {
+      parsed.overview.keyMetrics = parsed.overview.keyMetrics.map(m => {
+        if (m.label === 'P/E (TTM)') {
+          const hist = parsed.valuation.historicalPE
+          const avg5yr = hist.length > 0
+            ? (hist.reduce((s, h) => s + h.pe, 0) / hist.length).toFixed(1)
+            : null
+          const sectorPE = parsed.valuation.sectorMedianPE > 0
+            ? parsed.valuation.sectorMedianPE.toFixed(1)
+            : null
+          const footer: string[] = []
+          if (avg5yr) footer.push(`5yr avg: ${avg5yr}x`)
+          if (sectorPE) footer.push(`Sector avg: ${sectorPE}x`)
+          return { ...m, footer }
+        }
+        if (m.label === 'Dividend Yield' && !yahoo?.dividendData) {
+          return { ...m, footer: [parsed.dividendHistory || 'No dividend history'] }
+        }
+        return m
+      })
+    }
 
     // Ensure valuation metrics have sectorMedian
     if (parsed.valuation.metrics) {

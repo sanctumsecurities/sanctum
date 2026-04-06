@@ -53,7 +53,7 @@ export default function OverviewTab({ overview, currentPrice, convictionScore, c
             gap: 12,
           }}>
             {overview.keyMetrics.filter(m => m.value && m.value !== 'N/A').map((m, i) => (
-              <MetricCard key={i} label={m.label} value={m.value} subtitle={m.subtitle} yoyChange={m.yoyChange} />
+              <MetricCard key={i} label={m.label} value={m.value} subtitle={m.subtitle} yoyChange={m.yoyChange} footer={m.footer} />
             ))}
           </div>
           </div>
