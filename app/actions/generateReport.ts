@@ -6,21 +6,12 @@ import { yahooFinance } from '@/lib/yahoo'
 import { computeQuantSignal, formatQuantSignal, type QuantSignal } from '@/lib/quantScore'
 import { fetchMacroContext, type MacroContext } from '@/lib/macroContext'
 import { validateReport } from '@/lib/reportValidation'
+import { withTimeout } from '@/lib/utils'
 
 function getGenAI() {
   const key = process.env.GEMINI_API_KEY
   if (!key) throw new Error('GEMINI_API_KEY is not configured')
   return new GoogleGenerativeAI(key)
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('Request timed out')), ms)
-    }),
-  ]).finally(() => clearTimeout(timer))
 }
 
 // ── Helper functions ──

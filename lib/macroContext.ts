@@ -3,6 +3,7 @@
 // All fetches are best-effort with 5s timeouts — any that fail are silently omitted.
 
 import { yahooFinance } from '@/lib/yahoo'
+import { withTimeout } from '@/lib/utils'
 
 export interface MacroContext {
   vix: { level: number; classification: string } | null
@@ -10,16 +11,6 @@ export interface MacroContext {
   sp500: { price: number; fiftyDayAvg: number; twoHundredDayAvg: number } | null
   yieldCurve: { spread: number; status: 'inverted' | 'flat' | 'normal' } | null
   fetchedAt: string
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('Macro fetch timed out')), ms)
-    }),
-  ]).finally(() => clearTimeout(timer))
 }
 
 function classifyVIX(level: number): string {

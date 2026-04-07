@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
+import { withTimeout } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,16 +57,6 @@ function stddev(arr: number[]): number {
   const mean = arr.reduce((a, b) => a + b, 0) / arr.length
   const variance = arr.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (arr.length - 1)
   return Math.sqrt(variance)
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('timeout')), ms)
-    }),
-  ]).finally(() => clearTimeout(timer))
 }
 
 function downsideDeviation(dailyReturns: number[]): number {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
+import { withTimeout } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,16 +21,6 @@ const DEFAULT_LABEL_MAP: Record<string, string> = Object.fromEntries(
 // ── In-memory cache (15s TTL) ──
 const cache = new Map<string, { data: any; ts: number }>()
 const CACHE_TTL = 15_000
-
-function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout>
-  return Promise.race([
-    Promise.resolve(promise).finally(() => clearTimeout(timeoutId)),
-    new Promise<T>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error('timeout')), ms)
-    }),
-  ])
-}
 
 export async function GET(request: NextRequest) {
   try {

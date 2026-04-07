@@ -1,18 +1,9 @@
 import { NextResponse } from 'next/server'
+import { withTimeout } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
 const CNN_URL = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata'
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('timeout')), ms)
-    }),
-  ]).finally(() => clearTimeout(timer))
-}
 
 export async function GET() {
   try {

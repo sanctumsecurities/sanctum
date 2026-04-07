@@ -6,7 +6,7 @@
 // ── Tunable weight config ──
 // Adjust these to change how aggressively each signal contributes.
 // Weights MUST sum to 1.0.
-export const QUANT_WEIGHTS: Record<string, number> = {
+const QUANT_WEIGHTS: Record<string, number> = {
   analystConsensus:        0.15,  // buy% vs sell% from recommendationTrend
   priceVsTarget:           0.15,  // upside/downside to analyst mean target
   insiderActivity:         0.12,  // net buys in 90 days, recency-weighted

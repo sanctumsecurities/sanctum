@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
+import { withTimeout } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,16 +66,6 @@ function periodToChartParams(period: string): { period1: Date; interval: '1d' | 
 // ── Cache ──
 const cache = new Map<string, { data: any; ts: number }>()
 const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
-
-function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout>
-  return Promise.race([
-    Promise.resolve(promise).finally(() => clearTimeout(timeoutId)),
-    new Promise<T>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error('timeout')), ms)
-    }),
-  ])
-}
 
 export async function GET(request: NextRequest) {
   try {

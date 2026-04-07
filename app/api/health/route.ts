@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { supabase } from '@/lib/supabase'
+import { withTimeout } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,16 +13,6 @@ interface ServiceResult {
   status: ServiceStatus
   latency: number
   detail?: string
-}
-
-function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout>
-  return Promise.race([
-    Promise.resolve(promise).finally(() => clearTimeout(timeoutId)),
-    new Promise<T>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error('timeout')), ms)
-    }),
-  ])
 }
 
 async function checkYahooFinance(): Promise<ServiceResult & { spyPrice?: number; spyChange?: number; spyChangePct?: number }> {
