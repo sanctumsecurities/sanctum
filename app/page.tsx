@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useHoverPopup } from '@/lib/hooks/useHoverPopup'
 import Auth from '@/components/Auth'
 import dynamic from 'next/dynamic'
 import type { Session } from '@supabase/supabase-js'
@@ -79,11 +80,14 @@ export default function Home() {
   // ── Health popup ──
   const [healthData, setHealthData] = useState<HealthData | null>(null)
   const [healthLoading, setHealthLoading] = useState(false)
-  const [showHealthPopup, setShowHealthPopup] = useState(false)
-  const [healthPopupFadingOut, setHealthPopupFadingOut] = useState(false)
-  const healthHoverEnterTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const healthHoverLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const healthFadeOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const {
+    showPopup: showHealthPopup,
+    fadingOut: healthPopupFadingOut,
+    handleMouseEnter: handleStatusMouseEnter,
+    handleMouseLeave: handleStatusMouseLeave,
+    handlePopupMouseEnter: handlePopupMouseEnter,
+    handlePopupMouseLeave: handlePopupMouseLeave,
+  } = useHoverPopup()
   const sessionStartRef = useRef<number>(Date.now())
   const [sessionUptimeDisplay, setSessionUptimeDisplay] = useState('00:00:00')
 
@@ -285,48 +289,6 @@ export default function Home() {
       setSessionUptimeDisplay(`${h}:${m}:${s}`)
     }, 1000)
     return () => clearInterval(id)
-  }, [])
-
-  // ── Health popup hover handlers ──
-  const startFadeOut = useCallback(() => {
-    setHealthPopupFadingOut(true)
-    healthFadeOutTimer.current = setTimeout(() => {
-      setShowHealthPopup(false)
-      setHealthPopupFadingOut(false)
-    }, 150)
-  }, [])
-
-  const cancelFadeOut = useCallback(() => {
-    if (healthFadeOutTimer.current) { clearTimeout(healthFadeOutTimer.current); healthFadeOutTimer.current = null }
-    setHealthPopupFadingOut(false)
-  }, [])
-
-  const handleStatusMouseEnter = useCallback(() => {
-    if (healthHoverLeaveTimer.current) { clearTimeout(healthHoverLeaveTimer.current); healthHoverLeaveTimer.current = null }
-    cancelFadeOut()
-    if (!showHealthPopup) healthHoverEnterTimer.current = setTimeout(() => setShowHealthPopup(true), 200)
-  }, [showHealthPopup, cancelFadeOut])
-
-  const handleStatusMouseLeave = useCallback(() => {
-    if (healthHoverEnterTimer.current) { clearTimeout(healthHoverEnterTimer.current); healthHoverEnterTimer.current = null }
-    healthHoverLeaveTimer.current = setTimeout(startFadeOut, 100)
-  }, [startFadeOut])
-
-  const handlePopupMouseEnter = useCallback(() => {
-    if (healthHoverLeaveTimer.current) { clearTimeout(healthHoverLeaveTimer.current); healthHoverLeaveTimer.current = null }
-    cancelFadeOut()
-  }, [cancelFadeOut])
-
-  const handlePopupMouseLeave = useCallback(() => {
-    startFadeOut()
-  }, [startFadeOut])
-
-  useEffect(() => {
-    return () => {
-      if (healthHoverEnterTimer.current) clearTimeout(healthHoverEnterTimer.current)
-      if (healthHoverLeaveTimer.current) clearTimeout(healthHoverLeaveTimer.current)
-      if (healthFadeOutTimer.current) clearTimeout(healthFadeOutTimer.current)
-    }
   }, [])
 
   const saveWatchlist = (list: string[]) => {
