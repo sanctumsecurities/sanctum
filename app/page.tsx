@@ -10,6 +10,7 @@ import SettingsModal from '@/components/SettingsModal'
 import FearGreedMeter from '@/components/FearGreedMeter'
 
 const MatrixScatter = dynamic(() => import('@/components/MatrixScatter'), { ssr: false })
+const SectorHeatmap = dynamic(() => import('@/components/SectorHeatmap'), { ssr: false })
 
 interface SavedReport {
   id: string
@@ -1337,6 +1338,7 @@ export default function Home() {
           .reports-grid { grid-template-columns: 1fr 1fr !important; }
           .reports-grid > div { transform-origin: center center !important; }
           .nav-status { display: none !important; }
+          .sector-heatmap-desktop { display: none !important; }
         }
         @media (min-width: 769px) and (max-width: 1200px) {
           .reports-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 10px !important; }
@@ -1652,6 +1654,9 @@ export default function Home() {
             boxSizing: 'border-box',
             overflowX: 'hidden',
           }}>
+            {/* Hero row: title + search on left, heatmap on right */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div style={{ flexShrink: 0 }}>
             {/* Hero heading */}
             <h1 ref={titleRef} className="hero-title" style={{
               fontSize: 64, fontWeight: 700, color: '#fff',
@@ -1789,6 +1794,13 @@ export default function Home() {
               )}
 
             </div>
+            </div>{/* end hero-left */}
+
+            {/* Sector Heatmap — desktop only */}
+            <div className="sector-heatmap-desktop" style={{ flexShrink: 0, width: 680, marginTop: 4 }}>
+              <SectorHeatmap />
+            </div>
+            </div>{/* end hero row */}
 
             {/* Content: empty state or reports list */}
             {savedReports.length === 0 ? (

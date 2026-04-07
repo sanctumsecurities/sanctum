@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0a; color: #fff; font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace; min-height: 100vh; padding: 40px; }
+
+  .dashboard { max-width: 1400px; margin: 0 auto; }
+
+  .nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; border-bottom: 1px solid #1a1a1a;
+    margin-bottom: 40px; font-size: 11px; color: #555;
+  }
+  .nav .status { display: flex; align-items: center; gap: 8px; }
+  .nav .status .dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+  .nav .tabs { display: flex; gap: 24px; }
+  .nav .tabs span.active { color: #fff; text-decoration: underline; text-underline-offset: 8px; }
+
+  .hero { display: flex; align-items: flex-start; justify-content: space-between; }
+  .hero-left { flex-shrink: 0; }
+  .hero-left h1 { font-size: 64px; font-weight: 700; letter-spacing: 0.08em; line-height: 1; color: #fff; }
+  .search-bar { margin-top: 40px; padding: 12px 0; display: flex; align-items: center; gap: 10px; }
+  .search-bar .prompt { color: #444; font-size: 12px; }
+  .search-bar .placeholder { color: #444; font-size: 12px; letter-spacing: 0.05em; }
+  .search-line { height: 1px; background: #333; width: 420px; }
+
+  .heatmap-wrap { flex-shrink: 0; width: 580px; align-self: flex-start; margin-top: 4px; }
+  .period-selector { display: flex; justify-content: flex-end; gap: 2px; margin-bottom: 8px; }
+  .period-selector span {
+    font-size: 9px; padding: 3px 7px; border-radius: 3px;
+    cursor: pointer; color: #555; transition: all 0.15s;
+  }
+  .period-selector span:hover { color: #999; }
+  .period-selector span.active { color: #fff; background: rgba(255,255,255,0.08); }
+
+  /* Single row of columns, left = biggest, right = smallest */
+  .heatmap-rect {
+    width: 100%; height: 150px; border-radius: 4px; overflow: hidden;
+    display: flex;
+  }
+
+  .sector {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: default; position: relative; transition: filter 0.15s;
+    border-right: 0.5px solid rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+  .sector:last-child { border-right: none; }
+  .sector:hover { filter: brightness(1.3); }
+  .sector .name {
+    font-weight: 700; color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    white-space: nowrap;
+  }
+  .sector .pct {
+    color: rgba(255,255,255,0.75); margin-top: 2px;
+    white-space: nowrap;
+  }
+
+  .sector .tip {
+    display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%); background: #1a1f2e;
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+    padding: 8px 12px; white-space: nowrap; z-index: 50;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5); pointer-events: none;
+  }
+  .sector:hover .tip { display: block; }
+  .tip .tip-name { font-size: 11px; color: #e8ecf1; font-weight: 600; }
+  .tip .tip-etf { font-size: 9px; color: #5a6475; margin-top: 2px; }
+  .tip .tip-pct { font-size: 11px; font-weight: 700; margin-top: 4px; }
+
+  .g4 { background: #16a34a; } .g3 { background: #15803d; } .g2 { background: #166534; }
+  .g1 { background: #14532d; } .n0 { background: #1a1a1a; }
+  .r1 { background: #7f1d1d; } .r2 { background: #991b1b; } .r3 { background: #b91c1c; } .r4 { background: #dc2626; }
+
+  .recent-label {
+    margin-top: 56px; font-size: 12px; color: #555;
+    letter-spacing: 0.1em; padding-bottom: 14px; border-bottom: 1px solid #1a1a1a;
+  }
+  .report-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 24px; }
+  .report-card {
+    background: rgba(255,255,255,0.02); border: 1px solid #1a1a1a;
+    border-radius: 8px; padding: 20px; height: 180px;
+  }
+  .report-card .ticker { font-size: 16px; font-weight: 700; }
+  .report-card .sub { font-size: 10px; color: #555; margin-top: 4px; }
+  .report-card .price { font-size: 20px; font-weight: 700; margin-top: 16px; }
+  .report-card .chart-placeholder { height: 50px; margin-top: 16px; background: rgba(255,255,255,0.02); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="dashboard">
+  <div class="nav">
+    <div class="status">
+      <div class="dot"></div>
+      <span style="color:#22c55e">TERMINAL ACTIVE</span>
+      <span style="margin-left:8px">|</span>
+      <span style="margin-left:8px">MARKET CLOSED</span>
+      <span style="margin-left:8px">|</span>
+      <span style="margin-left:8px;color:#f87171">23 EXTREME FEAR</span>
+    </div>
+    <div class="tabs">
+      <span class="active">Dashboard</span>
+      <span>Matrix</span>
+      <span>Watchlist</span>
+    </div>
+    <span>Mon, Apr 6, 2026, 06:41 PM</span>
+  </div>
+
+  <div class="hero">
+    <div class="hero-left">
+      <h1>SANCTUM</h1>
+      <div class="search-bar">
+        <span class="prompt">&gt;</span>
+        <span class="placeholder">ENTER TICKER TO GENERATE REPORT</span>
+      </div>
+      <div class="search-line"></div>
+    </div>
+
+    <div class="heatmap-wrap">
+      <div class="period-selector">
+        <span class="active">1D</span>
+        <span>5D</span>
+        <span>3M</span>
+        <span>6M</span>
+        <span>YTD</span>
+        <span>1Y</span>
+      </div>
+      <!-- Left to right: biggest to smallest by market cap weight -->
+      <div class="heatmap-rect">
+        <!-- Tech 30% -->
+        <div class="sector g4" style="flex: 30;">
+          <div class="tip"><div class="tip-name">Technology</div><div class="tip-etf">XLK</div><div class="tip-pct" style="color:#4ade80">+2.14%</div></div>
+          <span class="name" style="font-size: 12px;">Tech</span>
+          <span class="pct" style="font-size: 9px;">+2.14%</span>
+        </div>
+        <!-- Healthcare 13% -->
+        <div class="sector g3" style="flex: 13;">
+          <div class="tip"><div class="tip-name">Healthcare</div><div class="tip-etf">XLV</div><div class="tip-pct" style="color:#4ade80">+1.42%</div></div>
+          <span class="name" style="font-size: 10px;">Health</span>
+          <span class="pct" style="font-size: 8px;">+1.42%</span>
+        </div>
+        <!-- Financials 13% -->
+        <div class="sector g2" style="flex: 13;">
+          <div class="tip"><div class="tip-name">Financials</div><div class="tip-etf">XLF</div><div class="tip-pct" style="color:#4ade80">+0.81%</div></div>
+          <span class="name" style="font-size: 10px;">Fin</span>
+          <span class="pct" style="font-size: 8px;">+0.81%</span>
+        </div>
+        <!-- Consumer Disc 10% -->
+        <div class="sector r3" style="flex: 10;">
+          <div class="tip"><div class="tip-name">Consumer Discretionary</div><div class="tip-etf">XLY</div><div class="tip-pct" style="color:#f87171">-2.31%</div></div>
+          <span class="name" style="font-size: 9px;">Disc</span>
+          <span class="pct" style="font-size: 7px;">-2.31%</span>
+        </div>
+        <!-- Communication 9% -->
+        <div class="sector g3" style="flex: 9;">
+          <div class="tip"><div class="tip-name">Communication Services</div><div class="tip-etf">XLC</div><div class="tip-pct" style="color:#4ade80">+1.12%</div></div>
+          <span class="name" style="font-size: 9px;">Comm</span>
+          <span class="pct" style="font-size: 7px;">+1.12%</span>
+        </div>
+        <!-- Industrials 8% -->
+        <div class="sector r2" style="flex: 8;">
+          <div class="tip"><div class="tip-name">Industrials</div><div class="tip-etf">XLI</div><div class="tip-pct" style="color:#f87171">-0.94%</div></div>
+          <span class="name" style="font-size: 9px;">Ind</span>
+          <span class="pct" style="font-size: 7px;">-0.94%</span>
+        </div>
+        <!-- Consumer Staples 6% -->
+        <div class="sector r1" style="flex: 6;">
+          <div class="tip"><div class="tip-name">Consumer Staples</div><div class="tip-etf">XLP</div><div class="tip-pct" style="color:#f87171">-0.38%</div></div>
+          <span class="name" style="font-size: 8px;">Stpl</span>
+          <span class="pct" style="font-size: 7px;">-0.38%</span>
+        </div>
+        <!-- Energy 4% -->
+        <div class="sector r4" style="flex: 4;">
+          <div class="tip"><div class="tip-name">Energy</div><div class="tip-etf">XLE</div><div class="tip-pct" style="color:#f87171">-1.87%</div></div>
+          <span class="name" style="font-size: 8px;">Eng</span>
+          <span class="pct" style="font-size: 7px;">-1.87%</span>
+        </div>
+        <!-- Utilities 3% -->
+        <div class="sector g1" style="flex: 3;">
+          <div class="tip"><div class="tip-name">Utilities</div><div class="tip-etf">XLU</div><div class="tip-pct" style="color:#4ade80">+0.22%</div></div>
+          <span class="name" style="font-size: 8px;">Utl</span>
+        </div>
+        <!-- Real Estate 2% -->
+        <div class="sector n0" style="flex: 2;">
+          <div class="tip"><div class="tip-name">Real Estate</div><div class="tip-etf">XLRE</div><div class="tip-pct" style="color:#5a6475">+0.04%</div></div>
+          <span class="name" style="font-size: 7px;">RE</span>
+        </div>
+        <!-- Materials 2% -->
+        <div class="sector g1" style="flex: 2;">
+          <div class="tip"><div class="tip-name">Materials</div><div class="tip-etf">XLB</div><div class="tip-pct" style="color:#4ade80">+0.31%</div></div>
+          <span class="name" style="font-size: 7px;">Mat</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="recent-label">RECENT REPORTS</div>
+  <div class="report-cards">
+    <div class="report-card">
+      <div style="display:flex;justify-content:space-between">
+        <span class="ticker">TSLA</span>
+        <span style="color:#eab308;font-size:10px;font-weight:600">HOLD</span>
+      </div>
+      <div class="sub">Tesla, Inc.</div>
+      <div class="price">$352.82 <span style="color:#f87171;font-size:12px">-2.96%</span></div>
+      <div class="chart-placeholder"></div>
+    </div>
+    <div class="report-card">
+      <div style="display:flex;justify-content:space-between">
+        <span class="ticker">GOOG</span>
+        <span style="color:#4ade80;font-size:10px;font-weight:600">BUY</span>
+      </div>
+      <div class="sub">Alphabet Inc.</div>
+      <div class="price">$297.66 <span style="color:#4ade80;font-size:12px">+1.00%</span></div>
+      <div class="chart-placeholder"></div>
+    </div>
+    <div class="report-card" style="opacity:0.3;border-color:#111"></div>
+    <div class="report-card" style="opacity:0.3;border-color:#111"></div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<h2>Heatmap Placement</h2>
+<p class="subtitle">How should the sector heatmap sit relative to the SANCTUM title? The heatmap occupies the right portion of the dashboard header area.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #0a0a0a;">
+      <div style="display: flex; align-items: flex-start; gap: 40px; justify-content: space-between;">
+        <!-- Left: title area -->
+        <div style="flex-shrink: 0;">
+          <div style="font-size: 36px; font-weight: 700; color: #fff; letter-spacing: 0.08em; font-family: monospace; line-height: 1;">SANCTUM</div>
+          <div style="margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 8px;">
+            <span style="color: #444; font-size: 10px; font-family: monospace;">&gt; ENTER TICKER TO GENERATE REPORT</span>
+          </div>
+        </div>
+        <!-- Right: heatmap -->
+        <div style="flex: 1; max-width: 520px;">
+          <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 8px;">
+            <span style="font-size: 8px; color: #fff; background: #222; padding: 2px 6px; border-radius: 2px; font-family: monospace;">1D</span>
+            <span style="font-size: 8px; color: #555; padding: 2px 6px; font-family: monospace;">1W</span>
+            <span style="font-size: 8px; color: #555; padding: 2px 6px; font-family: monospace;">1M</span>
+            <span style="font-size: 8px; color: #555; padding: 2px 6px; font-family: monospace;">YTD</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 2.2fr 1.6fr 1.4fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; height: 110px;">
+            <div style="background: #16a34a; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; grid-row: span 2;">
+              <span style="font-size: 10px; font-weight: 700; color: #fff; font-family: monospace;">Tech</span>
+              <span style="font-size: 8px; color: rgba(255,255,255,0.7); font-family: monospace;">+2.1%</span>
+            </div>
+            <div style="background: #15803d; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <span style="font-size: 9px; font-weight: 600; color: #fff; font-family: monospace;">Health</span>
+              <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+1.4%</span>
+            </div>
+            <div style="background: #dc2626; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <span style="font-size: 9px; font-weight: 600; color: #fff; font-family: monospace;">Energy</span>
+              <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">-1.8%</span>
+            </div>
+            <div style="background: #166534; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <span style="font-size: 9px; font-weight: 600; color: #fff; font-family: monospace;">Fin</span>
+              <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+0.8%</span>
+            </div>
+            <div style="background: #b91c1c; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <span style="font-size: 9px; font-weight: 600; color: #fff; font-family: monospace;">Cons Disc</span>
+              <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">-2.3%</span>
+            </div>
+            <div style="background: #991b1b; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <span style="font-size: 9px; font-weight: 600; color: #fff; font-family: monospace;">Util</span>
+              <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">-0.4%</span>
+            </div>
+            <div style="background: #14532d; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <span style="font-size: 9px; font-weight: 600; color: #fff; font-family: monospace;">Mat</span>
+              <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+0.2%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Inline with Title</h3>
+      <p>Heatmap sits to the right of SANCTUM on the same row. Compact, uses the dead space. Period selector top-right above the map.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #0a0a0a;">
+      <div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="font-size: 36px; font-weight: 700; color: #fff; letter-spacing: 0.08em; font-family: monospace; line-height: 1;">SANCTUM</div>
+          <div style="display: flex; gap: 6px;">
+            <span style="font-size: 8px; color: #fff; background: #222; padding: 2px 6px; border-radius: 2px; font-family: monospace;">1D</span>
+            <span style="font-size: 8px; color: #555; padding: 2px 6px; font-family: monospace;">1W</span>
+            <span style="font-size: 8px; color: #555; padding: 2px 6px; font-family: monospace;">1M</span>
+            <span style="font-size: 8px; color: #555; padding: 2px 6px; font-family: monospace;">YTD</span>
+          </div>
+        </div>
+        <div style="margin-top: 12px; display: grid; grid-template-columns: 2.2fr 1.6fr 1.4fr 1fr 0.8fr 1fr 1.2fr 0.9fr 1fr 0.7fr 0.8fr; gap: 2px; height: 64px;">
+          <div style="background: #16a34a; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 9px; font-weight: 700; color: #fff; font-family: monospace;">Tech</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+2.1%</span>
+          </div>
+          <div style="background: #15803d; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 9px; font-weight: 600; color: #fff; font-family: monospace;">Health</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+1.4%</span>
+          </div>
+          <div style="background: #dc2626; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 9px; font-weight: 600; color: #fff; font-family: monospace;">Energy</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">-1.8%</span>
+          </div>
+          <div style="background: #166534; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 8px; font-weight: 600; color: #fff; font-family: monospace;">Fin</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+0.8%</span>
+          </div>
+          <div style="background: #b91c1c; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 8px; font-weight: 600; color: #fff; font-family: monospace;">Disc</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">-2.3%</span>
+          </div>
+          <div style="background: #991b1b; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 8px; font-weight: 600; color: #fff; font-family: monospace;">Staples</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">-0.4%</span>
+          </div>
+          <div style="background: #14532d; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 8px; font-weight: 600; color: #fff; font-family: monospace;">Indust</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+0.3%</span>
+          </div>
+          <div style="background: #7f1d1d; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 8px; font-weight: 600; color: #fff; font-family: monospace;">Util</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">-0.1%</span>
+          </div>
+          <div style="background: #15803d; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 8px; font-weight: 600; color: #fff; font-family: monospace;">Comm</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+1.1%</span>
+          </div>
+          <div style="background: #14532d; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 8px; font-weight: 600; color: #fff; font-family: monospace;">RE</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+0.2%</span>
+          </div>
+          <div style="background: #166534; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span style="font-size: 8px; font-weight: 600; color: #fff; font-family: monospace;">Mat</span>
+            <span style="font-size: 7px; color: rgba(255,255,255,0.7); font-family: monospace;">+0.5%</span>
+          </div>
+        </div>
+        <div style="margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 8px;">
+          <span style="color: #444; font-size: 10px; font-family: monospace;">&gt; ENTER TICKER TO GENERATE REPORT</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Full-Width Below Title</h3>
+      <p>All 11 sectors in a single row below the title, above the search bar. Horizontally stretched, shorter height. Period selector inline with title.</p>
+    </div>
+  </div>
+</div>
