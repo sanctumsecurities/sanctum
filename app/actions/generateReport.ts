@@ -570,9 +570,9 @@ Schema:
       { "label": "string", "value": "string", "subtitle": "string or omit", "color": "hex or omit", "yoyChange": "string like '+12.3%'" }
     ],
     "businessSummary": {
-      "businessModel": "string — 2-3 sentences on what this company does, its business model, and competitive position",
-      "financials": "string — 2-3 sentences summarizing financial health, growth trajectory, and profitability",
-      "valuation": "string — 2-3 sentences on current valuation, whether it appears cheap or expensive, and key valuation metrics"
+      "businessModel": "string — detailed paragraph of 4-5 sentences on what this company does, its business model, revenue drivers, and competitive position",
+      "financials": "string — detailed paragraph of 4-5 sentences summarizing financial health, growth trajectory, profitability trends, and key financial strengths or concerns",
+      "valuation": "string — detailed paragraph of 4-5 sentences on current valuation, historical context, whether it appears cheap or expensive relative to peers, and key valuation metrics"
     },
     "whatHasGoneWrong": "string or null — only if genuine material negative exists",
     "segmentBreakdown": [{ "name": "string", "percentage": number }],
