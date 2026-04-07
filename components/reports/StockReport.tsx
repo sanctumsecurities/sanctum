@@ -630,7 +630,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
               return true
             }).sort((a, b) => (variantOrder[a.variant] ?? 4) - (variantOrder[b.variant] ?? 4))
             return (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflow: 'visible' }}>
                 {badges.map((b, i) => (
                   <Badge key={i} text={b.text} variant={b.variant} tooltip={b.reason} />
                 ))}
