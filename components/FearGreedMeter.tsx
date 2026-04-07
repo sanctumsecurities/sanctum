@@ -37,6 +37,7 @@ function getTickColor(index: number): string {
 
 export default function FearGreedMeter() {
   const [data, setData] = useState<FGData | null>(null)
+  const [error, setError] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const {
     showPopup, fadingOut,
@@ -47,11 +48,14 @@ export default function FearGreedMeter() {
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch('/api/fear-greed')
-      if (!res.ok) return
+      if (!res.ok) { setError(true); return }
       const json = await res.json()
-      if (typeof json.score === 'number') setData(json)
+      if (typeof json.score === 'number') {
+        setData(json)
+        setError(false)
+      }
     } catch {
-      // silent fail
+      setError(true)
     }
   }, [])
 
@@ -70,20 +74,13 @@ export default function FearGreedMeter() {
 
   if (!data) {
     return (
-      <div
-        id="fear-greed-meter"
-        style={{ display: 'flex', alignItems: 'center', gap: 10 }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '0.5px',
-            color: '#555',
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-        >
-          —
+      <div id="fear-greed-meter" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.5px',
+          color: error ? '#ef4444' : '#555',
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+          {error ? 'F&G UNAVAILABLE' : '\u2014'}
         </span>
       </div>
     )
