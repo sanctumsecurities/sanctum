@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { withTimeout } from '@/lib/utils'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+function getGenAI() {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) throw new Error('GEMINI_API_KEY is not configured')
+  return new GoogleGenerativeAI(key)
+}
 
 // ── In-memory cache (5-minute TTL) ──
 const analysisCache = new Map<string, { data: any; ai: any; ts: number }>()
@@ -117,7 +122,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 2: AI Generation ──
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const model = getGenAI().getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const financialContext = JSON.stringify({
       ticker: symbol,
@@ -174,7 +179,7 @@ Requirements:
 
     let ai: any
     try {
-      const aiResult = await model.generateContent(prompt)
+      const aiResult = await withTimeout(model.generateContent(prompt), 90_000)
       const aiText = aiResult.response.text()
       const cleaned = aiText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
       ai = JSON.parse(cleaned)
