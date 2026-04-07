@@ -10,6 +10,16 @@ export default function ReportPage() {
   const router = useRouter()
   const ticker = (params.ticker as string).toUpperCase()
 
+  if (!/^[A-Z0-9.\-^=]{1,20}$/.test(ticker)) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#ef4444', fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
+          Invalid ticker symbol.
+        </p>
+      </div>
+    )
+  }
+
   const [watchlist, setWatchlist] = useState<string[]>([])
   const [session, setSession] = useState<any>(null)
 
@@ -25,7 +35,7 @@ export default function ReportPage() {
       .from('user_settings')
       .select('watchlist')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
     if (data?.watchlist) setWatchlist(data.watchlist)
   }
 
