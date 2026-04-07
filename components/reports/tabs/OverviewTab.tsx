@@ -1,26 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import {
   RadarChart, PolarGrid, PolarAngleAxis,
   Radar, ResponsiveContainer, Tooltip,
 } from 'recharts'
 import { MetricCard, SectionTitle, CTooltip, RangeBar, Badge, ConvictionBadge, glassCard } from '../ReportUI'
 import type { StockReport } from '@/types/report'
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 
 const SEGMENT_COLORS = ['#60a5fa', '#4ade80', '#f59e0b', '#f87171', '#a78bfa', '#ec4899', '#2dd4bf', '#fb923c']
 
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false)
-  useEffect(() => {
-    const mql = window.matchMedia(query)
-    setMatches(mql.matches)
-    const handler = (e: MediaQueryListEvent) => setMatches(e.matches)
-    mql.addEventListener('change', handler)
-    return () => mql.removeEventListener('change', handler)
-  }, [query])
-  return matches
-}
 
 export default function OverviewTab({ overview, currentPrice, convictionScore, convictionDrivers }: {
   overview: StockReport['overview']

@@ -11,6 +11,7 @@ import ValuationTab from './tabs/ValuationTab'
 import CatalystsTab from './tabs/CatalystsTab'
 import VerdictTab from './tabs/VerdictTab'
 import type { StockReport as StockReportType } from '@/types/report'
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 
 const TABS = ['Overview', 'Financials', 'Valuation', 'Catalysts', 'Verdict'] as const
 
@@ -142,17 +143,6 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
   return { displayText, caretMode, progress }
 }
 
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false)
-  useEffect(() => {
-    const mql = window.matchMedia(query)
-    setMatches(mql.matches)
-    const handler = (e: MediaQueryListEvent) => setMatches(e.matches)
-    mql.addEventListener('change', handler)
-    return () => mql.removeEventListener('change', handler)
-  }, [query])
-  return matches
-}
 
 function ReportLoadingScreen({
   ticker,
