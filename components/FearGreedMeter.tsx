@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useHoverPopup } from '@/lib/hooks/useHoverPopup'
 
 interface Indicator {
   label: string
@@ -36,12 +37,12 @@ function getTickColor(index: number): string {
 
 export default function FearGreedMeter() {
   const [data, setData] = useState<FGData | null>(null)
-  const [showPopup, setShowPopup] = useState(false)
-  const [fadingOut, setFadingOut] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const hoverEnterTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const fadeOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const {
+    showPopup, fadingOut,
+    handleMouseEnter, handleMouseLeave,
+    handlePopupMouseEnter, handlePopupMouseLeave,
+  } = useHoverPopup()
 
   const fetchData = useCallback(async () => {
     try {
@@ -66,44 +67,6 @@ export default function FearGreedMeter() {
     const interval = setInterval(fetchData, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchData])
-
-  useEffect(() => {
-    return () => {
-      if (hoverEnterTimer.current) clearTimeout(hoverEnterTimer.current)
-      if (hoverLeaveTimer.current) clearTimeout(hoverLeaveTimer.current)
-      if (fadeOutTimer.current) clearTimeout(fadeOutTimer.current)
-    }
-  }, [])
-
-  const startFadeOut = useCallback(() => {
-    setFadingOut(true)
-    fadeOutTimer.current = setTimeout(() => { setShowPopup(false); setFadingOut(false) }, 150)
-  }, [])
-
-  const cancelFadeOut = useCallback(() => {
-    if (fadeOutTimer.current) { clearTimeout(fadeOutTimer.current); fadeOutTimer.current = null }
-    setFadingOut(false)
-  }, [])
-
-  const handleMouseEnter = useCallback(() => {
-    if (hoverLeaveTimer.current) { clearTimeout(hoverLeaveTimer.current); hoverLeaveTimer.current = null }
-    cancelFadeOut()
-    if (!showPopup) hoverEnterTimer.current = setTimeout(() => setShowPopup(true), 200)
-  }, [showPopup, cancelFadeOut])
-
-  const handleMouseLeave = useCallback(() => {
-    if (hoverEnterTimer.current) { clearTimeout(hoverEnterTimer.current); hoverEnterTimer.current = null }
-    hoverLeaveTimer.current = setTimeout(startFadeOut, 100)
-  }, [startFadeOut])
-
-  const handlePopupMouseEnter = useCallback(() => {
-    if (hoverLeaveTimer.current) { clearTimeout(hoverLeaveTimer.current); hoverLeaveTimer.current = null }
-    cancelFadeOut()
-  }, [cancelFadeOut])
-
-  const handlePopupMouseLeave = useCallback(() => {
-    startFadeOut()
-  }, [startFadeOut])
 
   if (!data) {
     return (
