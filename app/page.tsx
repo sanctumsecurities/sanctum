@@ -423,6 +423,16 @@ export default function Home() {
           .hamburger-btn { display: none !important; }
           .mobile-menu { display: none !important; }
         }
+        @media (min-width: 1600px) {
+          .reports-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+          .reports-grid > div:nth-child(5n+1) { transform-origin: left center !important; }
+          .reports-grid > div:nth-child(5n) { transform-origin: right center !important; }
+        }
+        @media (min-width: 2200px) {
+          .reports-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+          .reports-grid > div:nth-child(6n+1) { transform-origin: left center !important; }
+          .reports-grid > div:nth-child(6n) { transform-origin: right center !important; }
+        }
       `}</style>
 
       {/* ── Fixed Navigation ── */}
@@ -436,7 +446,7 @@ export default function Home() {
         <div className="nav-status" style={{
           position: 'absolute', left: 0, top: 0, height: 56,
           display: 'flex', alignItems: 'center', gap: 0,
-          paddingLeft: 40, zIndex: 1,
+          paddingLeft: 'clamp(20px, 2.5vw, 56px)', zIndex: 1,
           maxWidth: 'calc(50% - 160px)',
         }}>
           {/* Hoverable status indicator with popup */}
@@ -571,7 +581,7 @@ export default function Home() {
         </div>
 
         <div className="nav-inner" style={{
-          maxWidth: 1400, margin: '0 auto', padding: '0 40px',
+          maxWidth: 1800, margin: '0 auto', padding: '0 40px',
           display: 'flex', alignItems: 'center',
           height: '100%', position: 'relative',
         }}>
@@ -613,7 +623,7 @@ export default function Home() {
         <div style={{
           position: 'absolute', right: 0, top: 0, height: 56,
           display: 'flex', alignItems: 'center',
-          paddingRight: 40, gap: 12,
+          paddingRight: 'clamp(20px, 2.5vw, 56px)', gap: 12,
           maxWidth: 'calc(50% - 160px)',
         }}>
             <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -721,7 +731,7 @@ export default function Home() {
         {/* ══ DASHBOARD ══ */}
         {activeTab === 'Dashboard' && (
           <div className="main-content" style={{
-            padding: '40px 40px 0',
+            padding: '40px clamp(24px, 3vw, 64px) 0',
             maxWidth: '100%', margin: '0 auto',
             animation: 'fadeIn 0.3s ease',
             boxSizing: 'border-box',
@@ -870,7 +880,7 @@ export default function Home() {
             </div>{/* end hero-left */}
 
             {/* Sector Heatmap — desktop only */}
-            <div className="sector-heatmap-desktop" style={{ flexShrink: 0, width: 680, marginTop: 4 }}>
+            <div className="sector-heatmap-desktop" style={{ flexShrink: 0, width: 'clamp(500px, 40vw, 900px)', marginTop: 4 }}>
               <SectorHeatmap />
             </div>
             </div>{/* end hero row */}
@@ -944,7 +954,7 @@ export default function Home() {
             <div className="main-content" style={{
               display: 'flex',
               gap: 0,
-              padding: '40px 40px 0',
+              padding: '40px clamp(24px, 3vw, 64px) 0',
               maxWidth: '100%',
               animation: 'fadeIn 0.3s ease',
               boxSizing: 'border-box',
@@ -1048,8 +1058,8 @@ export default function Home() {
         {/* ══ WATCHLIST ══ */}
         {activeTab === 'Watchlist' && (
           <div className="main-content" style={{
-            padding: '60px 48px 0',
-            maxWidth: 1400, margin: '0 auto',
+            padding: '60px clamp(24px, 3vw, 64px) 0',
+            maxWidth: 1800, margin: '0 auto',
             animation: 'fadeIn 0.3s ease',
           }}>
             <h2 className="hero-title" style={{
