@@ -136,7 +136,7 @@ export default function MarketStatus() {
         >
           {/* Rows */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #111' }}>
-            <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+            <span style={{ fontSize: 12, color: '#777', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
               NEXT PHASE
             </span>
             <span style={{ fontSize: 11, color: nextPhaseColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
@@ -145,7 +145,7 @@ export default function MarketStatus() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #111' }}>
-            <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+            <span style={{ fontSize: 12, color: '#777', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
               TIME REMAINING
             </span>
             <span style={{ fontSize: 13, color: '#bbb', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
@@ -155,10 +155,10 @@ export default function MarketStatus() {
 
           {/* Footer */}
           <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+            <span style={{ fontSize: 11, color: '#666', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
               YOUR TIMEZONE
             </span>
-            <span style={{ fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
+            <span style={{ fontSize: 11, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>
               {userTz}
             </span>
           </div>

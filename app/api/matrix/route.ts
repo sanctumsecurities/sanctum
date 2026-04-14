@@ -251,7 +251,7 @@ export async function GET(req: NextRequest) {
     const cacheKey = `${period}:${[...tickers].sort().join(',')}`
     const cached = CACHE.get(cacheKey)
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
-      return NextResponse.json(cached.data)
+      return NextResponse.json(cached.data, { headers: { 'Cache-Control': 'no-store' } })
     }
 
     // Fetch live risk-free rate first so all Sharpe ratios are consistent
@@ -282,7 +282,7 @@ export async function GET(req: NextRequest) {
     evictStaleCache()
     CACHE.set(cacheKey, { data: result, ts: Date.now() })
 
-    return NextResponse.json(result)
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err: any) {
     console.error('[matrix] route error:', err)
     return NextResponse.json({ error: 'Failed to fetch matrix data' }, { status: 500 })

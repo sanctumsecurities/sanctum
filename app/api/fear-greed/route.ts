@@ -45,7 +45,7 @@ export async function GET() {
       previous1Month: typeof fg.previous_1_month === 'number' ? Math.round(fg.previous_1_month) : null,
       previous1Year: typeof fg.previous_1_year === 'number' ? Math.round(fg.previous_1_year) : null,
       indicators,
-    })
+    }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {
     console.error('[fear-greed] fetch failed:', err)
     return NextResponse.json({ error: 'unavailable' }, { status: 502 })

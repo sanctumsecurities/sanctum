@@ -177,7 +177,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(chartMap)
+    return NextResponse.json(chartMap, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err: any) {
     console.error('[charts] fetch failed:', err)
     return NextResponse.json({ error: 'Failed to fetch charts' }, { status: 500 })

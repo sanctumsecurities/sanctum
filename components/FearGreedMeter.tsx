@@ -158,7 +158,7 @@ export default function FearGreedMeter() {
           }}
         >
           {/* Sub-indicators header */}
-          <div style={{ fontSize: 10, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', marginBottom: 6, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: '#666', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', marginBottom: 6, textAlign: 'center' }}>
             PROPRIETARY CNN SCORING (0-100)
           </div>
 
@@ -167,7 +167,7 @@ export default function FearGreedMeter() {
             const zone = getZone(ind.score)
             return (
               <div key={ind.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
-                <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+                <span style={{ fontSize: 12, color: '#777', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
                   {ind.label.toUpperCase()}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -191,7 +191,7 @@ export default function FearGreedMeter() {
             const zone = getZone(row.value)
             return (
               <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0' }}>
-                <span style={{ fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+                <span style={{ fontSize: 11, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
                   {row.label}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -213,17 +213,17 @@ export default function FearGreedMeter() {
               disabled={refreshing}
               style={{
                 background: 'none', border: 'none', cursor: refreshing ? 'default' : 'pointer',
-                color: refreshing ? '#444' : '#333',
+                color: refreshing ? '#666' : '#555',
                 fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
                 letterSpacing: '0.1em', padding: 0,
                 transition: 'color 0.15s ease',
               }}
               onMouseEnter={e => { if (!refreshing) (e.currentTarget as HTMLButtonElement).style.color = '#fff' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = refreshing ? '#444' : '#333' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = refreshing ? '#666' : '#555' }}
             >
               {refreshing ? 'CHECKING...' : '↺ REFRESH'}
             </button>
-            <span style={{ fontSize: 11, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+            <span style={{ fontSize: 11, color: '#666', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
               CNN FEAR & GREED
             </span>
           </div>

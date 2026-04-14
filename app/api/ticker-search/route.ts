@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
         name: (q.shortname || q.longname || q.symbol) as string,
       }))
 
-    return NextResponse.json(suggestions)
+    return NextResponse.json(suggestions, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {
     console.error('[ticker-search] search failed:', err)
     return NextResponse.json([])

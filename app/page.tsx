@@ -490,7 +490,7 @@ export default function Home() {
                   const activeColor = active === total && total > 0 ? '#22c55e' : active <= 1 ? '#ef4444' : '#f59e0b'
                   return (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                      <span style={{ fontSize: 11, color: '#444', letterSpacing: '0.2em', fontFamily: "'JetBrains Mono', monospace" }}>
+                      <span style={{ fontSize: 11, color: '#666', letterSpacing: '0.2em', fontFamily: "'JetBrains Mono', monospace" }}>
                         SYSTEM HEALTH
                       </span>
                       <span style={{ fontSize: 11, color: activeColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
@@ -509,7 +509,7 @@ export default function Home() {
                   return (
                     <div key={svc.name} style={{ padding: '8px 0', borderBottom: '1px solid #111' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 12, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
+                        <span style={{ fontSize: 12, color: '#777', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
                           {svc.name.toUpperCase()}
                         </span>
                         <span style={{ fontSize: 11, color: statusColor, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
@@ -517,7 +517,7 @@ export default function Home() {
                         </span>
                       </div>
                       {svc.detail && !isOnline && (
-                        <div style={{ fontSize: 9, color: '#333', fontFamily: "'JetBrains Mono', monospace", marginTop: 2, textAlign: 'right' }}>
+                        <div style={{ fontSize: 9, color: '#555', fontFamily: "'JetBrains Mono', monospace", marginTop: 2, textAlign: 'right' }}>
                           {svc.detail.slice(0, 50)}
                         </div>
                       )}
@@ -532,21 +532,21 @@ export default function Home() {
                     disabled={healthLoading}
                     style={{
                       background: 'none', border: 'none', cursor: healthLoading ? 'default' : 'pointer',
-                      color: healthLoading ? '#444' : '#333',
+                      color: healthLoading ? '#666' : '#555',
                       fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
                       letterSpacing: '0.1em', padding: 0,
                       transition: 'color 0.15s ease',
                     }}
                     onMouseEnter={e => { if (!healthLoading) (e.currentTarget as HTMLButtonElement).style.color = '#fff' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = healthLoading ? '#444' : '#333' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = healthLoading ? '#666' : '#555' }}
                   >
                     {healthLoading ? 'CHECKING...' : '↺ REFRESH'}
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: '#444', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
+                    <span style={{ fontSize: 11, color: '#666', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em' }}>
                       UPTIME
                     </span>
-                    <span style={{ fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span style={{ fontSize: 11, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>
                       {sessionUptimeDisplay}
                     </span>
                   </div>
