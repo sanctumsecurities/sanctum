@@ -121,7 +121,7 @@ export default function SectorHeatmap() {
   const containerRef = useRef<HTMLDivElement>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const HEIGHT = 150
+  const HEIGHT = 200
 
   const fetchData = useCallback(async (p: string) => {
     try {

@@ -423,16 +423,7 @@ export default function Home() {
           .hamburger-btn { display: none !important; }
           .mobile-menu { display: none !important; }
         }
-        @media (min-width: 1600px) {
-          .reports-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
-          .reports-grid > div:nth-child(5n+1) { transform-origin: left center !important; }
-          .reports-grid > div:nth-child(5n) { transform-origin: right center !important; }
-        }
-        @media (min-width: 2200px) {
-          .reports-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
-          .reports-grid > div:nth-child(6n+1) { transform-origin: left center !important; }
-          .reports-grid > div:nth-child(6n) { transform-origin: right center !important; }
-        }
+
       `}</style>
 
       {/* ── Fixed Navigation ── */}
@@ -880,7 +871,7 @@ export default function Home() {
             </div>{/* end hero-left */}
 
             {/* Sector Heatmap — desktop only */}
-            <div className="sector-heatmap-desktop" style={{ flexShrink: 0, width: 'clamp(500px, 40vw, 900px)', marginTop: 4 }}>
+            <div className="sector-heatmap-desktop" style={{ flexShrink: 0, width: 'clamp(600px, 50vw, 1100px)', marginTop: 4 }}>
               <SectorHeatmap />
             </div>
             </div>{/* end hero row */}

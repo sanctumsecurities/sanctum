@@ -84,7 +84,7 @@ export default function TickerBanner({ speed, updateFreq, tickers, hoverPause }:
           key={`${keyPrefix}-${item.symbol}`}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <span style={{ color: '#444', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.12em' }}>
+          <span style={{ color: '#666', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.12em' }}>
             {item.label}
           </span>
           <span style={{ color: '#888', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>

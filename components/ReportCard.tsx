@@ -242,7 +242,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           const find = (s: string) => km.find((k: any) => k.label?.toLowerCase().includes(s))?.value || '—'
           return [
             { label: 'MKT CAP', value: d.marketCap || find('market cap') },
-            { label: 'FWD P/E', value: find('p/e') },
+            { label: 'P/E TTM', value: find('p/e') },
             { label: 'BETA', value: find('beta') },
             { label: 'DIV YIELD', value: find('dividend') },
           ]
