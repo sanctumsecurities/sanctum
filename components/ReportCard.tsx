@@ -143,10 +143,8 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
             {report.ticker}
           </div>
           <div style={{
-            fontSize: 11, color: '#555', marginTop: 2,
+            fontSize: 11, color: '#777', marginTop: 2,
             fontFamily: "'DM Sans', sans-serif",
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            maxWidth: 140,
           }}>
             {d.companyName || ''}
           </div>
@@ -209,13 +207,13 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
       {ah && (
         <div style={{ marginBottom: 10, marginTop: -8 }}>
           <span style={{
-            fontSize: 11, color: '#555',
+            fontSize: 11, color: '#777',
             fontFamily: "'JetBrains Mono', monospace",
           }}>
             {ah.label}:
           </span>
           <span style={{
-            fontSize: 11, color: '#999',
+            fontSize: 11, color: '#fff',
             fontFamily: "'JetBrains Mono', monospace",
             marginLeft: 6,
           }}>
@@ -248,7 +246,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           ]
         })().map((m, i) => (
           <div key={i}>
-            <div style={{ fontSize: 11, color: '#555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 4 }}>
+            <div style={{ fontSize: 11, color: '#777', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em', marginBottom: 4 }}>
               {m.label}
             </div>
             <div style={{ fontSize: 16, color: '#ddd', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>
@@ -261,7 +259,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
       {/* Sector + Industry */}
       {(d.sector || d.industry) && (
         <div style={{
-          fontSize: 11, color: '#444',
+          fontSize: 11, color: '#666',
           fontFamily: "'DM Sans', sans-serif",
           marginBottom: 8,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -281,7 +279,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
                 fontSize: 9,
                 padding: '2px 5px',
                 background: selectedPeriod === p ? 'rgba(255,255,255,0.07)' : 'transparent',
-                color: selectedPeriod === p ? '#ccc' : '#3a3a3a',
+                color: selectedPeriod === p ? '#ccc' : '#555',
                 border: `1px solid ${selectedPeriod === p ? 'rgba(255,255,255,0.12)' : 'transparent'}`,
                 borderRadius: 3,
                 cursor: 'pointer',
