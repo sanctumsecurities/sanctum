@@ -8,7 +8,8 @@ const CNN_URL = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata'
 export async function GET() {
   try {
     const res = await withTimeout(
-      fetch(CNN_URL, {
+      fetch(`${CNN_URL}?_=${Date.now()}`, {
+        cache: 'no-store',
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
           'Accept': 'application/json, text/plain, */*',
