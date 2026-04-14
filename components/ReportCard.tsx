@@ -498,7 +498,7 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
         borderTop: '1px solid #1a1a1a',
       }}>
         <span style={{
-          fontSize: 11, color: '#333',
+          fontSize: 11, color: '#666',
           fontFamily: "'JetBrains Mono', monospace",
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           minWidth: 0,
@@ -506,8 +506,8 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           {new Date(report.created_at).toLocaleDateString('en-US', {
             month: 'short', day: 'numeric',
           })}
-          <span style={{ color: '#222', margin: '0 6px' }}>|</span>
-          <span style={{ color: '#444' }}>{creatorName}</span>
+          <span style={{ color: '#444', margin: '0 6px' }}>|</span>
+          <span style={{ color: '#666' }}>{creatorName}</span>
         </span>
       </div>
 
