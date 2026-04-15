@@ -67,7 +67,7 @@ function resolveVerdict(
 
 async function fetchYahooData(ticker: string) {
   try {
-    const [result, incomeData, cashFlowData]: [any, any[], any[]] = await Promise.all([
+    const [result, incomeData, cashFlowData, balanceSheetData]: [any, any[], any[], any[]] = await Promise.all([
       yahooFinance.quoteSummary(ticker, {
         modules: [
           'price',
@@ -90,6 +90,11 @@ async function fetchYahooData(ticker: string) {
         period1: '2010-01-01',
         type: 'annual',
         module: 'cash-flow',
+      } as any).catch(() => []),
+      yahooFinance.fundamentalsTimeSeries(ticker, {
+        period1: '2010-01-01',
+        type: 'annual',
+        module: 'balance-sheet',
       } as any).catch(() => []),
     ])
 
@@ -156,6 +161,71 @@ async function fetchYahooData(ticker: string) {
         net: rev > 0 ? parseFloat((netIncome / rev * 100).toFixed(1)) : 0,
       }
     })
+
+    // ── Shares outstanding history ──
+    const sharesOutstanding = sortedIncome
+      .map((stmt: any) => {
+        const shares = safeNum(stmt.dilutedAverageShares) || safeNum(stmt.basicAverageShares)
+        if (shares <= 0) return null
+        return {
+          year: new Date(stmt.date).getFullYear().toString(),
+          shares: parseFloat((shares / 1e9).toFixed(2)),
+        }
+      })
+      .filter(Boolean) as { year: string; shares: number }[]
+
+    // ── Debt-to-Equity history ──
+    const sortedBalance = balanceSheetData
+      .filter((d: any) => d.totalDebt != null || d.stockholdersEquity != null)
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+    const debtToEquity = sortedBalance
+      .map((stmt: any) => {
+        const debt = safeNum(stmt.totalDebt)
+        const equity = safeNum(stmt.stockholdersEquity)
+        if (equity <= 0) return null
+        return {
+          year: new Date(stmt.date).getFullYear().toString(),
+          ratio: parseFloat((debt / equity).toFixed(2)),
+        }
+      })
+      .filter(Boolean) as { year: string; ratio: number }[]
+
+    // ── Sankey income statement breakdown (most recent year) ──
+    let sankeyData: StockReport['financials']['sankeyData'] = null
+    if (sortedIncome.length > 0) {
+      const latest = sortedIncome[sortedIncome.length - 1]
+      const rev = safeNum(latest.totalRevenue)
+      const cogs = safeNum(latest.costOfRevenue)
+      const gp = rev - cogs
+      const rnd = safeNum(latest.researchAndDevelopment)
+      const sga = safeNum(latest.sellingGeneralAndAdministration)
+      const opIncome = safeNum(latest.operatingIncome)
+      const interest = Math.abs(safeNum(latest.interestExpense))
+      const tax = Math.abs(safeNum(latest.taxProvision))
+      const net = safeNum(latest.netIncome)
+
+      // Only build Sankey when the major flows are positive
+      if (rev > 0 && gp > 0) {
+        const otherOpex = Math.max(0, gp - rnd - sga - opIncome)
+        const otherNonOp = opIncome > 0 ? Math.max(0, opIncome - interest - tax - net) : 0
+
+        sankeyData = {
+          year: new Date(latest.date).getFullYear().toString(),
+          revenue: parseFloat((rev / 1e9).toFixed(2)),
+          cogs: parseFloat((cogs / 1e9).toFixed(2)),
+          grossProfit: parseFloat((gp / 1e9).toFixed(2)),
+          rnd: parseFloat((rnd / 1e9).toFixed(2)),
+          sga: parseFloat((sga / 1e9).toFixed(2)),
+          otherOpex: parseFloat((otherOpex / 1e9).toFixed(2)),
+          operatingIncome: parseFloat((Math.max(0, opIncome) / 1e9).toFixed(2)),
+          interestExpense: parseFloat((interest / 1e9).toFixed(2)),
+          taxExpense: parseFloat((tax / 1e9).toFixed(2)),
+          otherNonOp: parseFloat((otherNonOp / 1e9).toFixed(2)),
+          netIncome: parseFloat((Math.max(0, net) / 1e9).toFixed(2)),
+        }
+      }
+    }
 
     // ── FCF history (operating cash flow - capex) ──
     const fcfHistory = sortedCashflow.map((stmt: any) => {
@@ -365,6 +435,13 @@ async function fetchYahooData(ticker: string) {
       analystTargetRange,
       revenueVsCogs,
       marginTrends,
+      sharesOutstanding,
+      debtToEquity,
+      fcfHistoryChart: fcfHistory.map(f => ({
+        year: f.year,
+        fcf: parseFloat((f.fcf / 1e9).toFixed(1)),
+      })),
+      sankeyData,
       dividendData,
       cagrs: {
         revenue: { fiveYear: revenueCagr5 || 'N/A', tenYear: null },
@@ -571,7 +648,11 @@ Schema:
     "sectorMoatScores": [{ "metric": "string", "score": number 0-100 — sector median for same metrics }]
   },
   "financials": {
-    "narrativeSummary": "string — 2-3 sentences on financial trajectory and what the numbers say about the future",
+    "financialSummary": {
+      "revenueGrowth": "string — exactly 4 sentences on revenue trajectory: growth rates, segment shifts, how the top line has evolved over recent years",
+      "profitabilityMargins": "string — exactly 4 sentences on profitability: margin trends, cost structure changes, net earnings trajectory",
+      "financialHealth": "string — exactly 4 sentences on financial stability: cash flows, debt levels, balance sheet health"
+    },
     "annualData": [
       { "year": "string", "revenue": number (billions), "revenueGrowth": "string", "adjEPS": number, "epsGrowth": "string", "opCF": "string", "keyMetric": "string — most relevant KPI for this year" }
     ],
@@ -670,6 +751,10 @@ Requirements:
       // 2. Financials fields
       parsed.financials.revenueVsCogs = yahoo.revenueVsCogs
       parsed.financials.marginTrends = yahoo.marginTrends
+      parsed.financials.sharesOutstanding = yahoo.sharesOutstanding
+      parsed.financials.debtToEquity = yahoo.debtToEquity
+      parsed.financials.fcfHistory = yahoo.fcfHistoryChart
+      parsed.financials.sankeyData = yahoo.sankeyData
       parsed.financials.dividendData = yahoo.dividendData
       parsed.financials.cagrs = yahoo.cagrs
 
@@ -705,6 +790,10 @@ Requirements:
       }
       parsed.financials.revenueVsCogs = []
       parsed.financials.marginTrends = []
+      parsed.financials.sharesOutstanding = []
+      parsed.financials.debtToEquity = []
+      parsed.financials.fcfHistory = []
+      parsed.financials.sankeyData = null
       parsed.financials.dividendData = null
       parsed.financials.cagrs = {
         revenue: { fiveYear: 'N/A', tenYear: null },
@@ -730,6 +819,11 @@ Requirements:
     // ── Safe defaults for fields Gemini might omit ──
     parsed.convictionScore = parsed.convictionScore ?? 50
     parsed.overview.sectorMoatScores = parsed.overview.sectorMoatScores ?? []
+    parsed.financials.financialSummary = parsed.financials.financialSummary ?? {
+      revenueGrowth: (parsed.financials as any).narrativeSummary || '',
+      profitabilityMargins: '',
+      financialHealth: '',
+    }
     parsed.valuation.historicalPE = parsed.valuation.historicalPE ?? []
     parsed.valuation.sectorMedianPE = parsed.valuation.sectorMedianPE ?? 0
     parsed.valuation.sectorMedianBeta = parsed.valuation.sectorMedianBeta ?? 0

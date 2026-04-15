@@ -44,7 +44,20 @@ export interface StockReport {
   }
 
   financials: {
-    narrativeSummary: string
+    financialSummary: {
+      revenueGrowth: string
+      profitabilityMargins: string
+      financialHealth: string
+    }
+    sharesOutstanding: {
+      year: string; shares: number
+    }[]
+    fcfHistory: {
+      year: string; fcf: number
+    }[]
+    debtToEquity: {
+      year: string; ratio: number
+    }[]
     annualData: {
       year: string
       revenue: number
@@ -81,6 +94,20 @@ export interface StockReport {
       netIncome: { fiveYear: string; tenYear: string | null }
       eps: { fiveYear: string; tenYear: string | null }
     }
+    sankeyData: {
+      year: string
+      revenue: number
+      cogs: number
+      grossProfit: number
+      rnd: number
+      sga: number
+      otherOpex: number
+      operatingIncome: number
+      interestExpense: number
+      taxExpense: number
+      otherNonOp: number
+      netIncome: number
+    } | null
   }
 
   valuation: {
