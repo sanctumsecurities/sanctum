@@ -9,6 +9,7 @@ import {
   computeTotals,
   computeTopMovers,
   computeRiskStats,
+  isCashHolding,
 } from '@/lib/portfolio/metrics'
 import EmptyState from './EmptyState'
 import SummaryCards from './SummaryCards'
@@ -17,6 +18,7 @@ import AllocationChart from './AllocationChart'
 import TopMovers from './TopMovers'
 import RiskMetrics from './RiskMetrics'
 import AddPositionModal from './AddPositionModal'
+import AddCashModal from './AddCashModal'
 import { COLORS, MONO } from './styles'
 
 const PORTFOLIO_POLL_MS = 60_000
@@ -55,6 +57,7 @@ export default function PortfolioPage({ session }: Props) {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Holding | undefined>(undefined)
+  const [cashModalOpen, setCashModalOpen] = useState(false)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -96,15 +99,15 @@ export default function PortfolioPage({ session }: Props) {
     }
   }, [])
 
-  // Initial snapshot on holdings change
+  // Initial snapshot on holdings change (cash is synthesized client-side)
   useEffect(() => {
-    const tickers = holdings.map(h => h.ticker)
+    const tickers = holdings.filter(h => !isCashHolding(h)).map(h => h.ticker)
     fetchSnapshot(tickers)
   }, [holdings, fetchSnapshot])
 
   // Polling (with visibility pause)
   useEffect(() => {
-    const tickers = holdings.map(h => h.ticker)
+    const tickers = holdings.filter(h => !isCashHolding(h)).map(h => h.ticker)
     if (tickers.length === 0) return
 
     const tick = () => {
@@ -135,12 +138,17 @@ export default function PortfolioPage({ session }: Props) {
 
   // Modal handlers
   const openAdd = () => { setEditing(undefined); setModalOpen(true) }
+  const openCash = () => { setCashModalOpen(true) }
   const openEdit = (h: EnrichedHolding) => {
     const original = holdings.find(x => x.id === h.id)
-    if (original) { setEditing(original); setModalOpen(true) }
+    if (!original) return
+    if (isCashHolding(original)) { setCashModalOpen(true); return }
+    setEditing(original); setModalOpen(true)
   }
   const closeModal = () => { setModalOpen(false); setEditing(undefined) }
+  const closeCashModal = () => { setCashModalOpen(false) }
   const onSaved = () => { loadHoldings() }
+  const existingCash = holdings.find(isCashHolding)
 
   const deleteHolding = async (h: EnrichedHolding) => {
     const { error } = await supabase.from('holdings').delete().eq('id', h.id)
@@ -167,7 +175,7 @@ export default function PortfolioPage({ session }: Props) {
           .portfolio-main-grid { grid-template-columns: 1fr !important; }
           .portfolio-summary-row { grid-template-columns: 1fr 1fr !important; }
           .portfolio-hero-row { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
-          .portfolio-add-btn { align-self: flex-start !important; }
+          .portfolio-add-btns { align-self: flex-start !important; flex-wrap: wrap !important; }
           .holdings-col-hideable { display: none !important; }
         }
       `}</style>
@@ -199,26 +207,48 @@ export default function PortfolioPage({ session }: Props) {
               {subtitle}
             </div>
           </div>
-          <button
-            className="portfolio-add-btn"
-            onClick={openAdd}
-            style={{
-              background: 'transparent',
-              border: `1px solid ${COLORS.borderStrong}`,
-              borderRadius: 4,
-              color: COLORS.textDim,
-              fontSize: 13,
-              padding: '9px 18px',
-              fontFamily: MONO,
-              letterSpacing: '0.1em',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={e => { (e.currentTarget).style.color = '#fff'; (e.currentTarget).style.borderColor = '#444' }}
-            onMouseLeave={e => { (e.currentTarget).style.color = COLORS.textDim; (e.currentTarget).style.borderColor = COLORS.borderStrong }}
-          >
-            + ADD POSITION
-          </button>
+          <div className="portfolio-add-btns" style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="portfolio-add-btn"
+              onClick={openCash}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${COLORS.borderStrong}`,
+                borderRadius: 4,
+                color: COLORS.textDim,
+                fontSize: 13,
+                padding: '9px 18px',
+                fontFamily: MONO,
+                letterSpacing: '0.1em',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => { (e.currentTarget).style.color = '#fff'; (e.currentTarget).style.borderColor = '#444' }}
+              onMouseLeave={e => { (e.currentTarget).style.color = COLORS.textDim; (e.currentTarget).style.borderColor = COLORS.borderStrong }}
+            >
+              {existingCash ? 'EDIT CASH' : '+ ADD CASH'}
+            </button>
+            <button
+              className="portfolio-add-btn"
+              onClick={openAdd}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${COLORS.borderStrong}`,
+                borderRadius: 4,
+                color: COLORS.textDim,
+                fontSize: 13,
+                padding: '9px 18px',
+                fontFamily: MONO,
+                letterSpacing: '0.1em',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => { (e.currentTarget).style.color = '#fff'; (e.currentTarget).style.borderColor = '#444' }}
+              onMouseLeave={e => { (e.currentTarget).style.color = COLORS.textDim; (e.currentTarget).style.borderColor = COLORS.borderStrong }}
+            >
+              + ADD POSITION
+            </button>
+          </div>
         </div>
 
         {holdingsError && (
@@ -274,6 +304,15 @@ export default function PortfolioPage({ session }: Props) {
             existing={editing}
             existingByTicker={holdingsByTicker}
             onClose={closeModal}
+            onSaved={onSaved}
+          />
+        )}
+
+        {cashModalOpen && (
+          <AddCashModal
+            userId={userId}
+            existing={existingCash}
+            onClose={closeCashModal}
             onSaved={onSaved}
           />
         )}

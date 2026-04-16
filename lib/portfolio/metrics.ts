@@ -2,15 +2,34 @@ import type {
   Holding,
   SnapshotMap,
   EnrichedHolding,
+  HoldingSnapshot,
   PortfolioTotals,
   AllocationSlice,
   TopMovers,
   RiskStats,
 } from './types'
 
+export const CASH_TICKER = 'CASH'
+
+export function isCashHolding(h: { ticker: string }): boolean {
+  return h.ticker === CASH_TICKER
+}
+
+function cashSnapshot(): HoldingSnapshot {
+  return {
+    ticker: CASH_TICKER,
+    price: 1,
+    prevClose: 1,
+    beta: 0,
+    volatility30d: 0,
+    sector: 'Cash',
+    name: 'Cash',
+  }
+}
+
 export function enrichHoldings(holdings: Holding[], snapshots: SnapshotMap): EnrichedHolding[] {
   const enriched = holdings.map(h => {
-    const snapshot = snapshots[h.ticker] ?? null
+    const snapshot = isCashHolding(h) ? cashSnapshot() : (snapshots[h.ticker] ?? null)
     const price = snapshot?.price ?? null
     const prevClose = snapshot?.prevClose ?? null
     const costBasis = h.shares * h.avg_cost

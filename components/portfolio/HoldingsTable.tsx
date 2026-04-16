@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { EnrichedHolding } from '@/lib/portfolio/types'
+import { isCashHolding } from '@/lib/portfolio/metrics'
 import { COLORS, MONO, fmtUsd, fmtPct, fmtNumber, signColor } from './styles'
 
 interface Props {
@@ -100,7 +101,7 @@ export default function HoldingsTable({ holdings, onRowClick, onDelete }: Props)
               display: 'grid',
               gridTemplateColumns: GRID_COLS,
               alignItems: 'center',
-              padding: '10px 4px',
+              padding: '7px 4px',
               fontSize: 13,
               fontFamily: MONO,
               color: COLORS.text,
@@ -114,19 +115,29 @@ export default function HoldingsTable({ holdings, onRowClick, onDelete }: Props)
             }}
           >
             <div style={{ letterSpacing: '0.05em' }}>{h.ticker}</div>
-            <div style={{ textAlign: 'right', color: COLORS.textDim }}>{fmtNumber(h.shares, h.shares % 1 === 0 ? 0 : 4)}</div>
-            <div className="holdings-col-hideable" style={{ textAlign: 'right', color: COLORS.textDim }}>{fmtUsd(h.avg_cost)}</div>
+            <div style={{ textAlign: 'right', color: COLORS.textDim }}>
+              {isCashHolding(h) ? '—' : fmtNumber(h.shares, h.shares % 1 === 0 ? 0 : 4)}
+            </div>
+            <div className="holdings-col-hideable" style={{ textAlign: 'right', color: COLORS.textDim }}>
+              {isCashHolding(h) ? '—' : fmtUsd(h.avg_cost)}
+            </div>
             <div style={{ textAlign: 'right', color: h.snapshot?.price != null ? COLORS.text : COLORS.textFaint }}>
-              {h.snapshot?.price != null ? fmtUsd(h.snapshot.price) : 'N/A'}
+              {isCashHolding(h) ? '—' : (h.snapshot?.price != null ? fmtUsd(h.snapshot.price) : 'N/A')}
             </div>
             <div className="holdings-col-hideable" style={{ textAlign: 'right' }}>
               {h.marketValue != null ? fmtUsd(h.marketValue) : 'N/A'}
             </div>
             <div style={{ textAlign: 'right', color: signColor(h.plDollar), lineHeight: 1.3 }}>
-              <div>{h.plDollar != null ? fmtUsd(h.plDollar, { signed: true }) : 'N/A'}</div>
-              <div style={{ fontSize: 11, opacity: 0.8 }}>
-                {h.plPercent != null ? fmtPct(h.plPercent, { signed: true }) : ''}
-              </div>
+              {isCashHolding(h) ? (
+                <div style={{ color: COLORS.textDim }}>—</div>
+              ) : (
+                <>
+                  <div>{h.plDollar != null ? fmtUsd(h.plDollar, { signed: true }) : 'N/A'}</div>
+                  <div style={{ fontSize: 11, opacity: 0.8 }}>
+                    {h.plPercent != null ? fmtPct(h.plPercent, { signed: true }) : ''}
+                  </div>
+                </>
+              )}
             </div>
             <div className="holdings-col-hideable" style={{ textAlign: 'right', color: COLORS.textDim }}>
               {h.weight != null ? fmtPct(h.weight, { digits: 1 }) : '—'}
