@@ -194,7 +194,6 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
                 chooseSuggestion(suggestions[highlightedIdx])
               }
             }}
-            placeholder="AAPL"
             style={{
               width: '100%',
               background: COLORS.panel,
@@ -258,7 +257,6 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
             step="any"
             value={shares}
             onChange={e => { setShares(e.target.value); setError(null) }}
-            placeholder="50"
             style={{
               width: '100%',
               background: COLORS.panel,
@@ -283,7 +281,6 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
             step="any"
             value={avgCost}
             onChange={e => { setAvgCost(e.target.value); setError(null) }}
-            placeholder="185.50"
             style={{
               width: '100%',
               background: COLORS.panel,
