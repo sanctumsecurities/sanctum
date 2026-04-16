@@ -106,9 +106,11 @@ export default function Home() {
         .eq('user_id', userId)
         .single()
       if (data?.settings) {
-        const merged = { ...DEFAULT_SETTINGS, ...data.settings }
+        const { watchlist: wl, ...settingsOnly } = data.settings as any
+        const merged = { ...DEFAULT_SETTINGS, ...settingsOnly }
         setSettings(merged)
         localStorage.setItem('sanctum-settings', JSON.stringify(merged))
+        if (Array.isArray(wl)) setWatchlist(wl)
       }
     } catch {}
   }, [])
@@ -126,6 +128,7 @@ export default function Home() {
         loadSettingsFromSupabase(session.user.id)
       } else {
         setSettings(DEFAULT_SETTINGS)
+        setWatchlist([])
         localStorage.removeItem('sanctum-settings')
       }
     })
@@ -173,14 +176,6 @@ export default function Home() {
       setChartRefreshKey(k => k + 1)
     }, 5 * 60 * 1000)
     return () => clearInterval(id)
-  }, [])
-
-  // ── Load watchlist from localStorage ──
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('sanctum-watchlist')
-      if (stored) setWatchlist(JSON.parse(stored))
-    } catch {}
   }, [])
 
   // ── Load settings from localStorage (immediate fallback before Supabase responds) ──
@@ -303,10 +298,20 @@ export default function Home() {
     return () => clearInterval(id)
   }, [])
 
-  const saveWatchlist = (list: string[]) => {
+  const saveWatchlist = useCallback((list: string[]) => {
     setWatchlist(list)
-    localStorage.setItem('sanctum-watchlist', JSON.stringify(list))
-  }
+    if (session?.user?.id) {
+      // Store watchlist inside settings JSONB so it syncs with the report page
+      supabase
+        .from('user_settings')
+        .upsert({
+          user_id: session.user.id,
+          settings: { ...settings, watchlist: list },
+          updated_at: new Date().toISOString(),
+        })
+        .then(({ error }) => { if (error) console.error('[watchlist] save failed:', error) })
+    }
+  }, [session?.user?.id, settings])
 
   const addToWatchlist = (ticker: string) => {
     const upper = ticker.toUpperCase()
