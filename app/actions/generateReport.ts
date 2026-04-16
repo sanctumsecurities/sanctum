@@ -1,6 +1,6 @@
 'use server'
 
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Anthropic from '@anthropic-ai/sdk'
 import type { StockReport } from '@/types/report'
 import { yahooFinance } from '@/lib/yahoo'
 import { computeQuantSignal, formatQuantSignal, type QuantSignal } from '@/lib/quantScore'
@@ -8,10 +8,10 @@ import { fetchMacroContext, type MacroContext } from '@/lib/macroContext'
 import { validateReport } from '@/lib/reportValidation'
 import { withTimeout } from '@/lib/utils'
 
-function getGenAI() {
-  const key = process.env.GEMINI_API_KEY
-  if (!key) throw new Error('GEMINI_API_KEY is not configured')
-  return new GoogleGenerativeAI(key)
+function getAnthropic() {
+  const key = process.env.ANTHROPIC_API_KEY
+  if (!key) throw new Error('ANTHROPIC_API_KEY is not configured')
+  return new Anthropic({ apiKey: key })
 }
 
 // ── Helper functions ──
@@ -531,14 +531,7 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
       ? computeQuantSignal(yahoo)
       : { score: 50, verdict: 'HOLD', factors: [], skippedFactors: ['all (Yahoo data unavailable)'] }
 
-    const genAI = getGenAI()
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
-      tools: [{ googleSearch: {} } as any],
-      generationConfig: {
-        thinkingConfig: { thinkingBudget: -1 },
-      } as any,
-    })
+    const client = getAnthropic()
 
     // Build key metrics from real Yahoo data before calling Gemini
     const preBuiltMetrics = yahoo ? buildKeyMetricsFromYahoo(yahoo) : null
@@ -708,10 +701,27 @@ Requirements:
 - Be specific to THIS company — no generic filler
 - Return ONLY the JSON object, no wrapping`
 
-    const result = await withTimeout(model.generateContent(prompt), 120_000)
-    const text = result.response.text()
-    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const parsed = JSON.parse(cleaned) as StockReport
+    const stream = client.messages.stream({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 32000,
+      thinking: { type: 'adaptive' },
+      tools: [{ type: 'web_search_20260209', name: 'web_search' }],
+      messages: [{ role: 'user', content: prompt }],
+    })
+    const message = await withTimeout(stream.finalMessage(), 180_000)
+
+    // Web search emits multiple blocks; the final text block holds the JSON answer.
+    const textBlocks = message.content.filter(
+      (b): b is Anthropic.TextBlock => b.type === 'text'
+    )
+    const lastText = textBlocks[textBlocks.length - 1]?.text ?? ''
+    const stripped = lastText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const jsonStart = stripped.indexOf('{')
+    const jsonEnd = stripped.lastIndexOf('}')
+    if (jsonStart < 0 || jsonEnd <= jsonStart) {
+      throw new Error('Claude response did not contain a JSON object')
+    }
+    const parsed = JSON.parse(stripped.slice(jsonStart, jsonEnd + 1)) as StockReport
 
     // ── Apply verdict veto ──
     const { verdict: finalVerdict, vetoed } = resolveVerdict(quantSignal.verdict, parsed.verdict)
@@ -936,9 +946,17 @@ Requirements:
     return parsed
   } catch (err: any) {
     console.error('[generateReport] failed:', err)
-    const msg = err.message || ''
-    if (msg.includes('GEMINI_API_KEY')) return { error: msg }
-    if (msg.includes('timed out')) return { error: 'Report generation timed out. Please try again.' }
+    if (err instanceof Anthropic.AuthenticationError) {
+      return { error: 'ANTHROPIC_API_KEY is invalid or missing.' }
+    }
+    if (err instanceof Anthropic.RateLimitError) {
+      return { error: 'Claude API rate limit hit. Please try again shortly.' }
+    }
+    const msg = err?.message || ''
+    if (msg.includes('ANTHROPIC_API_KEY')) return { error: msg }
+    if (msg === 'timeout' || msg.includes('timed out')) {
+      return { error: 'Report generation timed out. Please try again.' }
+    }
     return { error: 'Failed to generate report. Please try again.' }
   }
 }

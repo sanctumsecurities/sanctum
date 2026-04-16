@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Anthropic from '@anthropic-ai/sdk'
 import { supabase } from '@/lib/supabase'
 import { withTimeout } from '@/lib/utils'
 
@@ -36,19 +36,24 @@ async function checkYahooFinance(): Promise<ServiceResult & { spyPrice?: number;
   }
 }
 
-async function checkGemini(): Promise<ServiceResult> {
-  const apiKey = process.env.GEMINI_API_KEY
+async function checkAnthropic(): Promise<ServiceResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey || apiKey === 'placeholder') {
-    return { name: 'Gemini AI', status: 'unconfigured', latency: 0, detail: 'API key not set' }
+    return { name: 'Claude AI', status: 'unconfigured', latency: 0, detail: 'API key not set' }
   }
   const t0 = Date.now()
   try {
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
-    await withTimeout(model.countTokens('ping'), 5000)
-    return { name: 'Gemini AI', status: 'ok', latency: Date.now() - t0 }
+    const client = new Anthropic({ apiKey })
+    await withTimeout(
+      client.messages.countTokens({
+        model: 'claude-sonnet-4-6',
+        messages: [{ role: 'user', content: 'ping' }],
+      }),
+      5000
+    )
+    return { name: 'Claude AI', status: 'ok', latency: Date.now() - t0 }
   } catch (err: any) {
-    return { name: 'Gemini AI', status: 'error', latency: Date.now() - t0, detail: 'Gemini health check failed' }
+    return { name: 'Claude AI', status: 'error', latency: Date.now() - t0, detail: 'Claude health check failed' }
   }
 }
 
@@ -107,15 +112,15 @@ function deriveOverall(services: ServiceResult[]): 'ok' | 'degraded' | 'down' {
 
 export async function GET() {
   try {
-    const [yahooResult, geminiResult, supabaseResult, fearGreedResult] = await Promise.all([
+    const [yahooResult, claudeResult, supabaseResult, fearGreedResult] = await Promise.all([
       checkYahooFinance(),
-      checkGemini(),
+      checkAnthropic(),
       checkSupabase(),
       checkFearGreed(),
     ])
 
     const { spyPrice, spyChange, spyChangePct, ...yahooService } = yahooResult
-    const services: ServiceResult[] = [yahooService, geminiResult, supabaseResult, fearGreedResult]
+    const services: ServiceResult[] = [yahooService, claudeResult, supabaseResult, fearGreedResult]
     const overallStatus = deriveOverall(services)
 
     const spy = spyPrice != null
