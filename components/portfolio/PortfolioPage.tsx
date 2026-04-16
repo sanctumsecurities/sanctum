@@ -195,7 +195,7 @@ export default function PortfolioPage({ session }: Props) {
             <h1 className="hero-title" style={{
               fontSize: 65, fontWeight: 700, color: COLORS.text,
               letterSpacing: '0.08em', fontFamily: MONO,
-              margin: 0, lineHeight: 1,
+              margin: 0, marginLeft: '-0.05em', lineHeight: 1,
             }}>
               PORTFOLIO
             </h1>
