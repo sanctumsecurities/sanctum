@@ -436,7 +436,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
 
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
-      await supabase.from('reports').delete().eq('ticker', ticker)
+      await supabase.from('reports').delete().eq('ticker', ticker).eq('created_by', session.user.id)
       await supabase.from('reports').insert({
         ticker,
         data: result,
