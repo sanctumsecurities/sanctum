@@ -217,13 +217,17 @@ export default function Home() {
   // ── Measure title widths for search bars ──
   useEffect(() => {
     if (loading) return
+    let cancelled = false
     const measure = () => {
-      if (titleRef.current) setTitleWidth(titleRef.current.offsetWidth)
+      if (!cancelled && titleRef.current) setTitleWidth(titleRef.current.offsetWidth)
     }
     measure()
     document.fonts.ready.then(measure)
     window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
+    return () => {
+      cancelled = true
+      window.removeEventListener('resize', measure)
+    }
   }, [loading, activeTab])
 
   // ── Cleanup search debounce on unmount ──
