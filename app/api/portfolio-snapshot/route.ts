@@ -36,14 +36,14 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
     const price = (quote as any)?.regularMarketPrice ?? null
     const prevClose =
       (quote as any)?.regularMarketPreviousClose ?? (quote as any)?.previousClose ?? null
-    const name =
-      (quote as any)?.shortName ?? (quote as any)?.longName ?? (summary as any)?.price?.shortName ?? null
+    const name = (quote as any)?.shortName ?? (quote as any)?.longName ?? null
     const beta =
       (summary as any)?.summaryDetail?.beta ??
       (summary as any)?.defaultKeyStatistics?.beta ??
       null
     const sector = (summary as any)?.summaryProfile?.sector ?? null
 
+    // 45-day window yields ~31 trading days; 31 closes → 30 daily returns → "30d volatility".
     const closes = Array.isArray(historical)
       ? (historical as any[])
           .map(row => Number(row.close))
