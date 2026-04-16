@@ -705,9 +705,7 @@ Requirements:
 
     const stream = client.messages.stream({
       model: 'claude-sonnet-4-6',
-      max_tokens: 32000,
-      thinking: { type: 'adaptive' },
-      tools: [{ type: 'web_search_20260209', name: 'web_search' }],
+      max_tokens: 12000,
       messages: [{ role: 'user', content: prompt }],
     })
     const message = await withTimeout(stream.finalMessage(), 180_000)
