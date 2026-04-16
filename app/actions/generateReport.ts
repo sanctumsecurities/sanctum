@@ -570,23 +570,13 @@ ${JSON.stringify(preBuiltMetrics, null, 2)}
     const quantContext = formatQuantSignal(quantSignal)
     const macroContextStr = macroResult.formatted
 
-    const prompt = `You are a quantitative equity strategist at a multi-strategy hedge fund. You write dense, forward-looking analysis. Every sentence either cites a number or makes a falsifiable prediction. No filler. If a sentence could apply to any company, delete it.
+    const systemPrompt = `You are a quantitative equity strategist at a multi-strategy hedge fund. You write dense, forward-looking analysis. Every sentence either cites a number or makes a falsifiable prediction. No filler. If a sentence could apply to any company, delete it.
 
 You are provided with a quantitative pre-score computed from market data. Your job is to CONFIRM, OVERRIDE, or NUANCE this signal with qualitative reasoning. If you disagree with the quant signal, you must explicitly state why.
 
 When the data is ambiguous or insufficient to support a strong directional call, default to HOLD. Never manufacture conviction.
 
-Here is today's market data, quantitative signal, and macro context for ${symbol} as of ${new Date().toISOString().split('T')[0]}. Your job is to ANALYZE this data, not repeat it. Data-sourced fields (prices, margins, analyst targets, insider activity) will be injected separately into the report — you do not generate them. Focus on interpretation, thesis, and forward scenarios.
-
-=== MARKET DATA ===
-${yahooContext}
-
-=== QUANTITATIVE PRE-SCORE ===
-${quantContext}
-
-=== MACRO ENVIRONMENT ===
-${macroContextStr || 'Macro data unavailable.'}
-Consider the current macro environment when evaluating risk and positioning. A rising rate / high VIX environment should increase your skepticism of growth-dependent theses.
+Your task is to ANALYZE provided market data, not repeat it. Data-sourced fields (prices, margins, analyst targets, insider activity) are injected separately into the report — you do not generate them. Focus on interpretation, thesis, and forward scenarios.
 
 CHAIN-OF-THOUGHT:
 Before generating the final JSON, internally reason through these steps in order:
@@ -603,7 +593,7 @@ If your verdict DISAGREES with the quant pre-score verdict, you MUST set "splitS
 DIRECTIVES:
 1. Ground every claim in provided data — reference specific margins, growth rates, and multiples.
 2. Focus on what changes from here. Historical context only to support a forward thesis.
-3. Incorporate the recent news and events above into your catalysts and risk assessment. Use your broader knowledge of market conditions, regulatory environment, and industry trends to fill gaps.
+3. Incorporate the recent news and events into your catalysts and risk assessment. Use your broader knowledge of market conditions, regulatory environment, and industry trends to fill gaps.
 4. Bull/bear cases must include specific price targets derived from stated assumptions (multiple x earnings).
 5. All prose fields: 2-3 sentences max. If you need more, the insight isn't sharp enough.
 6. whatHasGoneWrong should be null unless there's a genuine material negative — don't manufacture problems.
@@ -628,8 +618,8 @@ Schema:
     "macroImpact": "string — 1-3 sentences on how macro conditions affect the thesis",
     "finalRationale": "string — 1-3 sentences on your final verdict and any divergence from quant"
   },
-  "badges": [{ "text": "string — qualitative/narrative tag about the company", "sentiment": "'positive' | 'negative' | 'neutral' | 'caution' — classify based on whether this tag is bullish (positive), bearish (negative), informational (neutral), or a risk/warning (caution)", "reason": "string — 1-2 sentences explaining why this tag is relevant to the company right now" }],
-  "dividendHistory": "string or null — ONLY for companies that do NOT currently pay dividends: a short phrase like 'Never paid a dividend' or 'Last paid Q3 2019'. null if the company currently pays dividends.",
+  "badges": [{ "text": "string — qualitative/narrative tag about the company", "sentiment": "'positive' | 'negative' | 'neutral' | 'caution'", "reason": "string — 1-2 sentences explaining why this tag is relevant" }],
+  "dividendHistory": "string or null — ONLY for companies that do NOT currently pay dividends. null if the company currently pays dividends.",
   "overview": {
     "keyMetrics": [
       { "label": "string", "value": "string", "subtitle": "string or omit", "color": "hex or omit", "yoyChange": "string like '+12.3%'" }
@@ -641,17 +631,17 @@ Schema:
     },
     "whatHasGoneWrong": "string or null — only if genuine material negative exists",
     "segmentBreakdown": [{ "name": "string", "percentage": number }],
-    "moatScores": [{ "metric": "string", "score": number 0-100 }],
-    "sectorMoatScores": [{ "metric": "string", "score": number 0-100 — sector median for same metrics }]
+    "moatScores": [{ "metric": "string", "score": number }],
+    "sectorMoatScores": [{ "metric": "string", "score": number }]
   },
   "financials": {
     "financialSummary": {
-      "revenueGrowth": "string — exactly 4 sentences on revenue trajectory: growth rates, segment shifts, how the top line has evolved over recent years",
-      "profitabilityMargins": "string — exactly 4 sentences on profitability: margin trends, cost structure changes, net earnings trajectory",
-      "financialHealth": "string — exactly 4 sentences on financial stability: cash flows, debt levels, balance sheet health"
+      "revenueGrowth": "string — exactly 4 sentences on revenue trajectory",
+      "profitabilityMargins": "string — exactly 4 sentences on profitability",
+      "financialHealth": "string — exactly 4 sentences on financial stability"
     },
     "annualData": [
-      { "year": "string", "revenue": number (billions), "revenueGrowth": "string", "adjEPS": number, "epsGrowth": "string", "opCF": "string", "keyMetric": "string — most relevant KPI for this year" }
+      { "year": "string", "revenue": number, "revenueGrowth": "string", "adjEPS": number, "epsGrowth": "string", "opCF": "string", "keyMetric": "string — most relevant KPI for this year" }
     ],
     "callout": "string — single most important financial insight or warning"
   },
@@ -673,7 +663,7 @@ Schema:
     "bearCase": { "priceTarget": "string", "return": "string", "description": "string — 2-3 sentences" },
     "scenarioMatrix": [{ "scenario": "string", "probability": "string", "priceTarget": "string", "return": "string", "weighted": "string", "keyAssumptions": ["string — 2-3 per scenario"] }],
     "multiYearProjections": [{ "horizon": "string", "bearCase": "string", "baseCase": "string", "bullCase": "string", "commentary": "string — one sentence", "impliedCagr": "string" }],
-    "priceProjectionChart": [{ "year": "string", "bear": number, "base": number, "bull": number, "analystMean": number — use analyst mean target from provided data }],
+    "priceProjectionChart": [{ "year": "string", "bear": number, "base": number, "bull": number, "analystMean": number }],
     "syndicateVerdict": {
       "rating": "BUY" | "SELL" | "HOLD" | "AVOID",
       "positionSizing": "string — specific portfolio % range with rationale",
@@ -690,7 +680,7 @@ Schema:
 
 Requirements:
 - badges: 5-6 objects (keep it short — these must fit on a single line). Each tag must be qualitative/narrative — NEVER include numeric metrics (market cap, P/E, dividend yield, revenue, EPS, beta, CAGR, margins). Good: 'DOJ Investigation' (negative), 'Buffett Favorite' (positive), 'AI Tailwind' (positive), 'Founder-Led' (neutral), 'Dividend Aristocrat' (positive), 'Tariff Exposed' (caution). Sentiment must reflect whether the tag is bullish, bearish, informational, or a warning for this specific company.
-- overview.keyMetrics: copy the PRE-BUILT KEY METRICS from context exactly (label, value, yoyChange are already correct real-time data — do NOT change them). Your only job per metric is to add a "subtitle" field: 3-5 words of sharp interpretation (e.g. "above sector avg", "accelerating trend", "historically cheap", "crowded valuation", "near multi-year low"). Use your web search knowledge and the provided financials to make these insightful, not generic. EXCEPTION: do NOT include "subtitle" for metrics with label "P/E (TTM)", "Beta", or "Dividend Yield" — these subtitles are computed server-side.
+- overview.keyMetrics: copy the PRE-BUILT KEY METRICS from context exactly (label, value, yoyChange are already correct real-time data — do NOT change them). Your only job per metric is to add a "subtitle" field: 3-5 words of sharp interpretation (e.g. "above sector avg", "accelerating trend", "historically cheap", "crowded valuation", "near multi-year low"). Use the provided financials to make these insightful, not generic. EXCEPTION: do NOT include "subtitle" for metrics with label "P/E (TTM)", "Beta", or "Dividend Yield" — these subtitles are computed server-side.
 - overview.moatScores: exactly 6 items, 0-100 scale
 - overview.sectorMoatScores: exactly 6 items matching moatScores metrics
 - overview.segmentBreakdown: 3-8 segments summing close to 100
@@ -705,10 +695,29 @@ Requirements:
 - Be specific to THIS company — no generic filler
 - Return ONLY the JSON object, no wrapping`
 
+    const userPrompt = `Analyze ${symbol} as of ${new Date().toISOString().split('T')[0]}.
+
+=== MARKET DATA ===
+${yahooContext}
+
+=== QUANTITATIVE PRE-SCORE ===
+${quantContext}
+
+=== MACRO ENVIRONMENT ===
+${macroContextStr || 'Macro data unavailable.'}
+Consider the current macro environment when evaluating risk and positioning. A rising rate / high VIX environment should increase your skepticism of growth-dependent theses.`
+
     const stream = client.messages.stream({
       model: 'claude-sonnet-4-6',
       max_tokens: 12000,
-      messages: [{ role: 'user', content: prompt }],
+      system: [
+        {
+          type: 'text',
+          text: systemPrompt,
+          cache_control: { type: 'ephemeral' },
+        } as any,
+      ],
+      messages: [{ role: 'user', content: userPrompt }],
     })
     const message = await withTimeout(stream.finalMessage(), 180_000)
 
