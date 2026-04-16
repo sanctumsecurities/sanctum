@@ -31,7 +31,7 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
   }
   try {
     // Always fetch fresh price data
-    const quote = await yahooFinance.quoteCombine(ticker).catch(() => null)
+    const quote = await yahooFinance.quote(ticker).catch(() => null)
     const regularPrice = (quote as any)?.regularMarketPrice ?? null
     const marketState: string = (quote as any)?.marketState ?? 'CLOSED'
     const postPrice = (quote as any)?.postMarketPrice ?? null
