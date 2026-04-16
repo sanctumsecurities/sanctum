@@ -16,6 +16,7 @@ import ReportCard from '@/components/ReportCard'
 import type { SavedReport } from '@/components/ReportCard'
 
 const SectorHeatmap = dynamic(() => import('@/components/SectorHeatmap'), { ssr: false })
+const PortfolioPage = dynamic(() => import('@/components/portfolio/PortfolioPage'), { ssr: false })
 
 type HealthStatus = 'ok' | 'degraded' | 'down'
 interface ServiceHealth { name: string; status: 'ok' | 'error' | 'unconfigured'; latency: number; detail?: string }
@@ -30,7 +31,7 @@ interface HealthData {
 const BANNER_SPEED_SECS = { fast: 45, regular: 60, slow: 75 } as const
 
 const DEFAULT_SETTINGS = {
-  defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist',
+  defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist' | 'Portfolio',
   clockFormat: '12h' as '12h' | '24h',
   bannerSpeed: 'regular' as 'fast' | 'regular' | 'slow',
   bannerUpdateFreq: 60_000,
@@ -48,7 +49,7 @@ export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Watchlist'>('Dashboard')
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Watchlist' | 'Portfolio'>('Dashboard')
   const [searchTicker, setSearchTicker] = useState('')
 
   const [savedReports, setSavedReports] = useState<SavedReport[]>([])
@@ -576,7 +577,7 @@ export default function Home() {
             background: '#0a0a0a', padding: '0 20px',
             zIndex: 2,
           }}>
-            {(['Dashboard', 'Watchlist'] as const).map(tab => {
+            {(['Dashboard', 'Portfolio', 'Watchlist'] as const).map(tab => {
               const isActive = tab === activeTab
               return (
                 <button
@@ -683,7 +684,7 @@ export default function Home() {
             padding: '8px 20px 16px',
             display: 'flex', flexDirection: 'column', gap: 0,
           }}>
-            {(['Dashboard', 'Watchlist'] as const).map(tab => (
+            {(['Dashboard', 'Portfolio', 'Watchlist'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setMobileMenuOpen(false) }}
@@ -927,6 +928,11 @@ export default function Home() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ══ PORTFOLIO ══ */}
+        {activeTab === 'Portfolio' && session && (
+          <PortfolioPage session={session} />
         )}
 
         {/* ══ WATCHLIST ══ */}
