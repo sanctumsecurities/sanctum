@@ -54,6 +54,7 @@ export default function PortfolioPage({ session }: Props) {
   const [snapshots, setSnapshots] = useState<SnapshotMap>({})
   const [lastSnapshotAt, setLastSnapshotAt] = useState<number | null>(null)
   const [snapshotStale, setSnapshotStale] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Holding | undefined>(undefined)
@@ -136,6 +137,14 @@ export default function PortfolioPage({ session }: Props) {
     return m
   }, [holdings])
 
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return
+    setRefreshing(true)
+    const tickers = holdings.filter(h => !isCashHolding(h)).map(h => h.ticker)
+    await fetchSnapshot(tickers)
+    setRefreshing(false)
+  }, [refreshing, holdings, fetchSnapshot])
+
   // Modal handlers
   const openAdd = () => { setEditing(undefined); setModalOpen(true) }
   const openCash = () => { setCashModalOpen(true) }
@@ -178,6 +187,7 @@ export default function PortfolioPage({ session }: Props) {
           .portfolio-add-btns { align-self: flex-start !important; flex-wrap: wrap !important; }
           .holdings-col-hideable { display: none !important; }
         }
+        @keyframes spinRefresh { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
 
       <div className="main-content" style={{
@@ -207,7 +217,29 @@ export default function PortfolioPage({ session }: Props) {
               {subtitle}
             </div>
           </div>
-          <div className="portfolio-add-btns" style={{ display: 'flex', gap: 8 }}>
+          <div className="portfolio-add-btns" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing || holdings.length === 0}
+              title="Refresh prices"
+              style={{
+                background: 'transparent',
+                border: `1px solid ${COLORS.borderStrong}`,
+                borderRadius: 4,
+                color: COLORS.textDim,
+                fontSize: 16,
+                width: 38, height: 38,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: refreshing || holdings.length === 0 ? 'default' : 'pointer',
+                opacity: holdings.length === 0 ? 0.3 : 1,
+                transition: 'all 0.2s ease',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => { if (!refreshing && holdings.length > 0) { (e.currentTarget).style.color = '#fff'; (e.currentTarget).style.borderColor = '#444' } }}
+              onMouseLeave={e => { (e.currentTarget).style.color = COLORS.textDim; (e.currentTarget).style.borderColor = COLORS.borderStrong }}
+            >
+              <span style={{ display: 'inline-block', animation: refreshing ? 'spinRefresh 0.8s linear infinite' : 'none' }}>↻</span>
+            </button>
             <button
               className="portfolio-add-btn"
               onClick={openCash}
