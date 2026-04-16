@@ -5,11 +5,13 @@ import Image from 'next/image'
 import { generateReport } from '@/app/actions/generateReport'
 import { supabase } from '@/lib/supabase'
 import { Badge } from './ReportUI'
-import OverviewTab from './tabs/OverviewTab'
-import FinancialsTab from './tabs/FinancialsTab'
-import ValuationTab from './tabs/ValuationTab'
-import CatalystsTab from './tabs/CatalystsTab'
-import VerdictTab from './tabs/VerdictTab'
+import dynamic from 'next/dynamic'
+
+const OverviewTab = dynamic(() => import('./tabs/OverviewTab'), { ssr: false })
+const FinancialsTab = dynamic(() => import('./tabs/FinancialsTab'), { ssr: false })
+const ValuationTab = dynamic(() => import('./tabs/ValuationTab'), { ssr: false })
+const CatalystsTab = dynamic(() => import('./tabs/CatalystsTab'), { ssr: false })
+const VerdictTab = dynamic(() => import('./tabs/VerdictTab'), { ssr: false })
 import type { StockReport as StockReportType } from '@/types/report'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 
