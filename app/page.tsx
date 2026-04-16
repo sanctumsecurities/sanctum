@@ -15,7 +15,6 @@ import TickerBanner, { DEFAULT_BANNER_TICKERS } from '@/components/TickerBanner'
 import ReportCard from '@/components/ReportCard'
 import type { SavedReport } from '@/components/ReportCard'
 
-const MatrixScatter = dynamic(() => import('@/components/MatrixScatter'), { ssr: false })
 const SectorHeatmap = dynamic(() => import('@/components/SectorHeatmap'), { ssr: false })
 
 type HealthStatus = 'ok' | 'degraded' | 'down'
@@ -31,13 +30,12 @@ interface HealthData {
 const BANNER_SPEED_SECS = { fast: 45, regular: 60, slow: 75 } as const
 
 const DEFAULT_SETTINGS = {
-  defaultTab: 'Dashboard' as 'Dashboard' | 'Matrix' | 'Watchlist',
+  defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist',
   clockFormat: '12h' as '12h' | '24h',
   bannerSpeed: 'regular' as 'fast' | 'regular' | 'slow',
   bannerUpdateFreq: 60_000,
   bannerTickers: DEFAULT_BANNER_TICKERS,
   bannerHoverPause: true,
-  matrixCustomTickers: [] as string[],
 }
 
 export type AppSettings = typeof DEFAULT_SETTINGS
@@ -50,7 +48,7 @@ export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Matrix' | 'Watchlist'>('Dashboard')
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Watchlist'>('Dashboard')
   const [searchTicker, setSearchTicker] = useState('')
 
   const [savedReports, setSavedReports] = useState<SavedReport[]>([])
@@ -73,10 +71,6 @@ export default function Home() {
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [titleWidth, setTitleWidth] = useState<number | undefined>(undefined)
-  const matrixTitleRef = useRef<HTMLHeadingElement>(null)
-  const [matrixTitleWidth, setMatrixTitleWidth] = useState<number | undefined>(undefined)
-  const [matrixSelectedTicker, setMatrixSelectedTicker] = useState<string | null>(null)
-
   // ── Health popup ──
   const [healthData, setHealthData] = useState<HealthData | null>(null)
   const [healthLoading, setHealthLoading] = useState(false)
@@ -210,7 +204,6 @@ export default function Home() {
     if (loading) return
     const measure = () => {
       if (titleRef.current) setTitleWidth(titleRef.current.offsetWidth)
-      if (matrixTitleRef.current) setMatrixTitleWidth(matrixTitleRef.current.offsetWidth)
     }
     measure()
     document.fonts.ready.then(measure)
@@ -583,7 +576,7 @@ export default function Home() {
             background: '#0a0a0a', padding: '0 20px',
             zIndex: 2,
           }}>
-            {(['Dashboard', 'Matrix', 'Watchlist'] as const).map(tab => {
+            {(['Dashboard', 'Watchlist'] as const).map(tab => {
               const isActive = tab === activeTab
               return (
                 <button
@@ -690,7 +683,7 @@ export default function Home() {
             padding: '8px 20px 16px',
             display: 'flex', flexDirection: 'column', gap: 0,
           }}>
-            {(['Dashboard', 'Matrix', 'Watchlist'] as const).map(tab => (
+            {(['Dashboard', 'Watchlist'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setMobileMenuOpen(false) }}
@@ -935,116 +928,6 @@ export default function Home() {
             )}
           </div>
         )}
-
-        {/* ══ MATRIX ══ */}
-        {activeTab === 'Matrix' && (() => {
-          const matrixReport = matrixSelectedTicker
-            ? savedReports.find(r => r.ticker === matrixSelectedTicker) ?? null
-            : null
-          return (
-            <div className="main-content" style={{
-              display: 'flex',
-              gap: 0,
-              padding: '40px clamp(24px, 3vw, 64px) 0',
-              maxWidth: '100%',
-              animation: 'fadeIn 0.3s ease',
-              boxSizing: 'border-box',
-              overflowX: 'hidden',
-              height: 'calc(100vh - 140px)',
-            }}>
-              {/* Left: Chart */}
-              <div style={{
-                flex: '0 0 65%',
-                minWidth: 0,
-                borderRight: '1px solid #1a1a1a',
-                paddingRight: 24,
-              }}>
-                <h1 ref={matrixTitleRef} className="hero-title" style={{
-                  fontSize: 64, fontWeight: 700, color: '#fff',
-                  letterSpacing: '0.08em',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  margin: 0, lineHeight: 1,
-                  width: 'fit-content',
-                }}>
-                  MATRIX
-                </h1>
-                <MatrixScatter
-                  savedReports={savedReports}
-                  watchlist={watchlist}
-                  titleWidth={matrixTitleWidth}
-                  onSelectStock={setMatrixSelectedTicker}
-                  customTickers={settings.matrixCustomTickers}
-                  onCustomTickersChange={(tickers) => updateSettings({ matrixCustomTickers: tickers })}
-                />
-              </div>
-
-              {/* Right: Report card */}
-              {matrixReport && (
-                <div style={{
-                  flex: '0 0 35%',
-                  minWidth: 0,
-                  paddingLeft: 32,
-                  borderLeft: '1px solid #1a1a1a',
-                  overflowY: 'auto',
-                  animation: 'fadeIn 0.3s ease',
-                }}>
-                  <ReportCard
-                    report={matrixReport}
-                    chartData={chartData[matrixReport.ticker]}
-                    focusedCardId={null}
-                    colIndex={0}
-                    onDelete={deleteReport}
-                    onFocus={() => {}}
-                  />
-                </div>
-              )}
-
-              {/* Right: Empty state when ticker has no report */}
-              {matrixSelectedTicker && !matrixReport && (
-                <div style={{
-                  flex: '0 0 35%',
-                  minWidth: 0,
-                  paddingLeft: 32,
-                  borderLeft: '1px solid #1a1a1a',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  animation: 'fadeIn 0.3s ease',
-                }}>
-                  <p style={{
-                    fontSize: 12, color: '#555',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    letterSpacing: '0.08em',
-                    textAlign: 'center',
-                  }}>
-                    No report for {matrixSelectedTicker}.
-                  </p>
-                  <button
-                    onClick={() => openReport(matrixSelectedTicker)}
-                    style={{
-                      marginTop: 16,
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: 4,
-                      padding: '8px 20px',
-                      fontSize: 11,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      letterSpacing: '0.08em',
-                      color: '#fff',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
-                  >
-                    GENERATE REPORT
-                  </button>
-                </div>
-              )}
-            </div>
-          )
-        })()}
 
         {/* ══ WATCHLIST ══ */}
         {activeTab === 'Watchlist' && (
