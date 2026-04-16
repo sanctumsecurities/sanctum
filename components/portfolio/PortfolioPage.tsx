@@ -21,6 +21,23 @@ import { COLORS, MONO } from './styles'
 
 const PORTFOLIO_POLL_MS = 60_000
 
+// Format the snapshot time in the user's local timezone. Falls back to
+// America/Los_Angeles (PST/PDT) if the browser can't resolve a zone.
+function formatSnapshotTime(ts: number): { time: string; tz: string } {
+  const date = new Date(ts)
+  let zone: string | undefined
+  try {
+    zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  } catch {
+    zone = undefined
+  }
+  if (!zone) zone = 'America/Los_Angeles'
+  const time = date.toLocaleTimeString('en-US', { hour12: false, timeZone: zone })
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'short' }).formatToParts(date)
+  const tz = parts.find(p => p.type === 'timeZoneName')?.value ?? ''
+  return { time, tz }
+}
+
 interface Props {
   session: Session
 }
@@ -139,8 +156,8 @@ export default function PortfolioPage({ session }: Props) {
     if (n === 0) return 'No positions yet.'
     const countStr = `${n} position${n === 1 ? '' : 's'}`
     if (!lastSnapshotAt) return snapshotStale ? `${countStr} · fetch failed` : `${countStr} · loading…`
-    const ts = new Date(lastSnapshotAt).toLocaleTimeString('en-US', { hour12: false })
-    return `${countStr} · updated ${ts} ET${snapshotStale ? ' · stale' : ''}`
+    const { time, tz } = formatSnapshotTime(lastSnapshotAt)
+    return `${countStr} · updated ${time} ${tz}${snapshotStale ? ' · stale' : ''}`
   })()
 
   return (

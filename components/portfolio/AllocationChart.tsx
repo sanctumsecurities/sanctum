@@ -87,6 +87,8 @@ export default function AllocationChart({ holdings }: Props) {
                     fontSize: 11,
                     color: COLORS.text,
                   }}
+                  itemStyle={{ color: COLORS.text }}
+                  labelStyle={{ color: COLORS.textMuted }}
                   formatter={(value: number, _name: string, item: any) =>
                     [`${fmtPct(item.payload.percent)} · $${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`, item.payload.label]
                   }
