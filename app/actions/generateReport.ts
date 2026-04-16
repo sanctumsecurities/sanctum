@@ -551,8 +551,10 @@ MARKET DATA:
 - Institutional Ownership: ${yahoo.institutionalOwnership}
 - Trailing P/E: ${yahoo.currentPE.toFixed(1)}, Forward P/E: ${yahoo.forwardPE.toFixed(1)}
 - Dividend Yield: ${yahoo.dividendData ? yahoo.dividendData.currentYield : '0%'}
-- Revenue vs COGS: ${JSON.stringify(yahoo.revenueVsCogs.map((r: any) => ({ year: r.year, revenue: r.revenue + 'B', cogs: r.cogs + 'B', grossProfit: r.grossProfit + 'B' })))}
-- Margin Trends: ${JSON.stringify(yahoo.marginTrends.map((m: any) => ({ year: m.year, gross: m.gross.toFixed(1) + '%', operating: m.operating.toFixed(1) + '%', net: m.net.toFixed(1) + '%' })))}
+- Revenue vs COGS (year|rev$B|cogs$B|gp$B):
+${yahoo.revenueVsCogs.map((r: any) => `  ${r.year}|${r.revenue}|${r.cogs}|${r.grossProfit}`).join('\n')}
+- Margin Trends (year|gross%|op%|net%):
+${yahoo.marginTrends.map((m: any) => `  ${m.year}|${m.gross.toFixed(1)}|${m.operating.toFixed(1)}|${m.net.toFixed(1)}`).join('\n')}
 - Revenue CAGR (5yr): ${yahoo.revenueCagr.fiveYear || 'N/A'}
 - Net Income CAGR (5yr): ${yahoo.netIncomeCagr.fiveYear || 'N/A'}
 - Insider Activity: ${yahoo.insiderActivity ? 'Net buys (90d): ' + yahoo.insiderActivity.netBuys90Days + ', Notable: ' + yahoo.insiderActivity.notable : 'No data'}
