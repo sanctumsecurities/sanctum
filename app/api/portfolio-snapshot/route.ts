@@ -23,6 +23,7 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
     ticker,
     price: null,
     prevClose: null,
+    isExtendedHours: false,
     beta: null,
     volatility30d: null,
     sector: null,
@@ -31,7 +32,15 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
   try {
     // Always fetch fresh price data
     const quote = await yahooFinance.quoteCombine(ticker).catch(() => null)
-    const price = (quote as any)?.regularMarketPrice ?? null
+    const regularPrice = (quote as any)?.regularMarketPrice ?? null
+    const marketState: string = (quote as any)?.marketState ?? 'CLOSED'
+    const postPrice = (quote as any)?.postMarketPrice ?? null
+    const prePrice = (quote as any)?.preMarketPrice ?? null
+    const isPost = marketState === 'POST' || marketState === 'POSTPOST'
+    const isPre = marketState === 'PRE' || marketState === 'PREPRE'
+    const extPrice = isPost ? postPrice : isPre ? prePrice : null
+    const price = (typeof extPrice === 'number' ? extPrice : null) ?? regularPrice
+    const isExtendedHours = typeof extPrice === 'number'
     const prevClose = (quote as any)?.regularMarketPreviousClose ?? (quote as any)?.previousClose ?? null
     const quoteName = (quote as any)?.shortName ?? (quote as any)?.longName ?? null
 
@@ -42,6 +51,7 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
         ticker,
         price: typeof price === 'number' ? price : null,
         prevClose: typeof prevClose === 'number' ? prevClose : null,
+        isExtendedHours,
         beta: cachedMeta.beta,
         volatility30d: cachedMeta.volatility30d,
         sector: cachedMeta.sector,
@@ -95,6 +105,7 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
       ticker,
       price: typeof price === 'number' ? price : null,
       prevClose: typeof prevClose === 'number' ? prevClose : null,
+      isExtendedHours,
       beta: meta.beta,
       volatility30d: meta.volatility30d,
       sector: meta.sector,
@@ -127,6 +138,7 @@ export async function GET(request: NextRequest) {
         ticker: t,
         price: null,
         prevClose: null,
+        isExtendedHours: false,
         beta: null,
         volatility30d: null,
         sector: null,

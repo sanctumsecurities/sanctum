@@ -12,6 +12,7 @@ export interface HoldingSnapshot {
   ticker: string
   price: number | null
   prevClose: number | null
+  isExtendedHours: boolean
   beta: number | null
   volatility30d: number | null
   sector: string | null

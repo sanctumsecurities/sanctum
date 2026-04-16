@@ -63,8 +63,8 @@ function useTypewriter(ticker: string, reportReady: boolean, onComplete: () => v
       startTime = Date.now()
       intervalId = setInterval(() => {
         const elapsed = (Date.now() - startTime) / 1000
-        // ~50% at 4s, ~70% at 7s, asymptotically approaches 99%
-        const p = 99 * (1 - Math.exp(-elapsed / 5))
+        // slow start: ~6% at 2s, ~34% at 5s, ~82% at 10s, asymptotes to 99%
+        const p = 99 * (1 - Math.exp(-(elapsed * elapsed) / 60))
         setProgress(p)
       }, 60)
     }, 500) // match typewriter's initial sleep
@@ -279,9 +279,9 @@ function ReportLoadingScreen({
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 340 }}>
           {/* Terminal line */}
           <div style={{
-            fontSize: 13, color: '#555',
+            fontSize: 15, color: '#555',
             fontFamily: "'JetBrains Mono', monospace",
-            height: 20, lineHeight: '20px',
+            height: 22, lineHeight: '22px',
             whiteSpace: 'nowrap', overflow: 'visible',
             textAlign: 'left', alignSelf: 'flex-start',
           }}>
@@ -313,7 +313,7 @@ function ReportLoadingScreen({
               </div>
             </div>
             <div style={{
-              fontSize: 14, color: progress >= 100 ? '#555' : '#333',
+              fontSize: 16, color: progress >= 100 ? '#555' : '#333',
               marginTop: 8, textAlign: 'right', letterSpacing: '0.05em',
               transition: 'color 300ms',
               fontFamily: "'JetBrains Mono', monospace",

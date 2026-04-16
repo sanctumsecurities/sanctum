@@ -122,7 +122,14 @@ export default function HoldingsTable({ holdings, onRowClick, onDelete }: Props)
               {isCashHolding(h) ? '—' : fmtUsd(h.avg_cost)}
             </div>
             <div style={{ textAlign: 'right', color: h.snapshot?.price != null ? COLORS.text : COLORS.textFaint }}>
-              {isCashHolding(h) ? '—' : (h.snapshot?.price != null ? fmtUsd(h.snapshot.price) : 'N/A')}
+              {isCashHolding(h) ? '—' : (h.snapshot?.price != null ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {fmtUsd(h.snapshot.price)}
+                  {h.snapshot.isExtendedHours && (
+                    <span style={{ fontSize: 9, color: COLORS.textDim, letterSpacing: '0.05em' }}>AH</span>
+                  )}
+                </span>
+              ) : 'N/A')}
             </div>
             <div className="holdings-col-hideable" style={{ textAlign: 'right' }}>
               {h.marketValue != null ? fmtUsd(h.marketValue) : 'N/A'}
