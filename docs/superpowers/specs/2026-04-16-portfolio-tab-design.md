@@ -152,13 +152,15 @@ Holdings with `null` snapshot fields are excluded from aggregates with a visible
 
 ## UI / Layout
 
-Layout **A (Sidebar)** confirmed. All colors/fonts match existing palette (`#0a0a0a` bg, `#1a1a1a`/`#2a2a2a` borders, JetBrains Mono for labels/data, Instrument Serif for hero, green `#22c55e` / red `#ef4444` for gain/loss).
+Layout **A (Sidebar)** confirmed. All colors/fonts match existing palette (`#0a0a0a` bg, `#1a1a1a`/`#2a2a2a` borders, JetBrains Mono everywhere, green `#22c55e` / red `#ef4444` for gain/loss).
+
+**Hero title:** the word `PORTFOLIO` styled to match the Dashboard's `SANCTUM` — JetBrains Mono, fontSize 64, fontWeight 700, letterSpacing `0.08em`, white, lineHeight 1. At `<768px` it follows the same `.hero-title` media-query rule already in `app/page.tsx` (fontSize 36, letterSpacing `0.2em`). No Instrument Serif on this page.
 
 ### Page structure
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  PORTFOLIO (Instrument Serif 48px)       [+ ADD POSITION]        │
+│  PORTFOLIO (JetBrains Mono 64px, like "SANCTUM")  [+ ADD POSITION]│
 │  "8 positions · live" subtitle                                   │
 ├──────────────────────────────────────────────────────────────────┤
 │  [TOTAL VALUE] [TOTAL COST] [TOTAL P/L] [DAY CHANGE]             │
@@ -259,27 +261,23 @@ Centered like the existing Dashboard and Watchlist empty states:
 
 ## Settings Integration
 
-Two additions to `DEFAULT_SETTINGS`:
+One addition to `DEFAULT_SETTINGS`:
 
 ```ts
 defaultTab: 'Dashboard' | 'Watchlist' | 'Portfolio'   // widen union
-portfolioUpdateFreq: number                            // ms, default 60_000
 ```
 
 ### SettingsModal changes
 
-Add a new tab/section **"Portfolio"** with:
+- Widen the existing **"Default tab"** option list to include `Portfolio` as a third choice.
 
-- Refresh interval dropdown: **30s · 1min · 2min · 5min** (values: 30_000, 60_000, 120_000, 300_000)
-- Updates `portfolioUpdateFreq` via `updateSettings` (already persists to Supabase + localStorage).
-
-Update the existing "Default tab" setting to include "Portfolio" as a third option.
+No refresh-interval control in v1. Polling interval is a hardcoded constant in `PortfolioPage`. Making it user-adjustable is a deliberate follow-up, tracked in "Known Limitations" below.
 
 ---
 
 ## Refresh / Polling Behavior
 
-- Interval set by `settings.portfolioUpdateFreq`.
+- Fixed 60-second interval for v1 (constant `PORTFOLIO_POLL_MS = 60_000` in `PortfolioPage`).
 - On each poll: re-fetch `/api/portfolio-snapshot` with current tickers. Supabase holdings are not re-fetched on every tick — only when the user adds/edits/deletes.
 - If the request fails: keep last-good snapshot in state; show a subtle stale indicator in the hero row (e.g. "updated 14:32:05 ET · stale").
 - Poll pauses when the page/tab is hidden (use `document.visibilityState`) to save requests.
@@ -316,7 +314,7 @@ Update the existing "Default tab" setting to include "Portfolio" as a third opti
 ### Modified files
 
 - `app/page.tsx` — widen `activeTab` type union to include `'Portfolio'`, add it between Dashboard and Watchlist in both nav arrays (desktop + mobile), render `<PortfolioPage>` when active. Should remain lean — all portfolio logic lives in `PortfolioPage`.
-- `components/SettingsModal.tsx` — add "Portfolio" section with refresh-interval dropdown; widen default-tab options.
+- `components/SettingsModal.tsx` — widen default-tab options to include `Portfolio`. No new section.
 - `setup.sql` — append `holdings` table + RLS policies (above).
 
 ### Why split PortfolioPage into multiple components
@@ -336,7 +334,7 @@ Per `CLAUDE.md`, verify via browser:
 5. **Allocation toggle:** switch Sector ↔ Position; verify Sector bucketing is sensible.
 6. **Top movers:** verify winners/losers ordering; test with <3 gainers to confirm no phantom rows.
 7. **Risk metrics:** confirm beta/vol display; Top Holding matches largest row in table.
-8. **Polling:** wait one interval, confirm prices re-fetch; change interval in Settings → confirm cadence changes.
+8. **Polling:** wait one minute, confirm prices re-fetch automatically.
 9. **Visibility:** switch tabs/minimize; confirm polling pauses.
 10. **Empty state:** delete all positions; verify CTA renders.
 11. **Invalid ticker:** enter nonsense in modal; verify save blocked and message shown.
@@ -355,3 +353,4 @@ None currently — all decisions pinned in Q1–Q5. Flag anything in this spec t
 - **Portfolio volatility uses a weighted average of individual 30-day volatilities** rather than the correlation-aware portfolio stdev. This overstates risk (ignores diversification). Acceptable for v1 — documented here so future work can upgrade if desired.
 - **Cost basis is a single avg** rather than tax-lot level. Users with multiple buys at different prices must average manually. Upgrade path: transaction-log data model (out of scope for v1).
 - **No historical portfolio chart in v1.** Adding one later would need either (a) daily snapshot cron or (b) the "derived from current holdings" approximation discussed during brainstorming.
+- **Refresh interval is hardcoded at 60s in v1.** Exposing it in SettingsModal (and persisting via `user_settings.portfolioUpdateFreq`) is a planned follow-up.
