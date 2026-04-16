@@ -2,11 +2,12 @@
 
 import { useState, useCallback, useMemo, memo } from 'react'
 import { useRouter } from 'next/navigation'
+import type { StockReport } from '@/types/report'
 
 export interface SavedReport {
   id: string
   ticker: string
-  data: any
+  data: StockReport
   created_by: string
   created_by_email: string | null
   created_at: string
