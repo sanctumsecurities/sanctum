@@ -20,6 +20,7 @@ function cashSnapshot(): HoldingSnapshot {
     ticker: CASH_TICKER,
     price: 1,
     prevClose: 1,
+    isExtendedHours: false,
     beta: 0,
     volatility30d: 0,
     sector: 'Cash',
