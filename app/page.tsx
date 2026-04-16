@@ -33,7 +33,7 @@ const BANNER_SPEED_SECS = { fast: 45, regular: 60, slow: 75 } as const
 const DEFAULT_SETTINGS = {
   clockFormat: '12h' as '12h' | '24h',
   bannerSpeed: 'regular' as 'fast' | 'regular' | 'slow',
-  bannerUpdateFreq: 60_000,
+  bannerUpdateFreq: 5 * 60_000,
   bannerTickers: DEFAULT_BANNER_TICKERS,
   bannerHoverPause: true,
 }

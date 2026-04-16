@@ -136,7 +136,7 @@ export default function SectorHeatmap() {
   useEffect(() => {
     fetchData(period)
     if (intervalRef.current) clearInterval(intervalRef.current)
-    intervalRef.current = setInterval(() => fetchData(period), 2 * 60 * 1000)
+    intervalRef.current = setInterval(() => fetchData(period), 5 * 60 * 1000)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [period, fetchData])
 

@@ -65,7 +65,11 @@ function periodToChartParams(period: string): { period1: Date; interval: '1d' | 
 
 // ── Cache ──
 const cache = new Map<string, { data: any; ts: number }>()
-const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
+
+function getCacheTTL(period: string): number {
+  if (period === '1D') return 5 * 60 * 1000
+  return 60 * 60 * 1000  // 1 hour for historical periods (5D/3M/6M/YTD/1Y)
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -75,7 +79,7 @@ export async function GET(request: NextRequest) {
     // Check cache
     const cacheKey = `sector-heatmap-${period}`
     const cached = cache.get(cacheKey)
-    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    if (cached && Date.now() - cached.ts < getCacheTTL(period)) {
       return NextResponse.json(cached.data, { headers: { 'Cache-Control': 'no-store' } })
     }
 
@@ -134,7 +138,7 @@ export async function GET(request: NextRequest) {
     // Evict stale entries
     const now = Date.now()
     for (const [key, val] of cache) {
-      if (now - val.ts > CACHE_TTL * 2) cache.delete(key)
+      if (now - val.ts > getCacheTTL(period) * 2) cache.delete(key)
     }
 
     return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } })
