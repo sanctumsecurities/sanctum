@@ -137,6 +137,33 @@ export default function PortfolioPage({ session }: Props) {
     return m
   }, [holdings])
 
+  const exportCSV = useCallback(() => {
+    const rows = [
+      ['Ticker', 'Name', 'Shares', 'Avg Cost', 'Price', 'Market Value', 'P&L ($)', 'P&L (%)', 'Day Change ($)', 'Day Change (%)', 'Sector'],
+      ...enriched.map(h => [
+        h.ticker,
+        h.snapshot?.name ?? '',
+        h.shares,
+        h.avg_cost,
+        h.snapshot?.price ?? '',
+        h.marketValue ?? '',
+        h.plDollar ?? '',
+        h.plPercent != null ? (h.plPercent / 100).toFixed(4) : '',
+        h.dayChangeDollar ?? '',
+        h.dayChangePercent != null ? (h.dayChangePercent / 100).toFixed(4) : '',
+        h.snapshot?.sector ?? '',
+      ]),
+    ]
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `portfolio_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [enriched])
+
   const handleRefresh = useCallback(async () => {
     if (refreshing) return
     setRefreshing(true)
@@ -239,6 +266,28 @@ export default function PortfolioPage({ session }: Props) {
               onMouseLeave={e => { (e.currentTarget).style.color = COLORS.textDim; (e.currentTarget).style.borderColor = COLORS.borderStrong }}
             >
               <span style={{ display: 'inline-block', animation: refreshing ? 'spinRefresh 0.8s linear infinite' : 'none' }}>↻</span>
+            </button>
+            <button
+              className="portfolio-add-btn"
+              onClick={exportCSV}
+              disabled={enriched.length === 0}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${COLORS.borderStrong}`,
+                borderRadius: 4,
+                color: COLORS.textDim,
+                fontSize: 13,
+                padding: '9px 18px',
+                fontFamily: MONO,
+                letterSpacing: '0.1em',
+                cursor: enriched.length === 0 ? 'default' : 'pointer',
+                opacity: enriched.length === 0 ? 0.3 : 1,
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => { if (enriched.length > 0) { (e.currentTarget).style.color = '#fff'; (e.currentTarget).style.borderColor = '#444' } }}
+              onMouseLeave={e => { (e.currentTarget).style.color = COLORS.textDim; (e.currentTarget).style.borderColor = COLORS.borderStrong }}
+            >
+              EXPORT CSV
             </button>
             <button
               className="portfolio-add-btn"
