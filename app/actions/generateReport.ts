@@ -2,18 +2,13 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import type { StockReport } from '@/types/report'
+import { anthropic } from '@/lib/anthropic'
 import { yahooFinance } from '@/lib/yahoo'
 import { computeQuantSignal, formatQuantSignal, type QuantSignal } from '@/lib/quantScore'
 import { fetchMacroContext, type MacroContext } from '@/lib/macroContext'
 import { validateReport } from '@/lib/reportValidation'
 import { withTimeout } from '@/lib/utils'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-
-function getAnthropic() {
-  const key = process.env.ANTHROPIC_API_KEY
-  if (!key) throw new Error('ANTHROPIC_API_KEY is not configured')
-  return new Anthropic({ apiKey: key })
-}
 
 // ── Helper functions ──
 
@@ -537,7 +532,8 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
       ? computeQuantSignal(yahoo)
       : { score: 50, verdict: 'HOLD', factors: [], skippedFactors: ['all (Yahoo data unavailable)'] }
 
-    const client = getAnthropic()
+    if (!anthropic) return { error: 'ANTHROPIC_API_KEY is not configured' }
+    const client = anthropic
 
     // Build key metrics from real Yahoo data before calling Gemini
     const preBuiltMetrics = yahoo ? buildKeyMetricsFromYahoo(yahoo) : null

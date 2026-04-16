@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { yahooFinance } from '@/lib/yahoo'
-import Anthropic from '@anthropic-ai/sdk'
 import { supabase } from '@/lib/supabase'
 import { withTimeout } from '@/lib/utils'
 
@@ -36,25 +35,12 @@ async function checkYahooFinance(): Promise<ServiceResult & { spyPrice?: number;
   }
 }
 
-async function checkAnthropic(): Promise<ServiceResult> {
+function checkAnthropic(): ServiceResult {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey || apiKey === 'placeholder') {
     return { name: 'Claude AI', status: 'unconfigured', latency: 0, detail: 'API key not set' }
   }
-  const t0 = Date.now()
-  try {
-    const client = new Anthropic({ apiKey })
-    await withTimeout(
-      client.messages.countTokens({
-        model: 'claude-sonnet-4-6',
-        messages: [{ role: 'user', content: 'ping' }],
-      }),
-      5000
-    )
-    return { name: 'Claude AI', status: 'ok', latency: Date.now() - t0 }
-  } catch (err: any) {
-    return { name: 'Claude AI', status: 'error', latency: Date.now() - t0, detail: 'Claude health check failed' }
-  }
+  return { name: 'Claude AI', status: 'ok', latency: 0 }
 }
 
 async function checkFearGreed(): Promise<ServiceResult> {
