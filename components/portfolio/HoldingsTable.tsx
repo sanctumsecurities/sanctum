@@ -121,13 +121,25 @@ export default function HoldingsTable({ holdings, onRowClick, onDelete }: Props)
                   color: isConfirming ? COLORS.neg : (isHover ? COLORS.textMuted : 'transparent'),
                   cursor: 'pointer',
                   padding: 0,
-                  fontSize: isConfirming ? 9 : 14,
+                  fontSize: 9,
                   fontFamily: MONO,
                   letterSpacing: '0.1em',
                   transition: 'color 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
                 }}
               >
-                {isConfirming ? 'CONFIRM' : '🗑'}
+                {isConfirming ? (
+                  'CONFIRM'
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                    <path d="M10 11v6" />
+                    <path d="M14 11v6" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>

@@ -64,7 +64,6 @@ export default function PortfolioPage({ session }: Props) {
     if (tickers.length === 0) {
       setSnapshots({})
       setSnapshotStale(false)
-      setLastSnapshotAt(Date.now())
       return
     }
     try {
@@ -132,13 +131,14 @@ export default function PortfolioPage({ session }: Props) {
     loadHoldings()
   }
 
-  // Subtitle text
+  // Subtitle text. lastSnapshotAt reflects the last *successful* snapshot,
+  // so the displayed timestamp always matches the data the user is seeing.
   const subtitle = (() => {
     if (loadingHoldings) return 'Loading…'
     const n = holdings.length
     if (n === 0) return 'No positions yet.'
     const countStr = `${n} position${n === 1 ? '' : 's'}`
-    if (!lastSnapshotAt) return `${countStr} · live`
+    if (!lastSnapshotAt) return snapshotStale ? `${countStr} · fetch failed` : `${countStr} · loading…`
     const ts = new Date(lastSnapshotAt).toLocaleTimeString('en-US', { hour12: false })
     return `${countStr} · updated ${ts} ET${snapshotStale ? ' · stale' : ''}`
   })()
