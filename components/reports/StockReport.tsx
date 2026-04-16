@@ -405,7 +405,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
 
     const { data: existing } = await supabase
       .from('reports')
-      .select('data')
+      .select('data, created_at')
       .eq('ticker', ticker)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -413,7 +413,12 @@ export default function StockReport({ ticker }: { ticker: string }) {
 
     if (myId !== fetchIdRef.current) return
 
-    if (existing?.data?.companyName) {
+    const REPORT_TTL_MS = 4 * 60 * 60 * 1000
+    const isFresh = existing?.created_at
+      ? Date.now() - new Date(existing.created_at).getTime() < REPORT_TTL_MS
+      : false
+
+    if (existing?.data?.companyName && isFresh) {
       setReport(existing.data as StockReportType)
       setReportReady(true)
       setLoading(false)
