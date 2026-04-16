@@ -149,38 +149,19 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
             {d.companyName || ''}
           </div>
         </div>
-        {sentiment && (() => {
-          const low = d.fiftyTwoWeekLow
-          const high = d.fiftyTwoWeekHigh
-          const buyLow = low && high ? low + (high - low) * 0.05 : null
-          const buyHigh = low && high ? low + (high - low) * 0.35 : null
-          return (
+        {sentiment && (
+          <div style={{ flexShrink: 0, textAlign: 'right' }}>
             <div style={{
-              flexShrink: 0,
-              textAlign: 'right',
+              fontSize: 13, fontWeight: 700,
+              color: sentimentColor,
+              letterSpacing: '0.08em',
+              fontFamily: "'JetBrains Mono', monospace",
+              textTransform: 'uppercase',
             }}>
-              <div style={{
-                fontSize: 13, fontWeight: 700,
-                color: sentimentColor,
-                letterSpacing: '0.08em',
-                fontFamily: "'JetBrains Mono', monospace",
-                textTransform: 'uppercase',
-              }}>
-                {sentiment}
-              </div>
-              {buyLow != null && buyHigh != null && (
-                <div style={{
-                  fontSize: 9, color: '#666',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  marginTop: 3,
-                  letterSpacing: '0.03em',
-                }}>
-                  BUY ${buyLow.toFixed(0)}–${buyHigh.toFixed(0)}
-                </div>
-              )}
+              {sentiment}
             </div>
-          )
-        })()}
+          </div>
+        )}
       </div>
 
       {/* Price */}
@@ -255,18 +236,6 @@ const ReportCard = memo(function ReportCard({ report, chartData: initialChartDat
           </div>
         ))}
       </div>
-
-      {/* Sector + Industry */}
-      {(d.sector || d.industry) && (
-        <div style={{
-          fontSize: 11, color: '#666',
-          fontFamily: "'DM Sans', sans-serif",
-          marginBottom: 8,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {[d.sector, d.industry].filter(Boolean).join(' · ')}
-        </div>
-      )}
 
       {/* 1-Day Sparkline Chart */}
         {/* Timeframe selector */}
