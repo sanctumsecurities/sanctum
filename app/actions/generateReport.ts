@@ -527,16 +527,18 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
       })),
     ])
 
+    if (!yahoo || (yahoo.livePrice <= 0 && yahoo.marketCapRaw <= 0)) {
+      return { error: 'Market data unavailable for this ticker. Please verify the symbol and try again.' }
+    }
+
     // Compute quant pre-score from Yahoo data
-    const quantSignal: QuantSignal = yahoo
-      ? computeQuantSignal(yahoo)
-      : { score: 50, verdict: 'HOLD', factors: [], skippedFactors: ['all (Yahoo data unavailable)'] }
+    const quantSignal: QuantSignal = computeQuantSignal(yahoo)
 
     if (!anthropic) return { error: 'ANTHROPIC_API_KEY is not configured' }
     const client = anthropic
 
     // Build key metrics from real Yahoo data before calling Gemini
-    const preBuiltMetrics = yahoo ? buildKeyMetricsFromYahoo(yahoo) : null
+    const preBuiltMetrics = buildKeyMetricsFromYahoo(yahoo)
 
     const yahooContext = yahoo ? `
 MARKET DATA:
