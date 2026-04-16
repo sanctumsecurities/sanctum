@@ -32,8 +32,8 @@ function safeNum(val: any, fallback = 0): number {
 }
 
 // ── Verdict veto logic ──
-// Gemini can always go more cautious than quant, but cannot go more than
-// one notch bullish above quant. If it tries, clamp to one notch above.
+// AI can always go more cautious than quant, but cannot go more than
+// one notch bullish above quant. If it tries, lock to quant verdict.
 const VERDICT_RANK: Record<string, number> = { AVOID: 1, SELL: 2, HOLD: 3, BUY: 4 }
 const RANK_TO_VERDICT: Record<number, 'BUY' | 'SELL' | 'HOLD' | 'AVOID'> = {
   1: 'AVOID', 2: 'SELL', 3: 'HOLD', 4: 'BUY',
@@ -55,8 +55,8 @@ function resolveVerdict(
     return { verdict: RANK_TO_VERDICT[gRank], vetoed: false }
   }
 
-  // Gemini trying to go 2+ notches more bullish — veto, clamp to one above quant
-  return { verdict: RANK_TO_VERDICT[qRank + 1], vetoed: true }
+  // AI trying to go 2+ notches more bullish — veto, lock to quant verdict
+  return { verdict: RANK_TO_VERDICT[qRank], vetoed: true }
 }
 
 // ── Yahoo Finance data fetching ──
