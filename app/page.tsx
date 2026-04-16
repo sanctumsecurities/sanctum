@@ -97,6 +97,7 @@ export default function Home() {
   } = useHoverPopup()
   const sessionStartRef = useRef<number>(Date.now())
   const [sessionUptimeDisplay, setSessionUptimeDisplay] = useState('00:00:00')
+  const settingsSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadSettingsFromSupabase = useCallback(async (userId: string) => {
     try {
@@ -201,9 +202,12 @@ export default function Home() {
       const updated = { ...prev, ...patch }
       localStorage.setItem('sanctum-settings', JSON.stringify(updated))
       if (session?.user?.id) {
-        supabase.from('user_settings')
-          .upsert({ user_id: session.user.id, settings: updated, updated_at: new Date().toISOString() })
-          .then(({ error }) => { if (error) console.error('[settings] save failed:', error) })
+        if (settingsSaveRef.current) clearTimeout(settingsSaveRef.current)
+        settingsSaveRef.current = setTimeout(() => {
+          supabase.from('user_settings')
+            .upsert({ user_id: session.user.id, settings: updated, updated_at: new Date().toISOString() })
+            .then(({ error }) => { if (error) console.error('[settings] save failed:', error) })
+        }, 500)
       }
       return updated
     })
