@@ -8,9 +8,61 @@ import StockReport from '@/components/reports/StockReport'
 export default function ReportPage() {
   const params = useParams()
   const router = useRouter()
-  const ticker = (params.ticker as string).toUpperCase()
+  const rawTicker = (params.ticker as string).toUpperCase()
+  const isValidTicker = /^[A-Z0-9.\-^=]{1,20}$/.test(rawTicker)
 
-  if (!/^[A-Z0-9.\-^=]{1,20}$/.test(ticker)) {
+  // All hooks must be called unconditionally — conditional return comes AFTER
+  const [watchlist, setWatchlist] = useState<string[]>([])
+  const [session, setSession] = useState<any>(null)
+
+  useEffect(() => {
+    if (!isValidTicker) return
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s)
+      if (s) loadWatchlist(s.user.id)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isValidTicker])
+
+  const loadWatchlist = async (userId: string) => {
+    const { data } = await supabase
+      .from('user_settings')
+      .select('settings')
+      .eq('user_id', userId)
+      .maybeSingle()
+    const wl = (data?.settings as any)?.watchlist
+    if (Array.isArray(wl)) setWatchlist(wl)
+  }
+
+  const toggleWatchlist = useCallback(async () => {
+    if (!session || !isValidTicker) return
+    const isOn = watchlist.includes(rawTicker)
+    const updated = isOn
+      ? watchlist.filter(t => t !== rawTicker)
+      : [...watchlist, rawTicker]
+    setWatchlist(updated)
+
+    // Read current settings first, then merge watchlist into them
+    const { data: existing } = await supabase
+      .from('user_settings')
+      .select('settings')
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+    const currentSettings = (existing?.settings as any) ?? {}
+    await supabase
+      .from('user_settings')
+      .upsert(
+        {
+          user_id: session.user.id,
+          settings: { ...currentSettings, watchlist: updated },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      )
+  }, [session, watchlist, rawTicker, isValidTicker])
+
+  // Conditional return AFTER all hooks
+  if (!isValidTicker) {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: '#ef4444', fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>
@@ -20,38 +72,7 @@ export default function ReportPage() {
     )
   }
 
-  const [watchlist, setWatchlist] = useState<string[]>([])
-  const [session, setSession] = useState<any>(null)
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s)
-      if (s) loadWatchlist(s.user.id)
-    })
-  }, [])
-
-  const loadWatchlist = async (userId: string) => {
-    const { data } = await supabase
-      .from('user_settings')
-      .select('watchlist')
-      .eq('user_id', userId)
-      .maybeSingle()
-    if (data?.watchlist) setWatchlist(data.watchlist)
-  }
-
-  const toggleWatchlist = useCallback(async () => {
-    if (!session) return
-    const isOn = watchlist.includes(ticker)
-    const updated = isOn
-      ? watchlist.filter(t => t !== ticker)
-      : [...watchlist, ticker]
-    setWatchlist(updated)
-    await supabase
-      .from('user_settings')
-      .upsert({ user_id: session.user.id, watchlist: updated }, { onConflict: 'user_id' })
-  }, [session, watchlist, ticker])
-
-  const isOnWatchlist = watchlist.includes(ticker)
+  const isOnWatchlist = watchlist.includes(rawTicker)
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a' }}>
@@ -98,7 +119,7 @@ export default function ReportPage() {
         </div>
       </div>
 
-      <StockReport ticker={ticker} />
+      <StockReport ticker={rawTicker} />
     </div>
   )
 }
