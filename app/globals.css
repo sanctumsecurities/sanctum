@@ -12,6 +12,15 @@ html {
   overflow-x: hidden;
 }
 
+/* Scale the whole UI up on QHD / 4K monitors. Leaves 1080p and MacBook retina
+   viewports (1440-1728 CSS px) untouched. */
+@media (min-width: 2100px) {
+  :root { zoom: 1.15; }
+}
+@media (min-width: 3000px) {
+  :root { zoom: 1.3; }
+}
+
 body {
   margin: 0;
   padding: 0;

@@ -58,7 +58,12 @@ export function enrichHoldings(holdings: Holding[], snapshots: SnapshotMap): Enr
     e.weight = e.marketValue != null && totalValue > 0 ? e.marketValue / totalValue : null
   }
 
-  enriched.sort((a, b) => (b.marketValue ?? -Infinity) - (a.marketValue ?? -Infinity))
+  enriched.sort((a, b) => {
+    const aCash = isCashHolding(a)
+    const bCash = isCashHolding(b)
+    if (aCash !== bCash) return aCash ? 1 : -1
+    return (b.marketValue ?? -Infinity) - (a.marketValue ?? -Infinity)
+  })
   return enriched
 }
 
@@ -95,19 +100,6 @@ export function computeTotals(holdings: EnrichedHolding[]): PortfolioTotals {
     dayChangePercent,
     hasIncomplete,
   }
-}
-
-export function computePositionAllocation(holdings: EnrichedHolding[]): AllocationSlice[] {
-  const total = holdings.reduce((acc, h) => acc + (h.marketValue ?? 0), 0)
-  if (total <= 0) return []
-  return holdings
-    .filter(h => h.marketValue != null && h.marketValue > 0)
-    .map(h => ({
-      label: h.ticker,
-      value: h.marketValue!,
-      percent: h.marketValue! / total,
-    }))
-    .sort((a, b) => b.value - a.value)
 }
 
 export function computeSectorAllocation(holdings: EnrichedHolding[]): AllocationSlice[] {

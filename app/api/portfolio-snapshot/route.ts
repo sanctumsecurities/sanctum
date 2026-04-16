@@ -41,7 +41,11 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
       (summary as any)?.summaryDetail?.beta ??
       (summary as any)?.defaultKeyStatistics?.beta ??
       null
-    const sector = (summary as any)?.summaryProfile?.sector ?? null
+    const quoteType = (quote as any)?.quoteType ?? null
+    const rawSector = (summary as any)?.summaryProfile?.sector ?? null
+    const sector = typeof rawSector === 'string' && rawSector.trim()
+      ? rawSector
+      : (quoteType === 'ETF' ? 'ETF' : null)
 
     // 45-day window yields ~31 trading days; 31 closes → 30 daily returns → "30d volatility".
     const closes = Array.isArray(historical)

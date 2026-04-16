@@ -1,23 +1,17 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import type { EnrichedHolding } from '@/lib/portfolio/types'
-import { computePositionAllocation, computeSectorAllocation } from '@/lib/portfolio/metrics'
+import { computeSectorAllocation } from '@/lib/portfolio/metrics'
 import { COLORS, MONO, PIE_PALETTE, fmtPct } from './styles'
 
 interface Props {
   holdings: EnrichedHolding[]
 }
 
-type Mode = 'sector' | 'position'
-
 export default function AllocationChart({ holdings }: Props) {
-  const [mode, setMode] = useState<Mode>('sector')
-  const data = useMemo(
-    () => (mode === 'sector' ? computeSectorAllocation(holdings) : computePositionAllocation(holdings)),
-    [holdings, mode]
-  )
+  const data = useMemo(() => computeSectorAllocation(holdings), [holdings])
 
   return (
     <div style={{
@@ -27,29 +21,11 @@ export default function AllocationChart({ holdings }: Props) {
       padding: '14px 16px',
     }}>
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}`, marginBottom: 8,
       }}>
         <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em' }}>
-          ALLOCATION
+          SECTOR ALLOCATION
         </span>
-        <div style={{ display: 'flex', gap: 12 }}>
-          {(['sector', 'position'] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: mode === m ? COLORS.text : COLORS.textMuted,
-                fontSize: 10, fontFamily: MONO, letterSpacing: '0.15em',
-                padding: '2px 0',
-                borderBottom: mode === m ? `1px solid ${COLORS.text}` : '1px solid transparent',
-              }}
-            >
-              {m.toUpperCase()}
-            </button>
-          ))}
-        </div>
       </div>
 
       {data.length === 0 ? (
