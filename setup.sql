@@ -29,7 +29,7 @@ create policy "Authenticated users can insert reports"
 
 create policy "Authenticated users can delete reports"
   on reports for delete
-  using (auth.uid() is not null);
+  using (auth.uid() = created_by);
 
 -- ── User Settings ──
 

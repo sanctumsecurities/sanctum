@@ -7,6 +7,7 @@ import { computeQuantSignal, formatQuantSignal, type QuantSignal } from '@/lib/q
 import { fetchMacroContext, type MacroContext } from '@/lib/macroContext'
 import { validateReport } from '@/lib/reportValidation'
 import { withTimeout } from '@/lib/utils'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 function getAnthropic() {
   const key = process.env.ANTHROPIC_API_KEY
@@ -514,6 +515,11 @@ export async function generateReport(ticker: string): Promise<StockReport | { er
   const symbol = ticker.toUpperCase().trim()
   if (!symbol) return { error: 'Ticker is required' }
   if (symbol.length > 20 || !/^[A-Z0-9.\-^=]+$/.test(symbol)) return { error: 'Invalid ticker symbol' }
+
+  // ── Auth guard: only authenticated users may generate reports ──
+  const serverSupabase = createSupabaseServerClient()
+  const { data: { user }, error: authError } = await serverSupabase.auth.getUser()
+  if (authError || !user) return { error: 'You must be signed in to generate a report.' }
 
   try {
     // Fetch expanded Yahoo Finance data
