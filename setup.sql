@@ -52,3 +52,42 @@ create policy "Users can upsert own settings"
   on user_settings for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- ── Portfolio Holdings ──
+
+create table if not exists holdings (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  ticker text not null,
+  shares numeric not null check (shares > 0),
+  avg_cost numeric not null check (avg_cost > 0),
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+
+create index if not exists holdings_user_id_idx on holdings(user_id);
+create unique index if not exists holdings_user_ticker_idx on holdings(user_id, ticker);
+
+alter table holdings enable row level security;
+
+drop policy if exists "Users can read own holdings" on holdings;
+drop policy if exists "Users can insert own holdings" on holdings;
+drop policy if exists "Users can update own holdings" on holdings;
+drop policy if exists "Users can delete own holdings" on holdings;
+
+create policy "Users can read own holdings"
+  on holdings for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own holdings"
+  on holdings for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own holdings"
+  on holdings for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete own holdings"
+  on holdings for delete
+  using (auth.uid() = user_id);
