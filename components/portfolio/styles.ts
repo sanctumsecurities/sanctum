@@ -36,7 +36,7 @@ export const panelStyle: CSSProperties = {
 }
 
 export const sectionLabel: CSSProperties = {
-  fontSize: 10,
+  fontSize: 11,
   color: COLORS.textMuted,
   fontFamily: MONO,
   letterSpacing: '0.15em',

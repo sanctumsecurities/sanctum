@@ -168,17 +168,17 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
           paddingBottom: 14, borderBottom: `1px solid ${COLORS.border}`,
           marginBottom: 18,
         }}>
-          <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em' }}>
+          <span style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em' }}>
             {isEdit ? 'EDIT POSITION' : 'ADD POSITION'}
           </span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 16, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 17, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>
             ✕
           </button>
         </div>
 
         {/* Ticker */}
         <div style={{ marginBottom: 16, position: 'relative' }}>
-          <div style={{ fontSize: 12, color: COLORS.textDim, fontFamily: MONO, letterSpacing: '0.05em', marginBottom: 6 }}>
+          <div style={{ fontSize: 13, color: COLORS.textDim, fontFamily: MONO, letterSpacing: '0.05em', marginBottom: 6 }}>
             TICKER
           </div>
           <input
@@ -202,7 +202,7 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
               padding: '8px 10px',
               color: COLORS.text,
               fontFamily: MONO,
-              fontSize: 13,
+              fontSize: 14,
               letterSpacing: '0.05em',
               outline: 'none',
               opacity: openedInEditMode ? 0.6 : 1,
@@ -210,7 +210,7 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
           />
           {isEdit && !openedInEditMode && (
             <div style={{
-              marginTop: 6, fontSize: 10, color: COLORS.warn,
+              marginTop: 6, fontSize: 11, color: COLORS.warn,
               fontFamily: MONO, letterSpacing: '0.05em',
             }}>
               You already own {ticker}. Saving will update your existing position.
@@ -239,8 +239,8 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
                     borderTop: i > 0 ? `1px solid ${COLORS.divider}` : 'none',
                   }}
                 >
-                  <span style={{ color: COLORS.text, fontFamily: MONO, fontSize: 12, minWidth: 56 }}>{s.symbol}</span>
-                  <span style={{ color: COLORS.textFaint, fontFamily: MONO, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                  <span style={{ color: COLORS.text, fontFamily: MONO, fontSize: 13, minWidth: 56 }}>{s.symbol}</span>
+                  <span style={{ color: COLORS.textFaint, fontFamily: MONO, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
                 </div>
               ))}
             </div>
@@ -249,7 +249,7 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
 
         {/* Shares */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: COLORS.textDim, fontFamily: MONO, letterSpacing: '0.05em', marginBottom: 6 }}>
+          <div style={{ fontSize: 13, color: COLORS.textDim, fontFamily: MONO, letterSpacing: '0.05em', marginBottom: 6 }}>
             SHARES
           </div>
           <input
@@ -265,7 +265,7 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
               padding: '8px 10px',
               color: COLORS.text,
               fontFamily: MONO,
-              fontSize: 13,
+              fontSize: 14,
               outline: 'none',
             }}
           />
@@ -273,7 +273,7 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
 
         {/* Avg Cost */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: COLORS.textDim, fontFamily: MONO, letterSpacing: '0.05em', marginBottom: 6 }}>
+          <div style={{ fontSize: 13, color: COLORS.textDim, fontFamily: MONO, letterSpacing: '0.05em', marginBottom: 6 }}>
             AVG COST (USD)
           </div>
           <input
@@ -289,14 +289,14 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
               padding: '8px 10px',
               color: COLORS.text,
               fontFamily: MONO,
-              fontSize: 13,
+              fontSize: 14,
               outline: 'none',
             }}
           />
         </div>
 
         {error && (
-          <div style={{ color: COLORS.neg, fontSize: 11, fontFamily: MONO, marginBottom: 14 }}>
+          <div style={{ color: COLORS.neg, fontSize: 12, fontFamily: MONO, marginBottom: 14 }}>
             {error}
           </div>
         )}
@@ -312,7 +312,7 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
                   background: confirmingDelete ? 'rgba(248,113,113,0.15)' : 'transparent',
                   border: `1px solid ${confirmingDelete ? 'rgba(248,113,113,0.5)' : COLORS.borderStrong}`,
                   color: confirmingDelete ? COLORS.neg : COLORS.textMuted,
-                  borderRadius: 3, fontSize: 11,
+                  borderRadius: 3, fontSize: 12,
                   padding: '7px 14px', fontFamily: MONO,
                   letterSpacing: '0.1em', cursor: 'pointer',
                 }}
@@ -328,7 +328,7 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
                 background: 'transparent',
                 border: `1px solid ${COLORS.borderStrong}`,
                 color: COLORS.textDim,
-                borderRadius: 3, fontSize: 11,
+                borderRadius: 3, fontSize: 12,
                 padding: '7px 14px', fontFamily: MONO,
                 letterSpacing: '0.1em', cursor: 'pointer',
               }}
@@ -342,7 +342,7 @@ export default function AddPositionModal({ userId, existing, existingByTicker, o
                 background: 'rgba(255,255,255,0.08)',
                 border: `1px solid rgba(255,255,255,0.3)`,
                 color: COLORS.text,
-                borderRadius: 3, fontSize: 11,
+                borderRadius: 3, fontSize: 12,
                 padding: '7px 18px', fontFamily: MONO,
                 letterSpacing: '0.1em', cursor: 'pointer',
               }}

@@ -51,14 +51,14 @@ export default function SummaryCards({ totals }: Props) {
           padding: '14px 16px',
         }}>
           <div style={{
-            fontSize: 10, color: COLORS.textMuted,
+            fontSize: 11, color: COLORS.textMuted,
             fontFamily: MONO, letterSpacing: '0.15em',
           }}>
             {card.label}
           </div>
           <div style={{
             color: COLORS.text,
-            fontSize: 24,
+            fontSize: 25,
             marginTop: 6,
             fontFamily: MONO,
             letterSpacing: '0.02em',
@@ -67,7 +67,7 @@ export default function SummaryCards({ totals }: Props) {
           </div>
           {card.sub && (
             <div style={{
-              fontSize: 11, color: card.subColor ?? COLORS.textMuted,
+              fontSize: 12, color: card.subColor ?? COLORS.textMuted,
               fontFamily: MONO, marginTop: 4,
             }}>
               {card.sub}

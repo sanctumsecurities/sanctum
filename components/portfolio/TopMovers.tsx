@@ -16,7 +16,7 @@ function Row({ h, positive }: { h: EnrichedHolding; positive: boolean }) {
       gridTemplateColumns: '1fr auto auto',
       gap: 8,
       padding: '4px 0',
-      fontSize: 11,
+      fontSize: 12,
       fontFamily: MONO,
       borderBottom: `1px solid ${COLORS.divider}`,
     }}>
@@ -24,7 +24,7 @@ function Row({ h, positive }: { h: EnrichedHolding; positive: boolean }) {
       <span style={{ color: pctColor, textAlign: 'right' }}>
         {fmtPct(h.dayChangePercent, { signed: true, digits: 2 })}
       </span>
-      <span style={{ color: COLORS.textMuted, textAlign: 'right', fontSize: 10 }}>
+      <span style={{ color: COLORS.textMuted, textAlign: 'right', fontSize: 11 }}>
         {fmtUsd(h.dayChangeDollar, { signed: true })}
       </span>
     </div>
@@ -42,14 +42,14 @@ export default function TopMovers({ winners, losers }: Props) {
       <div style={{
         paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}`, marginBottom: 10,
       }}>
-        <span style={{ fontSize: 10, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em' }}>
+        <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em' }}>
           TOP MOVERS TODAY
         </span>
       </div>
 
       {winners.length > 0 && (
         <>
-          <div style={{ fontSize: 9, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em', marginBottom: 4 }}>
+          <div style={{ fontSize: 10, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em', marginBottom: 4 }}>
             WINNERS
           </div>
           {winners.map(h => <Row key={h.id} h={h} positive />)}
@@ -58,7 +58,7 @@ export default function TopMovers({ winners, losers }: Props) {
 
       {losers.length > 0 && (
         <>
-          <div style={{ fontSize: 9, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em', margin: `${winners.length > 0 ? 10 : 0}px 0 4px` }}>
+          <div style={{ fontSize: 10, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em', margin: `${winners.length > 0 ? 10 : 0}px 0 4px` }}>
             LOSERS
           </div>
           {losers.map(h => <Row key={h.id} h={h} positive={false} />)}
@@ -66,7 +66,7 @@ export default function TopMovers({ winners, losers }: Props) {
       )}
 
       {winners.length === 0 && losers.length === 0 && (
-        <div style={{ color: COLORS.textFaint, fontSize: 11, fontFamily: MONO, textAlign: 'center', padding: '12px 0' }}>
+        <div style={{ color: COLORS.textFaint, fontSize: 12, fontFamily: MONO, textAlign: 'center', padding: '12px 0' }}>
           No moves yet today
         </div>
       )}

@@ -14,13 +14,13 @@ export default function EmptyState() {
         <path d="M7 14l4-4 4 4 5-5" />
       </svg>
       <p style={{
-        fontSize: 14, color: COLORS.textDim, margin: '16px 0 4px',
+        fontSize: 15, color: COLORS.textDim, margin: '16px 0 4px',
         fontFamily: "'DM Sans', sans-serif",
       }}>
         Your portfolio is empty.
       </p>
       <p style={{
-        fontSize: 12, color: COLORS.textMuted, margin: 0,
+        fontSize: 13, color: COLORS.textMuted, margin: 0,
         fontFamily: "'DM Sans', sans-serif",
       }}>
         Add a position to start tracking performance.

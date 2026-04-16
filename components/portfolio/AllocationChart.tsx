@@ -30,7 +30,7 @@ export default function AllocationChart({ holdings }: Props) {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}`, marginBottom: 8,
       }}>
-        <span style={{ fontSize: 10, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em' }}>
+        <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em' }}>
           ALLOCATION
         </span>
         <div style={{ display: 'flex', gap: 12 }}>
@@ -41,7 +41,7 @@ export default function AllocationChart({ holdings }: Props) {
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: mode === m ? COLORS.text : COLORS.textMuted,
-                fontSize: 9, fontFamily: MONO, letterSpacing: '0.15em',
+                fontSize: 10, fontFamily: MONO, letterSpacing: '0.15em',
                 padding: '2px 0',
                 borderBottom: mode === m ? `1px solid ${COLORS.text}` : '1px solid transparent',
               }}
@@ -55,7 +55,7 @@ export default function AllocationChart({ holdings }: Props) {
       {data.length === 0 ? (
         <div style={{
           padding: '32px 0', textAlign: 'center',
-          color: COLORS.textFaint, fontSize: 11, fontFamily: MONO,
+          color: COLORS.textFaint, fontSize: 12, fontFamily: MONO,
         }}>
           No data
         </div>
@@ -84,7 +84,7 @@ export default function AllocationChart({ holdings }: Props) {
                     border: `1px solid ${COLORS.borderStrong}`,
                     borderRadius: 3,
                     fontFamily: MONO,
-                    fontSize: 11,
+                    fontSize: 12,
                     color: COLORS.text,
                   }}
                   itemStyle={{ color: COLORS.text }}
@@ -100,7 +100,7 @@ export default function AllocationChart({ holdings }: Props) {
             {data.map((slice, i) => (
               <div key={slice.label} style={{
                 display: 'flex', justifyContent: 'space-between',
-                fontSize: 10, fontFamily: MONO,
+                fontSize: 11, fontFamily: MONO,
               }}>
                 <span style={{ color: COLORS.textDim, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{

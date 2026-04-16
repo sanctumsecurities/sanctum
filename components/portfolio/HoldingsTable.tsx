@@ -62,7 +62,7 @@ export default function HoldingsTable({ holdings, onRowClick, onDelete }: Props)
         paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}`,
         marginBottom: 6,
       }}>
-        <span style={{ fontSize: 10, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em' }}>
+        <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: MONO, letterSpacing: '0.15em' }}>
           HOLDINGS · {holdings.length} POSITION{holdings.length === 1 ? '' : 'S'}
         </span>
       </div>
@@ -72,7 +72,7 @@ export default function HoldingsTable({ holdings, onRowClick, onDelete }: Props)
         display: 'grid',
         gridTemplateColumns: GRID_COLS,
         padding: '8px 4px',
-        fontSize: 9,
+        fontSize: 10,
         color: COLORS.textMuted,
         fontFamily: MONO,
         letterSpacing: '0.12em',
@@ -101,7 +101,7 @@ export default function HoldingsTable({ holdings, onRowClick, onDelete }: Props)
               gridTemplateColumns: GRID_COLS,
               alignItems: 'center',
               padding: '10px 4px',
-              fontSize: 12,
+              fontSize: 13,
               fontFamily: MONO,
               color: COLORS.text,
               borderBottom: `1px solid ${COLORS.divider}`,
@@ -124,7 +124,7 @@ export default function HoldingsTable({ holdings, onRowClick, onDelete }: Props)
             </div>
             <div style={{ textAlign: 'right', color: signColor(h.plDollar), lineHeight: 1.3 }}>
               <div>{h.plDollar != null ? fmtUsd(h.plDollar, { signed: true }) : 'N/A'}</div>
-              <div style={{ fontSize: 10, opacity: 0.8 }}>
+              <div style={{ fontSize: 11, opacity: 0.8 }}>
                 {h.plPercent != null ? fmtPct(h.plPercent, { signed: true }) : ''}
               </div>
             </div>

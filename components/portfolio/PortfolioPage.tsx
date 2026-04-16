@@ -185,14 +185,14 @@ export default function PortfolioPage({ session }: Props) {
         }}>
           <div>
             <h1 className="hero-title" style={{
-              fontSize: 64, fontWeight: 700, color: COLORS.text,
+              fontSize: 65, fontWeight: 700, color: COLORS.text,
               letterSpacing: '0.08em', fontFamily: MONO,
               margin: 0, lineHeight: 1,
             }}>
               PORTFOLIO
             </h1>
             <div style={{
-              fontSize: 11, color: COLORS.textMuted,
+              fontSize: 12, color: COLORS.textMuted,
               fontFamily: MONO, letterSpacing: '0.1em',
               marginTop: 14,
             }}>
@@ -207,7 +207,7 @@ export default function PortfolioPage({ session }: Props) {
               border: `1px solid ${COLORS.borderStrong}`,
               borderRadius: 4,
               color: COLORS.textDim,
-              fontSize: 12,
+              fontSize: 13,
               padding: '9px 18px',
               fontFamily: MONO,
               letterSpacing: '0.1em',
@@ -227,7 +227,7 @@ export default function PortfolioPage({ session }: Props) {
             background: 'rgba(248,113,113,0.05)',
             border: '1px solid rgba(248,113,113,0.3)',
             borderRadius: 4, padding: '12px 16px',
-            color: COLORS.neg, fontSize: 12, fontFamily: MONO,
+            color: COLORS.neg, fontSize: 13, fontFamily: MONO,
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             <span>Failed to load holdings: {holdingsError}</span>
@@ -235,7 +235,7 @@ export default function PortfolioPage({ session }: Props) {
               onClick={loadHoldings}
               style={{
                 background: 'none', border: 'none', color: COLORS.neg, cursor: 'pointer',
-                fontFamily: MONO, fontSize: 11, letterSpacing: '0.1em', textDecoration: 'underline',
+                fontFamily: MONO, fontSize: 12, letterSpacing: '0.1em', textDecoration: 'underline',
               }}
             >
               RETRY
