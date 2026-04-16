@@ -227,7 +227,7 @@ export default function PortfolioPage({ session }: Props) {
         )}
 
         {!loadingHoldings && !holdingsError && holdings.length === 0 ? (
-          <EmptyState onAddClick={openAdd} />
+          <EmptyState />
         ) : (
           <>
             <SummaryCards totals={totals} />

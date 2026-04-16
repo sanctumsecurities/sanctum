@@ -1,12 +1,8 @@
 'use client'
 
-import { COLORS, MONO } from './styles'
+import { COLORS } from './styles'
 
-interface Props {
-  onAddClick: () => void
-}
-
-export default function EmptyState({ onAddClick }: Props) {
+export default function EmptyState() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
@@ -24,30 +20,11 @@ export default function EmptyState({ onAddClick }: Props) {
         Your portfolio is empty.
       </p>
       <p style={{
-        fontSize: 12, color: COLORS.textMuted, margin: '0 0 20px',
+        fontSize: 12, color: COLORS.textMuted, margin: 0,
         fontFamily: "'DM Sans', sans-serif",
       }}>
         Add a position to start tracking performance.
       </p>
-      <button
-        onClick={onAddClick}
-        style={{
-          background: 'transparent',
-          border: `1px solid ${COLORS.borderStrong}`,
-          borderRadius: 4,
-          color: COLORS.textDim,
-          fontSize: 12,
-          padding: '8px 18px',
-          cursor: 'pointer',
-          fontFamily: MONO,
-          letterSpacing: '0.1em',
-          transition: 'all 0.2s ease',
-        }}
-        onMouseEnter={e => { (e.currentTarget).style.color = '#fff'; (e.currentTarget).style.borderColor = '#444' }}
-        onMouseLeave={e => { (e.currentTarget).style.color = COLORS.textDim; (e.currentTarget).style.borderColor = COLORS.borderStrong }}
-      >
-        + ADD POSITION
-      </button>
     </div>
   )
 }
