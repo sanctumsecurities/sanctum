@@ -13,6 +13,9 @@ export interface MacroContext {
   fetchedAt: string
 }
 
+let macroCache: { result: { formatted: string; data: MacroContext }; ts: number } | null = null
+const MACRO_CACHE_TTL = 5 * 60 * 1000
+
 function classifyVIX(level: number): string {
   if (level < 15) return 'low fear'
   if (level <= 25) return 'moderate'
@@ -21,6 +24,10 @@ function classifyVIX(level: number): string {
 }
 
 export async function fetchMacroContext(): Promise<{ formatted: string; data: MacroContext }> {
+  if (macroCache && Date.now() - macroCache.ts < MACRO_CACHE_TTL) {
+    return macroCache.result
+  }
+
   const data: MacroContext = {
     vix: null,
     tenYearYield: null,
@@ -97,5 +104,7 @@ export async function fetchMacroContext(): Promise<{ formatted: string; data: Ma
     ? `MACRO ENVIRONMENT (as of ${new Date().toISOString().split('T')[0]}):\n${lines.join('\n')}`
     : ''
 
-  return { formatted, data }
+  const result = { formatted, data }
+  macroCache = { result, ts: Date.now() }
+  return result
 }
