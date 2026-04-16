@@ -3,9 +3,17 @@ import { yahooFinance } from '@/lib/yahoo'
 
 export const dynamic = 'force-dynamic'
 
+const cache = new Map<string, { data: any[]; ts: number }>()
+const CACHE_TTL = 5 * 60 * 1000
+
 export async function GET(req: NextRequest) {
   const query = (req.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 20)
   if (!query) return NextResponse.json([])
+
+  const cached = cache.get(query)
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    return NextResponse.json(cached.data)
+  }
 
   try {
     const results = await yahooFinance.search(
@@ -26,6 +34,13 @@ export async function GET(req: NextRequest) {
         symbol: q.symbol as string,
         name: (q.shortname || q.longname || q.symbol) as string,
       }))
+
+    cache.set(query, { data: suggestions, ts: Date.now() })
+    // Evict entries older than 2x TTL
+    const now = Date.now()
+    for (const [key, entry] of cache) {
+      if (now - entry.ts > CACHE_TTL * 2) cache.delete(key)
+    }
 
     return NextResponse.json(suggestions, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {
