@@ -6,6 +6,16 @@ import type { HoldingSnapshot, SnapshotMap } from '@/lib/portfolio/types'
 
 export const dynamic = 'force-dynamic'
 
+interface MetadataCache {
+  beta: number | null
+  volatility30d: number | null
+  sector: string | null
+  name: string | null
+  ts: number
+}
+const metadataCache = new Map<string, MetadataCache>()
+const METADATA_TTL = 6 * 60 * 60 * 1000  // 6 hours
+
 const TICKER_PATTERN = /^[A-Z0-9.\-^=]{1,20}$/
 
 async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
@@ -19,12 +29,32 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
     name: null,
   }
   try {
+    // Always fetch fresh price data
+    const quote = await yahooFinance.quoteCombine(ticker).catch(() => null)
+    const price = (quote as any)?.regularMarketPrice ?? null
+    const prevClose = (quote as any)?.regularMarketPreviousClose ?? (quote as any)?.previousClose ?? null
+    const quoteName = (quote as any)?.shortName ?? (quote as any)?.longName ?? null
+
+    // Check metadata cache
+    const cachedMeta = metadataCache.get(ticker)
+    if (cachedMeta && Date.now() - cachedMeta.ts < METADATA_TTL) {
+      return {
+        ticker,
+        price: typeof price === 'number' ? price : null,
+        prevClose: typeof prevClose === 'number' ? prevClose : null,
+        beta: cachedMeta.beta,
+        volatility30d: cachedMeta.volatility30d,
+        sector: cachedMeta.sector,
+        name: typeof quoteName === 'string' ? quoteName : cachedMeta.name,
+      }
+    }
+
+    // Cache miss — fetch expensive metadata
     const now = new Date()
     const period1 = new Date(now)
     period1.setDate(period1.getDate() - 45)
 
-    const [quote, summary, historical] = await Promise.all([
-      yahooFinance.quoteCombine(ticker).catch(() => null),
+    const [summary, historical] = await Promise.all([
       yahooFinance
         .quoteSummary(ticker, { modules: ['summaryDetail', 'summaryProfile', 'defaultKeyStatistics'] })
         .catch(() => null),
@@ -33,10 +63,6 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
         .catch(() => null),
     ])
 
-    const price = (quote as any)?.regularMarketPrice ?? null
-    const prevClose =
-      (quote as any)?.regularMarketPreviousClose ?? (quote as any)?.previousClose ?? null
-    const name = (quote as any)?.shortName ?? (quote as any)?.longName ?? null
     const beta =
       (summary as any)?.summaryDetail?.beta ??
       (summary as any)?.defaultKeyStatistics?.beta ??
@@ -56,14 +82,23 @@ async function fetchOne(ticker: string): Promise<HoldingSnapshot> {
       : []
     const volatility30d = closes.length >= 5 ? computeAnnualizedVolatility(closes) : null
 
+    const meta: MetadataCache = {
+      beta: typeof beta === 'number' ? beta : null,
+      volatility30d,
+      sector: typeof sector === 'string' ? sector : null,
+      name: typeof quoteName === 'string' ? quoteName : null,
+      ts: Date.now(),
+    }
+    metadataCache.set(ticker, meta)
+
     return {
       ticker,
       price: typeof price === 'number' ? price : null,
       prevClose: typeof prevClose === 'number' ? prevClose : null,
-      beta: typeof beta === 'number' ? beta : null,
-      volatility30d,
-      sector: typeof sector === 'string' ? sector : null,
-      name: typeof name === 'string' ? name : null,
+      beta: meta.beta,
+      volatility30d: meta.volatility30d,
+      sector: meta.sector,
+      name: meta.name,
     }
   } catch (err) {
     console.error(`[portfolio-snapshot] ${ticker} failed:`, err)
