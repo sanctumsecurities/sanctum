@@ -13,6 +13,9 @@ import VerdictTab from './tabs/VerdictTab'
 import type { StockReport as StockReportType } from '@/types/report'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 
+// Module-level cache: serves previously fetched reports instantly on back-navigation
+const reportCache = new Map<string, StockReportType>()
+
 const TABS = ['Overview', 'Financials', 'Valuation', 'Catalysts', 'Verdict'] as const
 
 const verdictBadgeColor: Record<string, 'green' | 'red' | 'blue' | 'yellow'> = {
@@ -396,6 +399,16 @@ export default function StockReport({ ticker }: { ticker: string }) {
   const fetchReport = useCallback(async () => {
     const myId = ++fetchIdRef.current
 
+    // Check module-level cache first
+    const cached = reportCache.get(ticker)
+    if (cached) {
+      setReport(cached)
+      setReportReady(true)
+      setLoading(false)
+      setShowReport(true)
+      return
+    }
+
     setLoading(true)
     setError(null)
     setReport(null)
@@ -419,6 +432,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
       : false
 
     if (existing?.data?.companyName && isFresh) {
+      reportCache.set(ticker, existing.data as StockReportType)
       setReport(existing.data as StockReportType)
       setReportReady(true)
       setLoading(false)
@@ -437,6 +451,7 @@ export default function StockReport({ ticker }: { ticker: string }) {
     }
 
     setReport(result)
+    reportCache.set(ticker, result)
     setReportReady(true)
 
     const { data: { session } } = await supabase.auth.getSession()
