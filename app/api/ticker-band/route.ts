@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       : DEFAULT_INSTRUMENTS
 
     const symbols = instruments.map(i => i.symbol)
-    const cacheKey = symbols.join(',')
+    const cacheKey = symbols.slice().sort().join(',')
 
     // Return cached data if still fresh
     const cached = cache.get(cacheKey)
