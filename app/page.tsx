@@ -31,12 +31,24 @@ interface HealthData {
 const BANNER_SPEED_SECS = { fast: 45, regular: 60, slow: 75 } as const
 
 const DEFAULT_SETTINGS = {
-  defaultTab: 'Dashboard' as 'Dashboard' | 'Watchlist' | 'Portfolio',
   clockFormat: '12h' as '12h' | '24h',
   bannerSpeed: 'regular' as 'fast' | 'regular' | 'slow',
   bannerUpdateFreq: 60_000,
   bannerTickers: DEFAULT_BANNER_TICKERS,
   bannerHoverPause: true,
+}
+
+type TabName = 'Dashboard' | 'Watchlist' | 'Portfolio'
+const ACTIVE_TAB_KEY = 'sanctum-active-tab'
+const VALID_TABS: readonly TabName[] = ['Dashboard', 'Watchlist', 'Portfolio']
+
+function readInitialTab(): TabName {
+  if (typeof window === 'undefined') return 'Dashboard'
+  try {
+    const stored = localStorage.getItem(ACTIVE_TAB_KEY)
+    if (stored && VALID_TABS.includes(stored as TabName)) return stored as TabName
+  } catch {}
+  return 'Dashboard'
 }
 
 export type AppSettings = typeof DEFAULT_SETTINGS
@@ -49,7 +61,7 @@ export default function Home() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Watchlist' | 'Portfolio'>('Dashboard')
+  const [activeTab, setActiveTab] = useState<TabName>(readInitialTab)
   const [searchTicker, setSearchTicker] = useState('')
 
   const [savedReports, setSavedReports] = useState<SavedReport[]>([])
@@ -97,7 +109,6 @@ export default function Home() {
         const merged = { ...DEFAULT_SETTINGS, ...data.settings }
         setSettings(merged)
         localStorage.setItem('sanctum-settings', JSON.stringify(merged))
-        if (merged.defaultTab) setActiveTab(merged.defaultTab)
       }
     } catch {}
   }, [])
@@ -180,12 +191,15 @@ export default function Home() {
         const parsed = JSON.parse(stored)
         const merged = { ...DEFAULT_SETTINGS, ...parsed }
         setSettings(merged)
-        // Only set activeTab from localStorage if no session (Supabase will override if logged in)
-        if (!session && merged.defaultTab) setActiveTab(merged.defaultTab)
       }
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── Persist active tab so refresh keeps the user on the same page ──
+  useEffect(() => {
+    try { localStorage.setItem(ACTIVE_TAB_KEY, activeTab) } catch {}
+  }, [activeTab])
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
     setSettings(prev => {

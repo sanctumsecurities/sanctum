@@ -164,17 +164,6 @@ export default function SettingsModal({ settings, updateSettings, watchlist, sav
               <>
                 <div style={SECTION_LABEL}>Preferences</div>
 
-                <div style={{ marginBottom: 20 }}>
-                  <div style={FIELD_LABEL}>DEFAULT TAB</div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {(['Dashboard', 'Portfolio', 'Watchlist'] as const).map(tab => (
-                      <button key={tab} onClick={() => updateSettings({ defaultTab: tab })} style={BTN(settings.defaultTab === tab)}>
-                        {tab.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <div>
                   <div style={FIELD_LABEL}>CLOCK FORMAT</div>
                   <div style={{ display: 'flex', gap: 8 }}>
